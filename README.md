@@ -4,6 +4,8 @@ A big-screen rhythm snake game where you *are* the snake, steered by tipping you
 
 Everything is plain HTML files with no build step: `index.html` is the game for the big screen, and `controller.html` turns a phone into the controller.
 
+**Start playing:** https://serpentine-3d.onrender.com/
+
 ## How to play
 
 1. Open the game on a big screen (a TV, projector, or laptop).
