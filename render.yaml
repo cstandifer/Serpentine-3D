@@ -1,7 +1,7 @@
 # Render Blueprint: serves index.html as a static site (no build step).
 services:
   - type: web
-    name: serpentine
+    name: serpentine-3d
     runtime: static
     buildCommand: echo "No build step"
     staticPublishPath: .
