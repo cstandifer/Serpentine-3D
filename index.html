@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Azeret+Mono:wght@400;600&display=swap">
 <!-- phone link (PeerJS) and QR code; the game still runs if these fail to load -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="ice.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* page setup (the Claude artifact viewer used to provide this) */
@@ -1802,9 +1803,8 @@ function makeR3(){
 // the game sends back {t:'state',...} for the phone's screen and {t:'buzz',p} for haptics.
 // Up to two phones can join the same code: the first is player 1, the second player 2.
 const PHONE = {peer: null, conns: [null, null], seen: [0, 0], code: ''};
-// STUN servers help the phone and screen find each other over WebRTC; they work when both are on the same
-// network. Cross-network (phone on cellular) needs a TURN relay, and there's no reliable free public one.
-const ICE = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}];
+// The STUN servers and the optional TURN relay live in ice.js, shared with the controller.
+let ICE = null;
 // a phone that's been silent this long (locked, pocketed, tab closed) counts as gone; live phones send several messages a second
 const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1838,8 +1838,10 @@ function drawQR(){
   box.classList.toggle('off', !ok);
   if (ok) new window.QRCode(box, {text: controllerURL(PHONE.code), width: 200, height: 200, colorDark: '#1a1230', colorLight: '#f6effd', correctLevel: window.QRCode.CorrectLevel.M});
 }
-function startPhoneLink(){
+async function startPhoneLink(){
   if (typeof window.Peer !== 'function'){ setPhoneUI("Phone link couldn't load (are you offline?). Keyboard still works."); return; }
+  setPhoneUI('Setting up the phone link…');
+  ICE = await window.getIceServers();
   const open = (code, attempt) => {
     PHONE.code = code; setPhoneUI('Setting up the phone link…');
     const peer = new window.Peer('serpentine-' + code.toLowerCase(), {debug: 0, config: {iceServers: ICE}});

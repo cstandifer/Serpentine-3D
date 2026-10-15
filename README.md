@@ -43,7 +43,7 @@ Press **C** or use the View button on the phone to switch. In the 3D views, a mi
 
 ## How it works
 
-The phone and screen connect through [PeerJS](https://peerjs.com). Its free cloud server only handles the handshake, and game data goes directly between devices over WebRTC, so it still works as a static site. Uses [three.js](https://threejs.org) for the 3D views; if it can't load, the game falls back to the top view.
+The phone and screen connect through [PeerJS](https://peerjs.com). Its free cloud server only handles the handshake, and game data goes directly between devices over WebRTC, so it still works as a static site. Some networks block that direct path, so `ice.js` can add a free TURN relay from [Metered](https://www.metered.ca/tools/openrelay/) that carries the data only when a phone can't connect directly. Uses [three.js](https://threejs.org) for the 3D views; if it can't load, the game falls back to the top view.
 
 Phones only share motion sensors over **HTTPS**, so test the controller on the deployed site rather than a local `http://` address.
 

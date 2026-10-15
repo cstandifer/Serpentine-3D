@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Azeret+Mono:wght@400;600&display=swap">
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="ice.js"></script>
 <style>
 /* Phone controller for Serpentine 3D, dressed like the big screen: a grid flyer in holographic color.
    Black ground, thin white rules, wide Archivo with Azeret Mono; the rainbow marks the score and the Jump button.
@@ -254,18 +255,21 @@ const show = id => { for (const s of ['join', 'setup', 'ctl']) $(s).hidden = s !
 function pill(text, kind){ $('pillTxt').textContent = text; $('pill').className = 'pill' + (kind ? ' ' + kind : ''); }
 
 // ---- link to the big screen ----
-// STUN servers help the phone and screen find each other; they work when both are on the same network.
-const ICE = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}];
-let peer = null, conn = null, code = '', retry = null, motionReady = false;
+// The STUN servers and the optional TURN relay live in ice.js, shared with the big screen.
+let ICE = null;
+// how long a phone waits for the screen to answer before saying so and trying again
+const DIAL_TIMEOUT_MS = 10000;
+let peer = null, conn = null, code = '', retry = null, dialTimer = null, dialFails = 0, motionReady = false;
 const connected = () => !!(conn && conn.open);
 function send(msg){ if (connected()) try { conn.send(msg); } catch(_) {} }
-function connect(c){
+async function connect(c){
   code = c.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
   if (code.length !== 4){ show('join'); return; }
   if (location.hash.slice(1) !== code) history.replaceState(null, '', '#' + code);
   clearTimeout(retry);
   if (typeof window.Peer !== 'function'){ pill('Offline', 'bad'); $('setupEyebrow').textContent = "Couldn't load the link library. Check your connection."; return; }
   pill('Connecting…');
+  if (!ICE) ICE = await window.getIceServers();
   if (!peer || peer.destroyed){
     peer = new window.Peer({debug: 0, config: {iceServers: ICE}});
     peer.on('open', dial);
@@ -283,12 +287,36 @@ function connect(c){
 function dial(){
   if (connected()) return;
   const c = peer.connect('serpentine-' + code.toLowerCase(), {reliable: true});
+  // the game was found but the two devices couldn't open a path to each other: say so instead of
+  // hanging on "Connecting…", then try again
+  let settled = false;
+  const giveUp = () => {
+    if (settled) return;
+    clearTimeout(dialTimer);
+    if (conn === c || c.open) return;
+    settled = true;
+    try { c.close(); } catch(_) {}
+    dialFails++;
+    pill('Retrying…', 'bad');
+    const msg = dialFails > 1
+      ? `Found game ${code}, but this phone can't reach the screen on this network. Try turning off any VPN or iCloud Private Relay. Still trying…`
+      : `Found game ${code}, but couldn't reach the screen yet. Trying again…`;
+    $('setupEyebrow').textContent = msg; $('joinHint').textContent = msg; $('ctlHint').textContent = msg;
+    scheduleRetry();
+  };
+  clearTimeout(dialTimer);
+  dialTimer = setTimeout(giveUp, DIAL_TIMEOUT_MS);
   c.on('open', () => {
+    settled = true; clearTimeout(dialTimer); dialFails = 0;
     conn = c; pill('Connected', 'on');
     $('setupEyebrow').textContent = `Connected to game ${code}`; $('ctlHint').textContent = ''; $('joinHint').textContent = '';
   });
   c.on('data', onGame);
-  c.on('close', () => { if (conn === c){ conn = null; pill('Reconnecting…', 'bad'); scheduleRetry(); } });
+  c.on('error', giveUp);
+  c.on('close', () => {
+    if (conn === c){ conn = null; pill('Reconnecting…', 'bad'); scheduleRetry(); }
+    else if (!c.open) giveUp();
+  });
 }
 function scheduleRetry(){ clearTimeout(retry); retry = setTimeout(() => { if (!connected() && code) connect(code); }, 2500); }
 
