@@ -1,4 +1,6 @@
 # Serpentine 3D
+<img width="1280" height="800" alt="image" src="https://github.com/user-attachments/assets/cf080bb0-aaca-4c5e-ba83-a9244a9e52b7" />
+
 
 A big-screen rhythm snake game where you *are* the snake, steered by tipping your phone and jumping for real. It grew out of [Serpentine](https://github.com/cstandifer/Serpentine), a browser game that mixes *Dancing Line* with *Snake*, and keeps the same levels and music.
 
