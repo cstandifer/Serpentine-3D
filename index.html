@@ -774,7 +774,7 @@ function steerTarget(i){
 }
 function jump(){
   if (state !== 'play') return;
-  if (G.air) { G.jumpBuf = 0.14; return; }
+  if (G.air) { G.jumpBuf = 0.35; return; }   // a quick second jump queues up and fires on landing
   G.air = true; G.airT = 0; G.airDur = G.D.jump*G.K.jump / G.speed; G.jumpBuf = 0;
   pushPoint(); sfxJump(); buzz(12);
 }

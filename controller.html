@@ -33,7 +33,7 @@ button,input{font:inherit}
 :focus-visible{outline:2px solid var(--lime);outline-offset:3px}
 [hidden]{display:none!important}
 .wide,.brand,.title,.btn,.status .score,.pad button,.gauge .lab,.code-in,.name-in,.me{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase}
-.app{min-height:100%;display:grid;grid-template-rows:auto 1fr;gap:16px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 20px);max-width:480px;margin:0 auto}
+.app{min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:auto 1fr;gap:16px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 20px);max-width:480px;margin:0 auto}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1.5px solid var(--line)}
 .brand{font-size:1.15rem;line-height:1;color:var(--line)}
 .pill{display:inline-flex;align-items:center;gap:7px;padding:4px 8px;font-size:.66rem;border:1px solid var(--rule-soft);color:var(--muted)}
@@ -42,6 +42,13 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .pill.bad{color:var(--line);border-color:var(--line)}.pill.bad i{background:var(--line)}
 
 .screen{display:grid;gap:16px;align-content:start;min-height:0}
+#ctl:not([hidden]){display:flex;flex-direction:column;gap:14px}
+/* while the snake is moving, the tilt gauge and jump meter shrink to a glance so Jump gets the room */
+#ctl.playing .gauge svg{width:44%;margin:0 auto}
+#ctl.playing .gauge .lab{font-size:.75rem}
+#ctl.playing .meter canvas{height:34px}
+#ctl.playing .meter .lab{display:none}
+#ctl.playing .status .score{font-size:2.2rem}
 .card{border:1.5px solid var(--line);padding:18px;display:grid;gap:16px}
 .eyebrow{font-size:.7rem;color:var(--muted)}
 .title{font-size:2rem;line-height:.9;margin:6px 0 0;color:var(--line)}
@@ -82,10 +89,18 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .hint{font-size:.7rem;color:var(--line);text-align:center;min-height:1.1em}
 
 /* thumb pad: outlined Left and Right, a solid orange Jump; a button flashes lime when it fires */
-.pad{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px}
-.pad button{min-height:96px;border:1.5px solid var(--line);background:#000;color:var(--cream);font-size:.85rem;display:grid;place-items:center;align-content:center;gap:6px;cursor:pointer;touch-action:none}
+/* Jump is the main action: a full-width slab at the bottom, under the thumb. Left and Right sit above it. */
+.pad{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"l r" "j j";gap:10px;margin-top:auto}
+#leftBtn{grid-area:l}#rightBtn{grid-area:r}#jumpBtn{grid-area:j}
+/* tilting steers, so Left and Right only appear for a phone playing on buttons alone */
+.pad{flex:1 0 auto;grid-template-rows:auto 1fr}
+.pad.tilt{grid-template-areas:"j j";grid-template-rows:1fr}
+.pad.tilt #leftBtn,.pad.tilt #rightBtn{display:none}
+.pad button{min-height:64px;border:1.5px solid var(--line);background:#000;color:var(--cream);font-size:.85rem;display:grid;place-items:center;align-content:center;gap:6px;cursor:pointer;touch-action:none}
 .pad button svg{width:26px;height:26px}
-.pad button.jump{background:var(--line);color:#000;border-color:var(--line);font-size:1rem}
+.pad button.jump{background:var(--line);color:#000;border-color:var(--line);font-size:1.9rem;min-height:clamp(170px,30vh,260px);gap:10px}
+.pad button.jump svg{width:44px;height:44px}
+.pad button:not(.jump){grid-auto-flow:column;gap:4px}
 .pad button.fire,.pad button.jump.fire{background:var(--lime);color:#000;border-color:var(--lime)}
 .namecard{border-color:var(--lime)}
 .namecard .eyebrow{color:var(--lime)!important}
@@ -93,12 +108,21 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .name-in:focus{border-color:var(--lime)}
 .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tools .btn-ghost{font-size:.7rem;padding:10px 4px}
-details.set summary{list-style:none;cursor:pointer;font-size:.72rem;color:var(--muted);text-align:center;padding:8px;text-decoration:underline;text-underline-offset:3px}
+/* Sensitivity: a full bar with its current values, so it reads as a control, not a footnote */
+details.set{border:1.5px solid transparent;border-image:var(--holo) 1}
+details.set summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px}
 details.set summary::-webkit-details-marker{display:none}
-.row{display:grid;gap:6px;font-size:.72rem}
+.sum-l{display:flex;align-items:center;gap:10px;font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem}
+.sum-l svg{width:20px;height:20px;flex:none}
+.sum-v{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.sum-v::after{content:"+";font-family:var(--wide);font-weight:900;font-size:1.2rem;color:var(--cream);line-height:1}
+details.set[open] .sum-v::after{content:"\2212"}
+.set-body{display:grid;gap:16px;padding:4px 14px 16px}
+.ends{display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted)}
+.row{display:grid;gap:8px;font-size:.76rem}
 .row label{display:flex;justify-content:space-between}
 .row output{color:var(--line);font-variant-numeric:tabular-nums}
-input[type=range]{width:100%;accent-color:var(--line)}
+input[type=range]{width:100%;height:28px;accent-color:var(--pink)}
 .check{display:flex;align-items:center;gap:10px;font-size:.74rem}
 .check input{width:18px;height:18px;accent-color:var(--line)}
 .portrait-only{display:none}
@@ -161,6 +185,21 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
 
   <!-- 3. the controller -->
   <section class="screen" id="ctl" hidden>
+    <div class="tools">
+      <button class="btn btn-ghost" id="pauseBtn">Pause</button>
+      <button class="btn btn-ghost" id="viewBtn">View</button>
+      <button class="btn btn-ghost" id="recenterBtn">Recenter</button>
+    </div>
+    <details class="set" id="setPanel">
+      <summary><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
+      <div class="set-body">
+        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
+        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
+        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
+        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
+        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
+      </div>
+    </details>
     <div class="status">
       <div>
         <div class="lvl" id="lvl">Waiting for the game</div>
@@ -198,26 +237,11 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       <div class="hit" id="hit">Jump!</div>
     </div>
     <div class="hint" id="ctlHint"></div>
-    <div class="pad">
-      <button id="leftBtn" aria-label="Turn left"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7l-8 8 8 8"/></svg>Left</button>
+    <div class="pad" id="pad">
       <button id="jumpBtn" class="jump" aria-label="Jump"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18l8-8 8 8"/><path d="M6 25h18"/></svg>Jump</button>
+      <button id="leftBtn" aria-label="Turn left"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7l-8 8 8 8"/></svg>Left</button>
       <button id="rightBtn" aria-label="Turn right"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7l8 8-8 8"/></svg>Right</button>
     </div>
-    <div class="tools">
-      <button class="btn btn-ghost" id="recenterBtn">Recenter</button>
-      <button class="btn btn-ghost" id="pauseBtn">Pause</button>
-      <button class="btn btn-ghost" id="viewBtn">View</button>
-    </div>
-    <details class="set">
-      <summary>Sensitivity</summary>
-      <div class="card" style="margin-top:8px">
-        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"></div>
-        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"></div>
-        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
-        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
-        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
-      </div>
-    </details>
   </section>
 </div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
@@ -241,12 +265,12 @@ const SET = {
   flip: store.get('flip') === '1'
 };
 function bindSettings(){
-  const sync = () => { $('tiltOut').textContent = SET.tilt + '°'; $('jumpOut').textContent = SET.jump + ' / 5'; drawZones(); };
+  const sync = () => { $('tiltOut').textContent = SET.tilt + '°'; $('jumpOut').textContent = SET.jump + ' / 5'; $('setSum').textContent = `Tilt ${SET.tilt}° · Jump ${SET.jump}/5`; drawZones(); };
   $('tiltIn').value = SET.tilt; $('jumpIn').value = SET.jump;
   $('steerIn').checked = SET.steer; $('hopIn').checked = SET.hop; $('flipIn').checked = SET.flip;
   $('tiltIn').addEventListener('input', e => { SET.tilt = +e.target.value; store.set('fullturn', SET.tilt); sync(); });
   $('jumpIn').addEventListener('input', e => { SET.jump = +e.target.value; store.set('jump', SET.jump); sync(); });
-  for (const k of ['steer', 'hop', 'flip']) $(k + 'In').addEventListener('change', e => { SET[k] = e.target.checked; store.set(k, SET[k] ? '1' : '0'); });
+  for (const k of ['steer', 'hop', 'flip']) $(k + 'In').addEventListener('change', e => { SET[k] = e.target.checked; store.set(k, SET[k] ? '1' : '0'); $('pad').classList.toggle('tilt', motionReady && SET.steer); });
   sync();
 }
 
@@ -328,7 +352,10 @@ function onGame(m){
   if (m.t === 'buzz') buzz(m.p);
   else if (m.t === 'full'){ pill('Game full', 'bad'); $('ctlHint').textContent = 'Two phones are already playing this game.'; $('setupEyebrow').textContent = 'Two phones are already playing this game.'; }
   else if (m.t === 'state'){
+    // a run just started: fold the settings away and shrink the gauges
+    if (m.state === 'play' && gameState !== 'play') $('setPanel').open = false;
     gameState = m.state;
+    $('ctl').classList.toggle('playing', m.state === 'play');
     // versus: show which player this phone is, in that snake's color, plus the clock
     const duo = m.mode === 2;
     $('me').classList.toggle('on', duo); $('me').textContent = 'P' + (m.player || 1);
@@ -390,14 +417,17 @@ function onOrient(e){
 setInterval(sendSteer, 100);
 
 // ---- jumping: a push-off spike, then a moment of near-weightlessness while you're in the air ----
+// Fires a few dozen milliseconds into the air. After a jump the detector re-arms as soon as you land
+// (the reading climbs back above ~1g), so two quick jumps in a row both count.
 const hist = [], marks = [];
-let lastSpike = -1e9, lowStart = null, lastJump = -1e9, gotMotion = false;
-const thresholds = () => ({spike: 1.75 - 0.1*SET.jump, low: 0.3 + 0.06*SET.jump, hold: 100 - 12*SET.jump});
+let lastSpike = -1e9, lowStart = null, lastJump = -1e9, gotMotion = false, armed = true;
+const thresholds = () => ({spike: 1.5 - 0.07*SET.jump, low: 0.45 + 0.06*SET.jump, hold: 60 - 8*SET.jump});
+const SPIKE_WINDOW = 450, REFRACTORY = 200;
 function fireJump(fromBody){
   const now = performance.now();
   lastJump = now; marks.push(now);
   send({t: 'jump'}); buzz(15);
-  if (fromBody) suppressUntil = now + 700;
+  if (fromBody){ suppressUntil = now + 350; armed = false; }
   const h = $('hit'); h.classList.add('show'); setTimeout(() => h.classList.remove('show'), 300);
   const b = $('jumpBtn'); b.classList.add('fire'); setTimeout(() => b.classList.remove('fire'), 140);
 }
@@ -411,9 +441,10 @@ function onMotion(e){
   while (hist.length && hist[0].t < t - 3000) hist.shift();
   if (!SET.hop) return;
   if (m > th.spike) lastSpike = t;
+  if (!armed && m > 1.1) armed = true;       // landed (the landing thump also counts as the next push-off)
   if (m < th.low){
     if (lowStart === null) lowStart = t;
-    if (t - lowStart >= th.hold && t - lastSpike < 700 && t - lastJump > 650) fireJump(true);
+    if (armed && t - lowStart >= th.hold && t - lastSpike < SPIKE_WINDOW && t - lastJump > REFRACTORY) fireJump(true);
   } else lowStart = null;
 }
 
@@ -483,6 +514,7 @@ async function enableMotion(){
 }
 function enterController(){
   show('ctl');
+  $('pad').classList.toggle('tilt', motionReady && SET.steer);
   if (!motionReady){ $('gauge').hidden = true; $('meter').hidden = true; }
 }
 
