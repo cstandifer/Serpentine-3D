@@ -1809,7 +1809,9 @@ let ICE = null;
 const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
-const controllerURL = code => { const u = new URL('controller.html', location.href); u.hash = code; return u.href; };
+// the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
+const CTRL_BUILD = '2026-10-15b';
+const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const phoneLive = i => !!(PHONE.conns[i] && PHONE.conns[i].open && performance.now() - PHONE.seen[i] < PHONE_QUIET_MS);
 const phoneOn = i => i === undefined ? phoneLive(0) || phoneLive(1) : phoneLive(i);
 function phoneSend(msg, only){
