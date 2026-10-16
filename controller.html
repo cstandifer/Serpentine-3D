@@ -243,7 +243,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-15e</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-16a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -420,14 +420,19 @@ setInterval(sendSteer, 100);
 // Fires a few dozen milliseconds into the air. After a jump the detector re-arms as soon as you land
 // (the reading climbs back above ~1g), so two quick jumps in a row both count.
 const hist = [], marks = [];
-let lastSpike = -1e9, lowStart = null, lastJump = -1e9, gotMotion = false, armed = true;
-const thresholds = () => ({spike: 1.5 - 0.07*SET.jump, low: 0.45 + 0.06*SET.jump, hold: 60 - 8*SET.jump});
-const SPIKE_WINDOW = 450, REFRACTORY = 200;
+// Two ways to catch a jump. The main one fires on the push-off itself: legs driving you up press the
+// phone into your hand for a moment, so a short, sustained rise above 1g fires the jump on the way up.
+// The backup fires on the weightless moment in the air, for jumps that didn't push hard enough.
+// Right after a landing, the landing thump looks like a push-off, so for a beat only the backup counts.
+let lastSpike = -1e9, lastLow = -1e9, lowStart = null, pushStart = null, lastJump = -1e9, lastLand = -1e9, gotMotion = false, armed = true, sawAir = false;
+const thresholds = () => ({spike: 1.5 - 0.07*SET.jump, low: 0.45 + 0.06*SET.jump, hold: 60 - 8*SET.jump,
+  push: 1.55 - 0.07*SET.jump, pushHold: 60 - 6*SET.jump});
+const SPIKE_WINDOW = 450, REFRACTORY = 200, LAND_QUIET = 350, REARM_AFTER = 900;
 function fireJump(fromBody){
   const now = performance.now();
   lastJump = now; marks.push(now);
   send({t: 'jump'}); buzz(15);
-  if (fromBody){ suppressUntil = now + 350; armed = false; }
+  if (fromBody){ suppressUntil = now + 350; armed = false; sawAir = false; }
   const h = $('hit'); h.classList.add('show'); setTimeout(() => h.classList.remove('show'), 300);
   const b = $('jumpBtn'); b.classList.add('fire'); setTimeout(() => b.classList.remove('fire'), 140);
 }
@@ -441,10 +446,24 @@ function onMotion(e){
   while (hist.length && hist[0].t < t - 3000) hist.shift();
   if (!SET.hop) return;
   if (m > th.spike) lastSpike = t;
-  if (!armed && m > 1.1) armed = true;       // landed (the landing thump also counts as the next push-off)
+  if (!armed){
+    if (m < th.low) sawAir = true;
+    if (sawAir && m > 1.1){ armed = true; lastLand = t; }      // landed
+    else if (t - lastJump > REARM_AFTER) armed = true;           // never saw a clean landing; carry on
+  }
+  // on the way up: a sustained push-off
+  if (m > th.push){
+    if (pushStart === null) pushStart = t;
+    // a thump right after time in the air is a landing, never a jump
+    if (armed && t - pushStart >= th.pushHold && t - lastLand > LAND_QUIET && t - lastLow > LAND_QUIET && t - lastJump > REFRACTORY) fireJump(true);
+  } else pushStart = null;
+  // backup: the weightless moment in the air
   if (m < th.low){
+    lastLow = t;
     if (lowStart === null) lowStart = t;
-    if (armed && t - lowStart >= th.hold && t - lastSpike < SPIKE_WINDOW && t - lastJump > REFRACTORY) fireJump(true);
+    // after a push-off, a brief float is enough; with no clear push, a longer float still counts
+    const floated = t - lowStart >= th.hold && (t - lastSpike < SPIKE_WINDOW || t - lowStart >= th.hold + 50);
+    if (armed && floated && t - lastJump > REFRACTORY) fireJump(true);
   } else lowStart = null;
 }
 
