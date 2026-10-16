@@ -6,8 +6,8 @@
 //
 // The relay comes from Metered's free TURN service (metered.ca/tools/openrelay). Fill in your app name
 // (the part before .metered.live) and your API key. Leave them empty to run with STUN only.
-const METERED_APP = '';
-const METERED_KEY = '';
+const METERED_APP = 'serpentine-3d';
+const METERED_KEY = '2797580234feb29bbeef77e23b3e794c4a3b';
 
 const STUN = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478']}];
 
