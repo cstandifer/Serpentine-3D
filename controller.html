@@ -90,7 +90,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 
 /* thumb pad: outlined Left and Right, a solid orange Jump; a button flashes lime when it fires */
 /* Jump is the main action: a full-width slab at the bottom, under the thumb. Left and Right sit above it. */
-.pad{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"l r" "j j";gap:10px;margin-top:auto}
+.pad{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"l r" "j j";gap:10px;margin-top:auto;margin-bottom:clamp(40px,14vh,140px)}
 #leftBtn{grid-area:l}#rightBtn{grid-area:r}#jumpBtn{grid-area:j}
 /* tilting steers, so Left and Right only appear for a phone playing on buttons alone */
 .pad.tilt{grid-template-areas:"j j"}
@@ -189,16 +189,6 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       <button class="btn btn-ghost" id="viewBtn">View</button>
       <button class="btn btn-ghost" id="recenterBtn">Recenter</button>
     </div>
-    <details class="set" id="setPanel">
-      <summary><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
-      <div class="set-body">
-        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
-        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
-        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
-        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
-        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
-      </div>
-    </details>
     <div class="status">
       <div>
         <div class="lvl" id="lvl">Waiting for the game</div>
@@ -230,6 +220,16 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       </svg>
       <div class="lab" id="gaugeLab">Straight</div>
     </div>
+    <details class="set" id="setPanel" open>
+      <summary><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
+      <div class="set-body">
+        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
+        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
+        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
+        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
+        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
+      </div>
+    </details>
     <div class="meter" id="meter">
       <canvas id="spark"></canvas>
       <div class="lab">Jump sensor</div>
@@ -243,7 +243,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-15c</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-15d</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
