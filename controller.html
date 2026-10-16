@@ -44,8 +44,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .screen{display:grid;gap:16px;align-content:start;min-height:0}
 #ctl:not([hidden]){display:flex;flex-direction:column;gap:14px}
 /* while the snake is moving, the tilt gauge and jump meter shrink to a glance so Jump gets the room */
-#ctl.playing .gauge svg{width:44%;margin:0 auto}
-#ctl.playing .gauge .lab{font-size:.75rem}
+#ctl.playing .gauge svg{width:72%;margin:0 auto}
+#ctl.playing .gauge .lab{font-size:.85rem}
 #ctl.playing .meter canvas{height:34px}
 #ctl.playing .meter .lab{display:none}
 #ctl.playing .status .score{font-size:2.2rem}
@@ -97,8 +97,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .pad.tilt #leftBtn,.pad.tilt #rightBtn{display:none}
 .pad button{min-height:64px;border:1.5px solid var(--line);background:#000;color:var(--cream);font-size:.85rem;display:grid;place-items:center;align-content:center;gap:6px;cursor:pointer;touch-action:none}
 .pad button svg{width:26px;height:26px}
-.pad button.jump{background:var(--line);color:#000;border-color:var(--line);font-size:1.4rem;min-height:clamp(110px,16vh,140px);gap:8px}
-.pad button.jump svg{width:32px;height:32px}
+.pad button.jump{background:var(--line);color:#000;border-color:var(--line);font-size:1.2rem;min-height:clamp(84px,11vh,104px);gap:6px}
+.pad button.jump svg{width:26px;height:26px}
 .pad button:not(.jump){grid-auto-flow:column;gap:4px}
 .pad button.fire,.pad button.jump.fire{background:var(--lime);color:#000;border-color:var(--lime)}
 .namecard{border-color:var(--lime)}
@@ -220,7 +220,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       </svg>
       <div class="lab" id="gaugeLab">Straight</div>
     </div>
-    <details class="set" id="setPanel" open>
+    <details class="set" id="setPanel">
       <summary><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
       <div class="set-body">
         <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
@@ -243,7 +243,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-15d</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-15e</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
