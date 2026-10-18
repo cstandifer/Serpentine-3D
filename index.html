@@ -1926,61 +1926,174 @@ const hat = (t, p, d = 0.04, f = 7000) => noise(t, 'highpass', f, p, d, musicBus
 const note = (type, f, t, p, d, filt) => tone(type, f, t, p, d, musicBus, 0, filt);
 
 // one music style per level; step() runs every 16th note (s = 0..15 in the bar, bar = 0..3)
+// ---- instruments beyond the basic tones: shared effect buses (rebuilt if the audio context changes) ----
+const FX = {};
+function fx(key, make){ if (!FX[key] || FX[key].ac !== AC){ FX[key] = make(); FX[key].ac = AC; } return FX[key]; }
+const curve = fn => { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) c[i] = fn(i/511.5 - 1); return c; };
+// growl: soft clipping for the dubstep bass
+const growlBus = () => fx('growl', () => { const w = AC.createWaveShaper(); w.curve = curve(x => Math.tanh(x*6)); const g = AC.createGain(); g.gain.value = 0.22; w.connect(g).connect(musicBus); return {in: w}; });
+// crush: few amplitude steps plus a hard edge, the crunchy 8-bit sound
+const crushBus = () => fx('crush', () => { const w = AC.createWaveShaper(); w.curve = curve(x => Math.round(Math.tanh(x*3)*5)/5); const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7500; const g = AC.createGain(); g.gain.value = 0.7; w.connect(lp).connect(g).connect(musicBus); return {in: w}; });
+// pump: a gain that ducks on every kick, then a filter that can sweep the whole groove open or shut
+const pumpBus = () => fx('pump', () => { const g = AC.createGain(), lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 8000; lp.Q.value = 2; g.connect(lp).connect(musicBus); return {in: g, lp}; });
+function duck(t, sd){ const P = pumpBus().in.gain; P.cancelScheduledValues(t); P.setValueAtTime(0.28, t); P.linearRampToValueAtTime(1, t + sd*3.2); }
+// echo: a dub delay with feedback through a lowpass, so each repeat gets darker
+const echoBus = () => fx('echo', () => { const inp = AC.createGain(), d = AC.createDelay(2), fb = AC.createGain(), lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600; fb.gain.value = 0.5; d.delayTime.value = 0.4;
+  inp.connect(musicBus); inp.connect(d); d.connect(lp).connect(fb).connect(d); lp.connect(musicBus); return {in: inp, d}; });
+const toneTo = (dest, type, f, t, p, d, filt, f2) => tone(type, f, t, p, d, dest, f2 || 0, filt);
+// a wobble: detuned saws through a resonant lowpass swept by an LFO at a tempo-synced rate, then growled
+function wobble(f, t, dur, rate, peak){
+  const lp = AC.createBiquadFilter(), g = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain();
+  lp.type = 'lowpass'; lp.Q.value = 9; lp.frequency.value = 520; lfo.type = 'sine'; lfo.frequency.value = rate; lg.gain.value = 480;
+  lfo.connect(lg).connect(lp.frequency);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.01); g.gain.setValueAtTime(peak, t + dur - 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const os = [f, f*1.008, f*0.5].map((fr, k) => { const o = AC.createOscillator(); o.type = k === 2 ? 'square' : 'sawtooth'; o.frequency.value = fr; o.connect(lp); o.start(t); o.stop(t + dur + 0.05); return o; });
+  lp.connect(g).connect(growlBus().in); lfo.start(t); lfo.stop(t + dur + 0.05);
+  // the sub underneath stays clean so the low end holds
+  const sub = AC.createOscillator(), sg = AC.createGain(); sub.type = 'sine'; sub.frequency.value = f/2;
+  sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(peak*2.2, t + 0.01); sg.gain.setValueAtTime(peak*2.2, t + dur - 0.03); sg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  sub.connect(sg).connect(musicBus); sub.start(t); sub.stop(t + dur + 0.05);
+}
+// a voice: a buzzy tone shaped by two vowel formants that glide from one vowel to another (a robot singing, or a soft "ooh")
+const VOWEL = {a: [730, 1090], e: [530, 1840], i: [300, 2200], o: [570, 840], u: [320, 800]};
+function voice(f, t, dur, v1, v2, peak, dest, soft){
+  const o = AC.createOscillator(), g = AC.createGain(); o.type = soft ? 'triangle' : 'sawtooth';
+  o.frequency.setValueAtTime(f*(soft ? 0.985 : 1), t); o.frequency.linearRampToValueAtTime(f, t + 0.06);
+  if (soft){ const vib = AC.createOscillator(), vg = AC.createGain(); vib.frequency.value = 5.2; vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f*0.012, t + dur*0.6); vib.connect(vg).connect(o.frequency); vib.start(t); vib.stop(t + dur + 0.1); }
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + (soft ? 0.08 : 0.015)); g.gain.setValueAtTime(peak, t + dur*0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + (soft ? 0.25 : 0.05));
+  for (let k = 0; k < 2; k++){ const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = soft ? 4 : 7;
+    bp.frequency.setValueAtTime(VOWEL[v1][k], t); bp.frequency.linearRampToValueAtTime(VOWEL[v2][k], t + dur*0.7); o.connect(bp).connect(g); }
+  g.connect(dest || musicBus); o.start(t); o.stop(t + dur + 0.35);
+}
+// a few more voices
+function supersaw(f, t, dur, peak, filt){ for (const k of [0.993, 1, 1.007]) note('sawtooth', f*k, t, peak, dur, filt); }
+function pluck(f, t, peak, dest){ toneTo(dest || musicBus, 'triangle', f, t, peak, 0.35, 0); toneTo(dest || musicBus, 'sine', f*2, t, peak*0.4, 0.12); }
+function marimba(f, t, peak){ note('sine', f, t, peak, 0.28); note('sine', f*4, t, peak*0.25, 0.05); }
+function rhodes(f, t, peak, dur){ note('sine', f, t, peak, dur); note('triangle', f*2, t, peak*0.18, dur*0.4); note('sine', f*3.01, t, peak*0.05, 0.08); }
+function riser(t, dur, peak){
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuf; s.loop = true;
+  f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(7000, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + dur); g.gain.linearRampToValueAtTime(0, t + dur + 0.02);
+  s.connect(f).connect(g).connect(musicBus); s.start(t); s.stop(t + dur + 0.05);
+}
+const clank = (t, p) => { note('square', 1480, t, p*0.25, 0.07, 6000); note('square', 2217, t, p*0.18, 0.05, 7000); noise(t, 'bandpass', 5200, p, 0.05, musicBus); };   // a hammer on steel
+// a melody written as one {step: note} map per bar; each note lasts until the next one
+function hook(H, s, bar, sd, fn){
+  const m = H[bar]; if (!m || m[s] === undefined) return;
+  const nx = Object.keys(m).map(Number).filter(k => k > s).sort((a, b) => a - b)[0] ?? 16;
+  fn(m[s], (nx - s)*sd);
+}
+// the song's section: one per 4 bars, walking through the style's form
+const sectionOf = (st, i) => st.form[Math.floor(i/64) % st.form.length];
+// how far the level is toward its gem goal (the furthest player), for music that grows with it
+const levelProgress = () => { let g = G.gems || 0; for (const p of PL) if (p && p.gems > g) g = p.gems; return Math.min(1, g/(G.S.goal || 1)); };
+
+// one music style per level; step() runs every 16th note (s = 0..15 in the bar, bar = 0..3, i counts all steps)
 const STYLES = {
-  lofi: {name: 'Lo-fi', bpm: 84, lead: 'triangle',
+  // level 1, under the moon: swung lo-fi with a Rhodes melody and vinyl crackle
+  lofi: {name: 'Lo-fi', vol: 1.6, bpm: 84, lead: 'triangle',
     melody: [72,74,76,79,81,84,81,79,76,74,76,79],
     chords: [[53,57,60,64],[52,55,59,62],[50,53,57,60],[48,52,55,59]],
+    form: ['intro', 'keys', 'keys', 'drift'],
+    tune: [{0:72, 3:76, 6:77, 10:76, 12:72}, {2:74, 5:71, 8:67, 14:71}, {0:72, 3:69, 6:65, 10:69, 12:72}, {2:71, 6:67, 8:64, 12:67, 15:72}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar], sw = s % 4 === 2 ? sd*0.3 : 0;
-      if (s === 0 || s === 10) kick(t, 0.7);
-      if (s === 4 || s === 12) snare(t, 0.1, 1800, 0.18);
-      if (s % 2 === 0) hat(t + sw, 0.02, 0.05, 6000);
-      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.03));
-      if (s === 0 || s === 7 || s === 10) note('sine', mf(ch[0] - 12), t, 0.22, sd*3);
+      const ch = this.chords[bar], sw = s % 4 === 2 ? sd*0.3 : 0, sec = sectionOf(this, i);
+      if (sec !== 'intro'){ if (s === 0 || s === 10) kick(t, 0.6); if (s === 4 || s === 12) snare(t, 0.09, 1800, 0.18); }
+      if (s % 2 === 0) hat(t + sw, 0.016, 0.05, 6000);
+      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.026));
+      if (s === 0 || s === 7 || s === 10) note('sine', mf(ch[0] - 12), t, 0.2, sd*3);
+      if (sec === 'keys') hook(this.tune, s, bar, sd, (m, d) => rhodes(mf(m), t + sw, 0.07, d));
+      if (sec === 'drift') hook(this.tune, s, bar, sd, (m, d) => rhodes(mf(m + 12), t + sw, 0.035, d*1.4));
+      if (((i*7919) % 13) === 0) noise(t + sd*0.4, 'highpass', 3000, 0.012, 0.01, musicBus);   // crackle
     }},
-  synthwave: {name: 'Synthwave', bpm: 108, lead: 'sawtooth',
+  // level 2, the outrun sun: gated snares, a pulsing arp and a big saw lead
+  synthwave: {name: 'Synthwave', vol: 1.15, bpm: 108, lead: 'sawtooth',
     melody: [69,72,74,76,79,81,79,76,74,76,79,84,81,79,76,72],
     chords: [[57,60,64],[53,57,60],[48,52,55],[55,59,62]],
+    form: ['intro', 'drive', 'lead', 'lead', 'night', 'lead'],
+    tune: [{0:76, 4:72, 6:74, 8:76, 12:79, 14:76}, {0:77, 4:76, 6:74, 8:72, 12:69}, {0:72, 4:74, 6:76, 8:79, 12:84, 14:83}, {0:81, 4:79, 8:74, 10:76, 12:79}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar];
-      if (s % 4 === 0) kick(t, 0.85);
-      if (s === 4 || s === 12) snare(t, 0.24, 1300, 0.22);
-      if (s % 2 === 1) hat(t, 0.025);
-      if (s % 2 === 0) note('sawtooth', mf(ch[0] - 24), t, 0.12, sd*1.6, 700);
-      note('square', mf(ch[s % 3] + 12), t, 0.022, sd*0.9, 2600);
-      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.025));
+      const ch = this.chords[bar], sec = sectionOf(this, i), drums = sec !== 'intro' && sec !== 'night';
+      if (drums){ if (s % 4 === 0) kick(t, 0.85); if (s === 4 || s === 12){ snare(t, 0.22, 1300, 0.12); noise(t, 'lowpass', 5000, 0.07, 0.32, musicBus); } if (s % 2 === 1) hat(t, 0.022); }
+      if (s % 2 === 0 && sec !== 'night') note('sawtooth', mf(ch[0] - 24), t, 0.12, sd*1.6, 700);
+      note('square', mf(ch[s % 3] + 12), t, sec === 'intro' ? 0.014 : 0.02, sd*0.9, sec === 'intro' ? 1200 : 2600);
+      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.028));
+      if (sec === 'lead' || sec === 'night') hook(this.tune, s, bar, sd, (m, d) => { note('sawtooth', mf(m), t, 0.035, d, 2200); note('sawtooth', mf(m)*1.006, t, 0.03, d, 2200); });
     }},
-  chiptune: {name: 'Chiptune', bpm: 132, lead: 'square',
+  // level 3, the toy world: bouncy and swung, marimba melody, oom-pah bass, woodblocks
+  chiptune: {name: 'Toy box', vol: 3.4, bpm: 126, lead: 'square',
     melody: [72,74,76,79,81,84,86,84,81,79,76,74],
     chords: [[60,64,67],[55,59,62],[57,60,64],[53,57,60]],
+    form: ['play', 'play', 'whistle', 'blocks'],
+    tune: [{0:72, 2:76, 4:79, 6:76, 8:84, 12:79, 14:76}, {0:74, 2:71, 4:74, 6:79, 8:83, 12:79}, {0:72, 2:76, 4:81, 8:79, 10:76, 12:72, 14:74}, {0:77, 2:76, 4:74, 6:72, 8:69, 12:72, 14:74}],
+    whistle: [{0:79, 8:76}, {0:74, 8:79}, {0:76, 8:72}, {0:77, 8:74, 12:72}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar];
-      if (s === 0 || s === 8 || s === 11) chipKick(t);
-      if (s === 4 || s === 12) hat(t, 0.12, 0.07, 2500);
-      if (s % 2 === 0) note('square', mf(ch[0] - 24 + (s % 4 === 2 ? 12 : 0)), t, 0.05, sd*1.2);
-      note('square', mf(ch[s % 3] + 12), t, 0.025, sd*0.7);
+      const ch = this.chords[bar], sw = s % 4 === 2 ? sd*0.33 : 0, sec = sectionOf(this, i);
+      if (s === 0 || s === 8) note('triangle', mf(ch[0] - 24 + (s === 8 ? 7 : 0)), t, 0.2, sd*2.5);   // oom
+      if (s === 4 || s === 12) ch.forEach(m => note('square', mf(m), t, 0.014, sd*0.8, 2000));          // pah
+      if (s === 0 || s === 8) chipKick(t);
+      if (s % 4 === 2 || (sec === 'blocks' && s % 2 === 1)){ noise(t + sw, 'bandpass', 1900, 0.09, 0.03, musicBus); note('sine', 880, t + sw, 0.03, 0.03); }   // woodblock
+      if (s % 2 === 0) hat(t + sw, 0.012, 0.03, 9000);
+      if (sec !== 'blocks') hook(this.tune, s, bar, sd, m => marimba(mf(m), t + (s % 4 === 2 ? sw : 0), 0.09));
+      if (sec === 'whistle') hook(this.whistle, s, bar, sd, (m, d) => voice(mf(m + 12), t, d, 'u', 'o', 0.06, musicBus, true));
     }},
-  dnb: {name: 'Drum & bass', bpm: 172, lead: 'triangle',
-    melody: [62,65,67,69,72,74,77,74,72,69,67,65],
-    roots: [38,34,36,33],
+  // level 4, the construction site: dubstep. Half-time drums, hammer clanks, a build, then the wobble drops
+  dnb: {name: 'Dubstep', bpm: 140, lead: 'square',
+    melody: [65,68,70,72,75,77,75,72,70,68],
+    chords: [[53,56,60],[49,53,56],[51,55,58],[48,52,55]],
+    form: ['intro', 'build', 'drop', 'drop', 'break', 'build', 'drop', 'drop'],
+    // [step, length in steps, note, LFO period in steps]
+    wob: [[[0,6,41,2],[6,2,41,1],[8,4,44,4],[12,4,39,8/3]], [[0,4,41,4],[4,4,41,1],[8,8,36,2]], [[0,6,41,2],[6,2,48,1],[8,4,46,8/3],[12,4,44,2]], [[0,8,41,1],[8,4,39,4],[12,2,36,1]]],
+    tune: [{0:72, 4:75, 8:77, 12:75}, {0:73, 8:72}, {0:72, 4:75, 8:80, 12:79}, {0:77, 8:76}],
     step(s, bar, i, t, sd){
-      const r = this.roots[bar];
-      if (s === 0 || s === 10) kick(t, 0.9);
-      if (s === 4 || s === 12) snare(t, 0.3, 1800, 0.15);
-      if (s === 7 || s === 15) snare(t, 0.06, 2000, 0.06);
-      hat(t, s % 2 ? 0.03 : 0.018, 0.03);
-      if (s === 0){ note('sawtooth', mf(r), t, 0.07, sd*15, 380); note('sawtooth', mf(r)*1.012, t, 0.07, sd*15, 380); }
+      const ch = this.chords[bar], sec = sectionOf(this, i);
+      if (sec === 'intro' || sec === 'break'){
+        if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.03));
+        if (s === 4 || s === 10 || s === 14) clank(t, 0.12);
+        if (sec === 'break') hook(this.tune, s, bar, sd, (m, d) => note('square', mf(m), t, 0.03, d, 1500));
+        if (s === 0) kick(t, 0.5);
+        return;
+      }
+      if (sec === 'build'){
+        const every = [4, 2, 1, 1][bar];
+        if (bar === 3 && s >= 14) return;   // a breath before the drop
+        if (s % every === 0) snare(t, 0.08 + 0.05*bar + 0.006*s, 1600 + bar*400 + s*30, 0.08);
+        if (s % 4 === 0) kick(t, 0.6);
+        if (bar === 0 && s === 0) riser(t, sd*62, 0.12);
+        if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.022));
+        return;
+      }
+      // the drop
+      if (s === 0 || s === 10 || (bar % 2 && s === 6)) kick(t, 1);
+      if (s === 8){ snare(t, 0.36, 1800, 0.22); note('sine', 190, t, 0.18, 0.12); }
+      if (s % 2 === 0) hat(t, 0.025, 0.03);
+      if (bar === 3 && s >= 12) hat(t, 0.03, 0.02, 9000);
+      if (s === 14) clank(t, 0.1);
+      for (const [st0, len, m, per] of this.wob[bar]) if (st0 === s) wobble(mf(m), t, len*sd, 1/(per*sd), 0.03);
     }},
-  techno: {name: 'Techno', bpm: 128, lead: 'sawtooth',
-    melody: [64,67,69,71,74,76,79,76,74,71,69,67],
-    roots: [40,40,43,38], acid: [0,0,12,0,3,0,7,12,0,0,10,0,3,0,12,7],
+  // level 5, the warehouse rave: glitchy and harsh in the style of Crystal Castles. Crushed chip arps, stutters, a dreamy pad underneath
+  techno: {name: 'Glitch', vol: 1.1, bpm: 128, lead: 'square',
+    melody: [66,69,71,73,76,78,76,73,71,69],
+    chords: [[54,57,61],[50,54,57],[57,61,64],[52,56,59]],
+    form: ['haze', 'arp', 'hook', 'glitch', 'hook', 'drift'],
+    tune: [{0:73, 2:73, 4:76, 8:78, 12:76}, {0:74, 4:73, 8:69, 12:66}, {0:76, 2:76, 4:78, 8:81, 12:80}, {0:76, 4:73, 8:71, 12:68}],
+    arp: [0, 1, 2, 3, 2, 1, 4, 3, 0, 1, 2, 3, 5, 4, 3, 1],
     step(s, bar, i, t, sd){
-      if (s % 4 === 0) kick(t, 1);
-      if (s % 4 === 2) hat(t, 0.06, 0.12);
-      else if (s % 2 === 1) hat(t, 0.018);
-      if (s === 4 || s === 12) snare(t, 0.18, 1500, 0.12);
-      const cut = 450 + 1600*(0.5 + 0.5*Math.sin(i/10));
-      note('sawtooth', mf(this.roots[bar] + this.acid[s]), t, s % 4 === 2 ? 0.09 : 0.065, sd*0.8, cut);
+      const ch = this.chords[bar], sec = sectionOf(this, i), C = crushBus().in, drums = sec !== 'haze' && sec !== 'drift';
+      const tones = [ch[0], ch[1], ch[2], ch[0] + 12, ch[1] + 12, ch[2] + 12];
+      if (s === 0){ for (const m of ch){ pad(mf(m), t, sd*16, 0.02); pad(mf(m + 12)*1.004, t, sd*16, 0.012); } }
+      // the arp: crushed squares, a pitch drop at the end of each bar
+      const am = tones[this.arp[s]] + 12, cut = sec === 'haze' ? 1400 : 5000;
+      if (sec !== 'drift') toneTo(C, 'square', mf(am), t, 0.05, sd*0.7, cut, s === 15 ? mf(am - 12) : 0);
+      if (drums){
+        if (s === 0 || s === 6 || s === 8 || (bar === 3 && s === 11)){ kick(t, 0.9); toneTo(C, 'square', 90, t, 0.08, 0.06, 2000, 40); }
+        if (s === 4 || s === 12) noise(t, 'lowpass', 7000, 0.2, 0.28, C);
+        if (s % 2 === 1) noise(t, 'highpass', 8000, 0.03, 0.02, C);
+      }
+      // stutters: a 16th chopped into rapid repeats
+      if (sec === 'glitch' && ((i*31) % 7 === 0 || s === 15)) for (let k = 0; k < 4; k++) toneTo(C, 'square', mf(am + 12), t + k*sd/4, 0.04, sd/5, 6000);
+      if (sec === 'hook' || sec === 'drift') hook(this.tune, s, bar, sd, (m, d) => { toneTo(C, 'square', mf(m), t, sec === 'drift' ? 0.03 : 0.05, d*0.95, 3500); toneTo(C, 'square', mf(m + 12)*1.003, t, 0.015, d*0.9, 3500); });
+      if (s === 0 && bar === 3 && drums) riser(t, sd*16, 0.05);
     }},
   disco: {name: 'Disco', bpm: 118, lead: 'square',
     melody: [72,74,76,79,76,74,72,69,72,76,79,81],
@@ -2015,42 +2128,81 @@ const STYLES = {
       if (s % 2 === 0) hat(t, 0.02, 0.03, 9000);
       if (this.line[s] || s % 2 === 0) note('square', mf(this.roots[bar] + this.line[s]), t, 0.06, sd*0.7, 1300);
     }},
-  dub: {name: 'Dub', bpm: 92, lead: 'sine',
+  // level 8, the reef: dub with a real echo, a melodica tune and bubbles
+  dub: {name: 'Dub', vol: 1.4, bpm: 92, lead: 'sine',
     melody: [62,65,69,72,69,65,62,60,62,65],
     chords: [[62,65,69],[60,64,67],[58,62,65],[60,64,67]], roots: [38,36,34,36],
+    form: ['roots', 'melodica', 'bubbles', 'melodica'],
+    tune: [{0:74, 4:77, 6:76, 8:74, 12:69}, {0:72, 4:76, 8:79, 12:76}, {0:77, 4:74, 8:70, 12:74}, {0:72, 6:74, 8:76, 14:72}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar];
-      if (s === 8){ kick(t, 0.95); snare(t, 0.12, 1200, 0.25); }   // one drop: everything lands on beat three
-      if (s % 4 === 2){ ch.forEach(m => note('square', mf(m), t, 0.028, sd*0.5, 1800)); ch.forEach(m => note('square', mf(m), t + sd*3, 0.01, sd*0.5, 1100)); }   // skank and its echo
+      const ch = this.chords[bar], sec = sectionOf(this, i), E = echoBus();
+      if (s === 0) E.d.delayTime.setValueAtTime(sd*3, t);
+      if (s === 8 && sec !== 'bubbles'){ kick(t, 0.95); snare(t, 0.12, 1200, 0.25); }
+      if (s === 8 && sec === 'bubbles') noise(t, 'bandpass', 1200, 0.12, 0.2, E.in);   // the snare alone, into the echo
+      if (s % 4 === 2){ ch.forEach(m => toneTo(E.in, 'square', mf(m), t, 0.022, sd*0.5, 1800)); }   // skank, echoing away
       if (s % 2 === 0) hat(t, 0.012, 0.03, 7000);
       if (s === 0 || s === 3 || s === 6 || s === 10) note('sine', mf(this.roots[bar] + (s === 6 ? 7 : 0)), t, 0.32, sd*2.5);
+      if (sec === 'melodica') hook(this.tune, s, bar, sd, (m, d) => { toneTo(E.in, 'square', mf(m), t, 0.03, d*0.9, 1500); toneTo(E.in, 'sine', mf(m), t, 0.04, d*0.9); });
+      if (sec === 'bubbles' && ((i*13) % 5 === 0)){ const f = mf(72 + ((i*7) % 12)); toneTo(E.in, 'sine', f, t, 0.05, 0.09, 0, f*2.4); }
     }},
-  trance: {name: 'Trance', bpm: 138, lead: 'sawtooth',
-    melody: [69,72,76,81,79,76,72,74,76,79,81,84],
-    chords: [[57,60,64],[53,57,60],[55,59,62],[52,55,59]],
+  // level 9, sunrise above the clouds: dreamy French synth-pop in the style of Kid Francescoli.
+  // Layers come in as the sun rises: plucks first, then the drums, then a soft wordless voice
+  trance: {name: 'Dream pop', vol: 1.6, bpm: 100, lead: 'triangle',
+    melody: [69,72,74,77,79,81,79,77,74,72],
+    chords: [[50,53,57,60,64],[46,50,53,57],[53,57,60,64],[48,52,55,59]],   // Dm9, Bbmaj7, Fmaj7, Cmaj7
+    form: ['a', 'b'],
+    arp: [0, 2, 4, 2, 1, 3, 4, 3],
+    tune: [{0:77, 6:76, 8:74, 12:72}, {0:74, 6:72, 8:69, 14:72}, {0:72, 4:74, 6:76, 8:77, 12:76}, {0:76, 8:74, 12:71}],
+    tune2: [{0:81, 8:79, 12:77}, {0:77, 8:74}, {0:76, 4:77, 8:79, 12:81}, {0:79, 8:76}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar];
-      if (s % 4 === 0) kick(t, 0.95);
-      if (s % 4 === 2){ note('sawtooth', mf(ch[0] - 24), t, 0.12, sd*1.4, 600); hat(t, 0.05, 0.08, 9000); }   // rolling offbeat bass
-      if (s === 4 || s === 12) snare(t, 0.12, 2000, 0.12);
-      note('sawtooth', mf(ch[(s >> 1) % 3] + 12 + (s % 2 ? 12 : 0)), t, 0.016, sd*0.8, 3000);   // the arpeggio
-      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.028));
+      const ch = this.chords[bar], p = levelProgress(), sec = sectionOf(this, i);
+      if (s === 0) ch.forEach(m => { pad(mf(m), t, sd*16, 0.02 + 0.012*p); pad(mf(m)*1.005, t, sd*16, 0.012); });
+      if (s % 2 === 0) pluck(mf(ch[this.arp[(s >> 1) % 8] % ch.length] + 12), t, 0.045 + 0.03*p);
+      if (s === 0 || s === 6 || s === 10) note('triangle', mf(ch[0] - 12), t, 0.16, sd*(s === 0 ? 5 : 3), 900);
+      if (p > 0.2){
+        if (s === 0 || s === 8 || (s === 11 && bar % 2)) kick(t, 0.55);
+        if (s === 4 || s === 12){ noise(t, 'bandpass', 2400, 0.08, 0.06, musicBus); noise(t, 'highpass', 4000, 0.03, 0.12, musicBus); }
+        if (s % 2 === 1 && p > 0.4) hat(t, 0.012, 0.03, 9000);
+      }
+      if (p > 0.45) hook(sec === 'b' && p > 0.75 ? this.tune2 : this.tune, s, bar, sd, (m, d) => voice(mf(m), t, d*0.95, 'u', s % 8 ? 'o' : 'a', 0.07, musicBus, true));
     }},
-  breakbeat: {name: 'Breakbeat', bpm: 136, lead: 'triangle',
-    melody: [64,67,69,72,74,72,69,67,64,62],
-    roots: [40,43,38,45],
+  // level 10, the rainbow road: filtered French house in the style of Daft Punk.
+  // Chopped chords and bass pump against the kick, the filter sweeps open, and a robot sings the hook
+  breakbeat: {name: 'Robot house', bpm: 122, lead: 'square',
+    melody: [62,65,67,69,72,74,72,69,67,65],
+    chords: [[50,53,57,60,64],[55,59,62,65,69],[48,52,55,59,62],[57,60,64,67,71]],   // Dm9, G9, Cmaj9, Am9
+    form: ['filtered', 'groove', 'robot', 'robot', 'space', 'rise', 'robot', 'robot'],
+    bass: [{0:-24, 3:-12, 6:-24, 8:-17, 10:-12, 14:-14}],
+    tune: [{0:[74,'o','a'], 3:[74,'a','i'], 6:[72,'i','a'], 8:[69,'o','a'], 12:[72,'a','e']}, {0:[71,'a','o'], 4:[74,'o','a'], 8:[79,'a','i'], 12:[77,'e','a']},
+           {0:[76,'o','a'], 3:[76,'a','i'], 6:[74,'i','a'], 8:[72,'o','a'], 12:[71,'a','e']}, {0:[72,'a','o'], 4:[69,'o','a'], 8:[67,'a','i'], 10:[69,'i','o'], 12:[72,'o','a']}],
     step(s, bar, i, t, sd){
-      if (s === 0 || s === 10) kick(t, 0.9);
-      if (s === 4 || s === 12) snare(t, 0.26, 1800, 0.14);
-      if (s === 7 || s === 15) snare(t, 0.07, 2200, 0.06);
-      hat(t, s % 2 ? 0.015 : 0.03, 0.03);
-      if (s === 0 || s === 6 || s === 11) note('sawtooth', mf(this.roots[bar]), t, 0.1, sd*2, 520);
+      const ch = this.chords[bar], sec = sectionOf(this, i), P = pumpBus(), lp = P.lp.frequency;
+      // the filter: closed and opening through the first section, shut for the space break, opening again for the rise
+      if (s === 0 && bar === 0){
+        lp.cancelScheduledValues(t);
+        if (sec === 'filtered' || sec === 'rise'){ lp.setValueAtTime(300, t); lp.exponentialRampToValueAtTime(9000, t + sd*64); }
+        else if (sec === 'space'){ lp.setValueAtTime(900, t); }
+        else lp.setValueAtTime(9000, t);
+      }
+      const kickOn = sec !== 'space';
+      if (s % 4 === 0 && kickOn){ kick(t, 0.95); duck(t, sd); }
+      if (kickOn && (s === 4 || s === 12)){ noise(t, 'bandpass', 1500, 0.14, 0.1, musicBus); noise(t, 'bandpass', 3000, 0.08, 0.07, musicBus); }
+      if (sec !== 'filtered' && kickOn) hat(t, s % 4 === 2 ? 0.05 : 0.014, s % 4 === 2 ? 0.1 : 0.025, 9000);
+      // chopped chords on the offbeats, and a funky bass, both pumping
+      if (s % 4 === 2 || s === 7 || s === 15) ch.forEach(m => { toneTo(P.in, 'sawtooth', mf(m), t, 0.014, sd*1.1, 3200); toneTo(P.in, 'square', mf(m + 12), t, 0.006, sd*0.8, 3200); });
+      hook(this.bass, s, 0, sd, (o, d) => toneTo(P.in, 'sawtooth', mf(ch[0] + o + 12), t, 0.13, d*0.85, 900));
+      if (sec === 'space'){ if (s === 0) ch.forEach(m => pad(mf(m + 12), t, sd*16, 0.022)); if (s % 2 === 0) toneTo(P.in, 'sine', mf(ch[(s >> 1) % 5] + 24), t, 0.03, 0.1); }
+      if (sec === 'rise' && bar === 3 && s % 2 === 0) snare(t, 0.06 + s*0.006, 2000 + s*80, 0.06);
+      if (sec === 'robot' || sec === 'space') hook(this.tune, s, bar, sd, (v, d) => voice(mf(v[0]), t, d*0.9, v[1], v[2], 0.22, P.in));
+      if (sec === 'robot' && (i >> 6) % 2 && s % 2 === 1) toneTo(P.in, 'square', mf(ch[(s >> 1) % 5] + 24), t, 0.012, sd*0.5, 5000);   // a twinkling arp on the second pass
     }}
 };
 const style = () => STYLES[G.S.music];
 function schedule(){
   if (!AC || !musicOn) return;
-  const st = style(), bpm = st.bpm*(1 + Math.min(0.12, (G.speed - G.base)*0.02)), sd = 60/bpm/4;
+  const st = style();
+  musicBus.gain.value = 0.55*(st.vol || 1);   // styles are balanced to sit at about the same loudness
+  const bpm = st.bpm*(1 + Math.min(0.12, (G.speed - G.base)*0.02)), sd = 60/bpm/4;
   curSD = sd;
   if (nextStep < AC.currentTime) nextStep = AC.currentTime + 0.02;
   while (nextStep < AC.currentTime + 0.12){
@@ -2092,31 +2244,8 @@ function leadNote(f, t, peak, dcy){
   const st = style(), soft = st.lead === 'triangle' || st.lead === 'sine';
   tone(st.lead, f, t, soft ? peak : peak*0.4, dcy, sfxBus, 0, soft ? 0 : 3200);
 }
-// Turning plays a soft note that waits for the next eighth note of the music, so it always lands in time.
-// The notes come from whatever chord is playing right then, walked through a short up-and-down phrase,
-// so a run of turns sounds like a little tune that fits the song.
-// a 16-note phrase over the chord's tones (0 = root, 1 = third, 2 = fifth, 3 = root up an octave, 4 = third up):
-// a little four-note idea, the same idea again reaching higher, an answer that climbs to the top, then home
-const TURN_PHRASE = [0, 1, 2, 1,  0, 1, 3, 2,  1, 2, 3, 4,  3, 2, 1, 0];
-function turnNote(){
-  const st = style(), bar = Math.floor(Math.max(0, stepI - 1)/16) % 4;
-  let ch = st.chords ? st.chords[bar] : null;
-  if (!ch){ const r = (st.roots || [45, 45, 45, 45])[bar]; ch = [r, r + 3, r + 7]; }   // root-only styles: a minor triad
-  const tones = ch.slice(0, 3).map(m => { let n = m; while (n < 64) n += 12; while (n > 76) n -= 12; return n; }).sort((a, b) => a - b);
-  tones.push(tones[0] + 12, tones[1] + 12);
-  return tones[TURN_PHRASE[G.noteI++ % TURN_PHRASE.length]];
-}
-function nextEighthAt(){
-  if (!AC || !musicOn) return AC ? AC.currentTime : 0;
-  let t = nextStep, i = stepI;
-  while (t - curSD > AC.currentTime){ t -= curSD; i--; }
-  return i % 2 ? t + curSD : t;
-}
-function sfxTurn(){
-  if (MODE !== 1 && viewers().length !== 1) return;
-  const f = mf(turnNote()), at = nextEighthAt();
-  sfx(t => { const w = Math.max(t, at); tone('triangle', f, w, 0.13, 0.28, sfxBus); tone('sine', f*2, w, 0.022, 0.18, sfxBus); });
-}
+// turning is silent: the music carries the rhythm
+function sfxTurn(){}
 function sfxJump(){ sfx(t => tone('sine', 320, t, 0.22, 0.18*Math.sqrt(G.K.jump), sfxBus, 780)); }
 function sfxScrape(){ sfx(t => { noise(t, 'bandpass', 2600, 0.14, 0.08, sfxBus); tone('triangle', 520, t, 0.04, 0.06, sfxBus, 380); }); }
 function sfxLand(){ sfx(t => tone('sine', 150, t, 0.25, 0.1, sfxBus, 70)); }
