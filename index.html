@@ -232,7 +232,7 @@ button{touch-action:manipulation;font:inherit}
 /* playing on this phone or tablet: the bottom of the screen is the jump zone (a tap anywhere also jumps) */
 .jumpband{position:fixed;left:0;right:0;bottom:0;height:22vh;pointer-events:none;display:grid;align-items:center;justify-items:start;padding-left:18px;
   background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));border-top:1.5px dashed rgba(255,255,255,.35)}
-.jumpband span{display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(.9rem,3.6vw,1.2rem);color:var(--cream);opacity:.85;padding-bottom:env(safe-area-inset-bottom,0px)}
+.jumpband span{max-width:calc(100vw - var(--mapw, 150px) - 52px);display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(.9rem,3.6vw,1.2rem);color:var(--cream);opacity:.85;padding-bottom:env(safe-area-inset-bottom,0px)}
 .jumpband small{font-family:var(--mono);font-weight:400;text-transform:none;font-size:.66rem;color:var(--muted)}
 .jumpband svg{width:28px;height:28px}
 .jumpband.pop{animation:pop .25s steps(3)}
@@ -246,6 +246,8 @@ button{touch-action:manipulation;font:inherit}
 .scheck{display:flex;align-items:center;gap:10px;font-size:.74rem;color:var(--cream);cursor:pointer}
 .scheck input{width:18px;height:18px;accent-color:var(--pink)}
 .tiltset{display:grid;gap:14px;padding:12px;border:1.5px solid var(--rule-soft)}
+/* switching controls swaps what's under them; the space stays the same height so the menu doesn't jump */
+.ctrl-more{display:grid;gap:9px;align-content:start}
 .actions.row3{grid-template-columns:1fr 1fr}
 /* party and tag team */
 .mp{position:fixed;inset:0;pointer-events:none}
@@ -455,6 +457,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
     <div class="pick" id="ctrlBox">
       <div class="eyebrow" id="ctrlLabel">Controls</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="ctrlLabel" id="ctrlPick"></div>
+      <div class="ctrl-more" id="ctrlMore">
       <div class="desc" id="ctrlDesc"></div>
       <div class="tiltset" id="menuTilt"></div>
       <div class="phone" id="phoneBox">
@@ -463,6 +466,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
           <div class="code" id="phoneCode">····</div>
           <div class="desc" id="phoneDesc">Setting up the phone link…</div>
         </div>
+      </div>
       </div>
     </div>
     <button class="btn" id="startBtn">Start level 1</button>
@@ -800,6 +804,8 @@ function resize(){
   }
   cvs.width = Math.round(W*DPR); cvs.height = Math.round(H*DPR);
   cvs.classList.toggle('mini', mini);
+  // the jump label keeps clear of the map in the corner
+  document.documentElement.style.setProperty('--mapw', (mini ? W : 0) + 'px');
   cvs.style.width = mini ? W + 'px' : ''; cvs.style.height = mini ? H + 'px' : '';
   if (R3) R3.resize();
 }
@@ -3041,10 +3047,23 @@ function updateMenuUI(){
     : CTRL === 'keys' ? (CAN_TILT ? '<b>Drag sideways</b> to turn. <b>Tap anywhere</b> to jump.' : '<b>Arrow keys</b> turn, <b>Space</b> jumps, C changes view.')
     : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the code below with your phone.';
   $('snakeLabel').textContent = MODE !== 1 ? 'Snake (everyone)' : 'Snake';
+  holdCtrlHeight();
   sendLobby();
 }
 // show the chosen level and snake behind the menu
 let previewTimer = null;
+function holdCtrlHeight(){
+  const box = $('ctrlMore'); if (!box || $('menu').hidden || $('ctrlBox').hidden) return;
+  const was = [$('menuTilt').hidden, $('phoneBox').hidden];
+  box.style.minHeight = '';
+  let tall = 0;
+  for (const [t, ph] of [[false, true], [true, false], [true, true]]){ $('menuTilt').hidden = t; $('phoneBox').hidden = ph; tall = Math.max(tall, box.offsetHeight); }
+  [$('menuTilt').hidden, $('phoneBox').hidden] = was;
+  // never shrink while the screen size stays the same (each control's description is a different length)
+  tall = Math.max(tall, +box.dataset.h || 0); box.dataset.h = tall;
+  box.style.minHeight = tall + 'px';
+}
+addEventListener('resize', () => { $('ctrlMore').dataset.h = 0; requestAnimationFrame(holdCtrlHeight); });
 function refreshMenu(){
   const ov = $('menu'), top = ov.scrollTop;
   updateMenuUI();
