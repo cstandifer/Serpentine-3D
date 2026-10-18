@@ -2061,6 +2061,8 @@ const STYLES = {
     melody: [67,70,72,74,77,79,77,74,72,70],
     chords: [[55,58,62],[51,55,58],[48,51,55],[50,54,57]],   // Gm, Eb, Cm, D
     form: ['dust', 'beat', 'beat', 'deep'],
+    // two notes a bar, stepping down: D Bb, C G, Bb G, A F#
+    vib: [{6:74, 10:70}, {6:72, 10:67}, {6:70, 10:67}, {6:69, 10:66}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sw = s % 2 === 1 ? sd*0.22 : 0, sec = sectionOf(this, i);
       if (sec !== 'dust'){
@@ -2071,7 +2073,7 @@ const STYLES = {
       if (s === 0) ch.forEach(m => { pad(mf(m - 12), t, sd*16, 0.03); pad(mf(m)*1.006, t, sd*16, 0.016); });
       if (s === 0 || (s === 8 && sec === 'deep')) note('sine', mf(ch[0] - 24), t, 0.3, sd*(s === 0 ? 7 : 6));
       if (s === 10 && bar % 2 === 1) note('sine', mf(ch[0] - 17), t, 0.2, sd*4);
-      if (s === 6 && bar % 2 === 0){ const m = ch[2] + 24; note('sine', mf(m), t, 0.05, sd*6); note('sine', mf(m)*1.004, t + 0.004, 0.03, sd*6); }
+      hook(this.vib, s, bar, sd, (m, d) => { note('sine', mf(m), t, 0.05, d*1.5); note('sine', mf(m)*1.004, t + 0.004, 0.03, d*1.5); });
       if (sec === 'deep' && s === 0 && bar === 3) riser(t, sd*16, 0.04);
       if (((i*7919) % 11) === 0) noise(t + sd*0.4, 'highpass', 3000, 0.014, 0.01, musicBus);
       if (((i*7919) % 29) === 0) noise(t + sd*0.7, 'bandpass', 1200, 0.02, 0.02, musicBus);
@@ -2079,10 +2081,10 @@ const STYLES = {
   // level 2, the outrun sun: a slow night drive in the spirit of Kavinsky. Pulsing saw bass, huge snares, a few low sung notes
   synthwave: {name: 'Night drive', vol: 1.2, bpm: 92, lead: 'sawtooth',
     melody: [60,63,65,67,70,72,70,67,65,63],
-    chords: [[48,51,55],[44,48,51],[51,55,58],[46,50,53]],   // Cm, Ab, Eb, Bb
+    chords: [[48,51,55],[44,48,51],[41,44,48],[43,47,50]],   // Cm, Ab, Fm, G: dark, with a pull back home
     form: ['drive', 'drive', 'voice', 'voice', 'glow', 'voice'],
-    tune: [{0:67, 8:63}, {0:63, 8:60}, {0:70, 8:67}, {0:65, 12:62}],
-    bells: [{6:79}, {6:75}, {6:82}, {6:77, 10:74}],
+    tune: [{0:67, 6:63, 10:65}, {0:68, 6:63, 10:65}, {0:68, 6:65, 10:67}, {0:67, 6:62, 10:59, 14:60}],
+    bells: [{}, {}, {}, {6:74, 10:71}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i);
       if (sec !== 'glow'){
@@ -2101,7 +2103,7 @@ const STYLES = {
     melody: [72,74,76,77,79,81,83,84],
     chords: [[60,64,67],[53,57,60],[60,64,67],[55,59,62,65]],   // C, F, C, G7
     form: ['run', 'run', 'under', 'run'],
-    tune: [{0:72, 2:76, 3:79, 6:77, 8:76, 10:72, 12:74, 14:76}, {0:77, 2:81, 3:84, 6:81, 8:79, 11:77, 12:76}, {0:79, 2:76, 3:72, 6:74, 8:76, 10:79, 12:84}, {0:83, 2:79, 4:77, 6:74, 8:71, 10:74, 12:79, 15:72}],
+    tune: [{0:72, 2:76, 3:79, 6:76, 8:72, 12:67}, {0:72, 2:77, 3:81, 6:77, 8:72, 12:69}, {0:72, 2:76, 3:79, 6:76, 8:72, 12:67}, {0:71, 2:74, 3:77, 6:74, 8:79, 12:72}],
     under: [{0:48, 3:55, 6:60, 8:58, 11:55}, {0:53, 3:57, 6:60, 8:63, 11:60}, {0:48, 3:55, 6:60, 8:58, 11:55}, {0:55, 3:59, 6:62, 8:65, 10:62, 12:59}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i), sw = s % 4 === 2 ? sd*0.3 : 0;
@@ -2157,7 +2159,7 @@ const STYLES = {
     chords: [[50,53,57,60],[55,59,62,65],[46,50,53,57],[45,49,52,55]],   // Dm7, G7, Bbmaj7, A7
     form: ['groove', 'steel', 'vox', 'steel', 'vox', 'groove'],
     bass: [{0:0, 3:12, 6:0, 7:7, 10:0, 14:10}],
-    steelT: [{0:74, 3:72, 6:69, 8:72}, {0:71, 3:74, 6:77}, {0:74, 3:72, 6:69, 8:72}, {0:73, 3:76, 6:79, 10:76}],
+    steelT: [{0:69, 3:72, 6:74, 10:72}, {0:71, 3:74, 6:77, 10:74}, {0:70, 3:74, 6:77, 10:74}, {0:69, 3:73, 6:76, 10:73}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i);
       if (s % 4 === 0) kick(t, 0.75);
@@ -2174,7 +2176,7 @@ const STYLES = {
     melody: [72,74,76,79,76,74,72,69,72,76,79,81],
     chords: [[57,60,64,67],[50,53,57,60],[52,55,59,62],[57,60,64,67]],   // Am7, Dm7, Em7, Am7
     form: ['groove', 'falsetto', 'falsetto', 'strings'],
-    tune: [{0:76, 2:79, 4:81, 8:79, 10:76, 12:74}, {0:77, 4:76, 6:74, 8:72, 12:74}, {0:79, 2:83, 4:81, 8:79, 12:76}, {0:76, 4:74, 8:72, 12:69}],
+    tune: [{0:76, 2:76, 4:79, 8:76, 12:74}, {0:77, 2:77, 4:81, 8:77, 12:76}, {0:79, 2:79, 4:83, 8:79, 12:76}, {0:76, 4:74, 8:72, 12:69}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i);
       if (s % 4 === 0) kick(t, 0.95);                                   // four on the floor
@@ -2213,8 +2215,8 @@ const STYLES = {
     chords: [[50,53,57,60,64],[46,50,53,57],[53,57,60,64],[48,52,55,59]],   // Dm9, Bbmaj7, Fmaj7, Cmaj7
     form: ['float', 'glide', 'sing', 'sing2', 'glide', 'sing'],
     arp: [0, 2, 4, 2, 1, 3, 4, 3],
-    tune: [{0:77, 6:76, 8:74, 12:72}, {0:74, 6:72, 8:69, 14:72}, {0:72, 4:74, 6:76, 8:77, 12:76}, {0:76, 8:74, 12:71}],
-    tune2: [{0:81, 8:79, 12:77}, {0:77, 8:74}, {0:76, 4:77, 8:79, 12:81}, {0:79, 8:76}],
+    tune: [{0:74, 6:77, 8:76, 12:74}, {0:72, 8:70}, {0:72, 6:76, 8:74, 12:72}, {0:71, 8:72}],
+    tune2: [{0:77, 6:81, 8:79, 12:77}, {0:76, 8:74}, {0:76, 6:79, 8:77, 12:76}, {0:74, 8:76}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i), E = echoBus();
       if (s === 0) E.d.delayTime.setValueAtTime(sd*3, t);
@@ -2239,7 +2241,7 @@ const STYLES = {
       const ch = this.chords[bar], p = levelProgress(), sw = s % 2 === 1 ? sd*0.25 : 0;
       if (s === 0){ ch.forEach(m => { pad(mf(m), t, sd*16, 0.018 + 0.01*p); pad(mf(m)*1.004, t, sd*16, 0.01); }); if (bar % 2 === 0) wind(t, sd*32, 0.02); }
       // soft guitar, a few chord tones per bar
-      const k = this.strum.indexOf(s); if (k >= 0) guitar(mf(ch[(k + bar) % ch.length] + 12), t + sw, 0.035 + 0.015*p);
+      const k = this.strum.indexOf(s); if (k >= 0) guitar(mf(ch[[0, 2, 1, 3, 2][k] % ch.length] + 12), t + sw, 0.035 + 0.015*p);
       if (p > 0.15 && (s === 0 || s === 8)) note('sine', mf(ch[0] - 24), t, 0.2, sd*6);
       if (p > 0.25){
         if (s === 0 || s === 10) kick(t, 0.45);
@@ -2248,7 +2250,7 @@ const STYLES = {
       }
       // birds, more of them as it gets lighter; chimes once the sun is well up
       if (((i*37) % 23) < 1 + Math.floor(p*3)){ const f = 2600 + ((i*53) % 9)*180; toneTo(musicBus, 'sine', f, t + sd*0.3, 0.016, 0.07, 0, f*1.35); toneTo(musicBus, 'sine', f*1.1, t + sd*0.55, 0.012, 0.05, 0, f*0.9); }
-      if (p > 0.55 && ((i*17) % 19) === 0) note('sine', mf(84 + [0, 4, 7, 11, 14][(i >> 2) % 5]), t, 0.012, 0.9);
+      if (p > 0.55 && s === 12 && bar % 2 === 1) [0, 1].forEach(k => note('sine', mf(ch[1 + k] + 24), t + k*sd*2, 0.014, 1.1));
       if (p > 0.75 && bar % 2 === 0 && s === 8) voice(mf(ch[2] + 12), t, sd*12, 'u', 'o', 0.03, musicBus, true);
       if (((i*7919) % 13) === 0) noise(t + sd*0.4, 'highpass', 3000, 0.008, 0.01, musicBus);
     }},
@@ -2259,8 +2261,8 @@ const STYLES = {
     chords: [[60,64,67,71],[57,60,64,67],[50,53,57,60],[55,59,62,65]],   // Cmaj7, Am7, Dm7, G7
     form: ['sparkle', 'lead', 'lead', 'float', 'lead2', 'lead'],
     arp: [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 2, 3],
-    tune: [{0:79, 3:76, 4:79, 6:84, 8:83, 12:79}, {0:81, 3:79, 4:76, 8:72, 12:76, 14:79}, {0:77, 3:81, 4:84, 8:86, 10:84, 12:81}, {0:83, 4:79, 6:77, 8:74, 12:71, 14:74}],
-    tune2: [{0:84, 4:88, 6:86, 8:84, 12:79}, {0:81, 4:84, 8:88, 12:86}, {0:86, 4:84, 6:81, 8:77, 12:81}, {0:79, 4:83, 8:86, 12:91}],
+    tune: [{0:79, 3:76, 4:79, 6:84, 8:83, 12:79}, {0:81, 3:76, 4:72, 8:76}, {0:81, 3:77, 4:81, 6:86, 8:84, 12:81}, {0:83, 4:79, 8:74, 12:72}],
+    tune2: [{0:84, 3:79, 4:84, 6:88, 8:86, 12:84}, {0:84, 3:81, 4:76, 8:81}, {0:86, 3:81, 4:86, 6:89, 8:88, 12:86}, {0:86, 4:83, 8:79, 12:84}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], sec = sectionOf(this, i), tones = [...ch, ...ch.map(m => m + 12)];
       if (sec !== 'float'){
@@ -2363,7 +2365,15 @@ function sfxTurn(){}
 function sfxJump(){ sfx(t => tone('sine', 320, t, 0.22, 0.18*Math.sqrt(G.K.jump), sfxBus, 780)); }
 function sfxScrape(){ sfx(t => { noise(t, 'bandpass', 2600, 0.14, 0.08, sfxBus); tone('triangle', 520, t, 0.04, 0.06, sfxBus, 380); }); }
 function sfxLand(){ sfx(t => tone('sine', 150, t, 0.25, 0.1, sfxBus, 70)); }
-function sfxGem(){ sfx(t => { tone('square', 1318.5, t, 0.06, 0.1, sfxBus, 0, 4000); tone('square', 1760, t+0.07, 0.06, 0.2, sfxBus, 0, 4000); }); }
+// a gem rings two notes of whatever chord the music is on, so it always fits the song
+function gemNotes(){
+  const st = style(), bar = Math.floor(Math.max(0, stepI - 1)/16) % 4;
+  let ch = st.chords ? st.chords[bar] : null;
+  if (!ch){ const r = (st.roots || [57, 57, 57, 57])[bar]; ch = [r, r + 3, r + 7]; }
+  const up = m => { while (m < 84) m += 12; return m; }, a = up(ch[0]); let b = up(ch[2]); if (b <= a) b += 12;
+  return [a, b];
+}
+function sfxGem(){ const [a, b] = gemNotes(); sfx(t => { tone('triangle', mf(a), t, 0.09, 0.1, sfxBus); tone('triangle', mf(b), t + 0.07, 0.09, 0.22, sfxBus); tone('sine', mf(b)*2, t + 0.07, 0.015, 0.15, sfxBus); }); }
 function sfxRecharged(){ sfx(t => { tone('sine', 880, t, 0.06, 0.08, sfxBus); tone('sine', 1320, t + 0.06, 0.06, 0.12, sfxBus); }); }
 function sfxCrash(){ sfx(t => { noise(t, 'lowpass', 900, 0.5, 0.5, sfxBus); tone('sine', 220, t, 0.4, 0.5, sfxBus, 40); }); }
 function sfxClear(){
