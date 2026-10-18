@@ -3545,7 +3545,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-18c';
+const CTRL_BUILD = '2026-10-18d';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -3844,7 +3844,18 @@ function onPhone(L, m){
   else { const i = seatOf(L); if (i >= 0 && i < PL.length && PL[i].kind === 'phone' && state !== 'menu') pi = i; }
   if (m.t === 'steer'){ if (pi >= 0){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); } }
   else if (m.t === 'jump'){ if (pi >= 0) jumpFor(pi); }
-  else if (m.t === 'go') goAction();
+  else if (m.t === 'go'){ if (MODE === 1 || seatOf(L) === 0) goAction(); }
+  else if (m.t === 'snake' && SNAKES[m.k] && state === 'menu'){
+    if (MODE === 1){ if (snakeOpen(m.k)){ snake = m.k; store.set('snake', m.k); refreshMenu(); } }
+    else { const i = seatOf(L); if (i >= 0){ SEATS[i].snake = m.k; seatsChanged(); } }
+    syncPhone(true);
+  }
+  else if (m.t === 'level' && state === 'menu' && (MODE === 1 || seatOf(L) === 0)){
+    const i = +m.i;
+    if (MODE === 2){ if (COURSES[i]){ course = i; store.set('course', i); refreshMenu(); } }
+    else if (STAGES[i] && i < unlocked){ stage = i; store.set('stage', i); refreshMenu(); }
+    syncPhone(true);
+  }
   else if (m.t === 'pause') togglePause();
   else if (m.t === 'view') cycleView();
   else if (m.t === 'name'){
@@ -3877,6 +3888,15 @@ function syncPhone(force){
         level: G.idx + 1, name: G.S.name, gems: MODE === 3 ? G.teamGems : p ? p.gems : 0, goal: MODE === 3 ? G.goal : null,
         left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
     }
+    // before a game: everyone picks a snake on their phone; player 1 (or solo's phone) also picks the level and starts it
+    const si = seatOf(L), lead = MODE === 1 || si === 0;
+    if (state === 'menu'){
+      msg.pick = {snakes: Object.keys(SNAKES).map(k => ({k, name: SNAKES[k].name, open: snakeOpen(k), why: snakeOpen(k) ? '' : unlockText(k)})),
+        snake: MODE === 1 ? playSnake() : seatSnake(SEATS[si]), lead, kind: MODE === 2 ? 'Course' : 'Level', level: MODE === 2 ? course : stage,
+        levels: !lead ? null : MODE === 2 ? COURSES.map((S, i) => ({i, name: S.name, sub: STYLES[S.music].name}))
+          : STAGES.map((S, i) => ({i, name: S.name, sub: 'Level ' + (i + 1), locked: i >= unlocked}))};
+    }
+    if (!lead && MODE !== 1){ msg.go = ''; msg.waitLead = SEATS[0] && SEATS[0].kind === 'phone' ? 'Player 1 starts the game from their phone.' : 'The game starts from the big screen.'; }
     const key = JSON.stringify(msg);
     if (!force && key === lastPhone.get(L)) continue;
     lastPhone.set(L, key);
