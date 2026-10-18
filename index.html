@@ -2770,15 +2770,21 @@ function makeR3(){
       const puff = discTex(g => { for (const [x, y, r] of [[128, 150, 90], [70, 160, 60], [186, 160, 62], [100, 118, 58], [160, 112, 64]]){
         const gr = g.createRadialGradient(x, y, r*0.2, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
         g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); } });
-      const cloudMat = new THREE.SpriteMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true});
-      DECOR.clouds = [];
-      for (let i = 0; i < 90; i++){
-        const a = rnd()*Math.PI*2, dist = R + 2 + Math.pow(rnd(), 0.7)*R*3.2, sz = 12 + rnd()*18;
-        const sp = new THREE.Sprite(cloudMat); sp.scale.set(sz*1.6, sz, 1);
-        sp.position.set(cx + Math.cos(a)*dist, -2.5 - rnd()*3 + dist*0.02, cz + Math.sin(a)*dist); decor.add(sp);
-        DECOR.clouds.push({sp, a, dist, sp0: 0.004 + rnd()*0.006});
+      // flat layers of cloud lying below the platform (they don't turn to face you), plus low puffs far off on the horizon,
+      // all drifting together as one slow-turning sea
+      const cloudMat = new THREE.MeshBasicMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true, side: THREE.DoubleSide});
+      const farMat = new THREE.SpriteMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true});
+      const sea = new THREE.Group(); sea.position.set(cx, 0, cz); decor.add(sea);
+      for (let i = 0; i < 120; i++){
+        const a = rnd()*Math.PI*2, dist = R*0.6 + Math.pow(rnd(), 0.8)*R*3.6, sz = 14 + rnd()*20;
+        const c = new THREE.Mesh(PLANE_GEO, cloudMat); c.rotation.set(-Math.PI/2, 0, rnd()*Math.PI*2); c.scale.set(sz*1.5, sz, 1);
+        c.position.set(Math.cos(a)*dist, -1.6 - (i % 3)*1.1 - rnd()*0.4, Math.sin(a)*dist); sea.add(c);
       }
-      DECOR.cloudMat = cloudMat;
+      for (let i = 0; i < 18; i++){
+        const a = (i/18)*Math.PI*2 + rnd()*0.2, dist = R*3.4 + rnd()*R, sz = 26 + rnd()*16;
+        const sp = new THREE.Sprite(farMat); sp.scale.set(sz*1.8, sz*0.6, 1); sp.position.set(Math.cos(a)*dist, -3 + sz*0.12, Math.sin(a)*dist); sea.add(sp);
+      }
+      DECOR.sea = sea; DECOR.cloudMats = [cloudMat, farMat];
       // stars that fade as the sky brightens
       DECOR.stars = points(500, (a, i) => { a[i] = cx + (rnd()*2 - 1)*R*3; a[i+1] = 14 + rnd()*50; a[i+2] = cz + (rnd()*2 - 1)*R*3; }, '#ffffff', 1.8);
       decor.add(DECOR.stars);
@@ -2993,8 +2999,8 @@ function makeR3(){
       S.fan.rotation.z += dt*0.03;
       S.halo.material.opacity = 0.25 + 0.45*e + 0.12*beat;
       for (const r of DECOR.rays) r.m.opacity = e*(0.06 + 0.05*Math.sin(clock*0.5 + r.ph)) + e*0.05*beat;
-      for (const c of DECOR.clouds){ c.a += c.sp0*dt; c.sp.position.x = S.g.position.x + Math.cos(c.a)*c.dist; c.sp.position.z = S.g.position.z + S.h + 80 + Math.sin(c.a)*c.dist; }
-      DECOR.cloudMat.color.lerpColors(col('#5a3f8f'), col('#ffe0ec'), e);
+      DECOR.sea.rotation.y += dt*0.006;
+      for (const m of DECOR.cloudMats) m.color.lerpColors(col('#5a3f8f'), col('#ffe0ec'), e);
       DECOR.stars.material.opacity = 0.9*(1 - e);
       DECOR.shardMat.emissive.lerpColors(col('#6a4a9a'), col('#ffb38a'), e);
       for (const d of DECOR.shards){ d.sh.rotation.y += dt*0.3; d.sh.position.y = d.y + Math.sin(clock*0.7 + d.ph)*0.6; }
