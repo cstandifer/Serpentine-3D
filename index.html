@@ -362,6 +362,8 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .mp-board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mp-board .sc{font-family:var(--wide);font-stretch:125%;font-weight:900}
 .mp-board small{color:var(--muted)}
+.mp-board li:has(small){grid-template-columns:10px minmax(0,1fr) auto auto auto}
+.mp-board small{white-space:nowrap}
 .sw{display:inline-block;width:10px;height:10px;flex:none}
 .sw.big{width:30px;height:30px}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
@@ -896,7 +898,7 @@ const COURSES = [
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
   {name: 'Pinball', base: 19, music: 'electro', movers: 1.4, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
    walls: h => { const st = Math.round(h/3), sz = Math.max(2, Math.round(st/3)), w = []; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (i || j) w.push(block(i*st - 1, j*st - 1, sz, sz)); return w; }},
-  {name: 'Night Market', base: 20, music: 'house', gates: 1.2, ...lv('#ffffff', 290, ['#ff4fd8', '#8a7bff', '#2b8cff']),
+  {name: 'Night Market', base: 20, music: 'robot', gates: 1.2, ...lv('#ffffff', 290, ['#ff4fd8', '#8a7bff', '#2b8cff']),
    walls: h => { const y = Math.round(h*0.4), L = h - 7; return [block(-h + 4, -y, L, 1), block(3, -y, L, 1), block(-h + 4, y, L, 1), block(3, y, L, 1)]; }}
 ];
 
@@ -939,7 +941,7 @@ const THEMES = {
               hurdle: ['#c9b48a', '#8a7550'], pillar: ['#ff6f91', '#c2416a'], coral: ['#ff6f91', '#ff9a52', '#c86bff'], wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
               pillarShape: 'coral', hurdleShape: 'rock', decor: 'reef'},
   // above the clouds before dawn: a glass platform over a sea of cloud, and the sun comes up as you collect gems
-  trance:    {sky: ['#0b0626', '#3a1f6b'], fog: '#4a2a6a', fogNear: 14, fogFar: 60, floor: '#140a2a', grid: ['#ffffff', '#ffb8d9', '#b8d4ff'],
+  trance:    {sky: ['#22306e', '#d0729c'], fog: '#e8907e', fogNear: 14, fogFar: 60, floor: '#2a1d48', grid: ['#ffffff', '#ffb8d9', '#b8d4ff'],
               hurdle: ['#ffffff', '#ffc2e0'], pillar: ['#ffffff', '#b9a6d6'], wall: ['#2a1a4a', '#140a2a'], edge: '#ffd6ea', gem: '#ff2e63',
               pillarShape: 'crystal', hurdleShape: 'soft', decor: 'dawn'},
   // a rainbow road floating in deep space
@@ -948,6 +950,7 @@ const THEMES = {
               hurdle: ['#ffffff', '#c9c4ff'], pillar: ['#ffffff', '#9a8cff'], wall: ['#1a0f3a', '#07031c'], edge: '#ffffff', gem: '#ffffff',
               pillarShape: 'crystal', hurdleShape: 'lightbar', decor: 'space', rainbow: true}
 };
+THEMES.robot = THEMES.house;   // the robot house course keeps the house look
 const themeOf = S => THEMES[S.music] || THEMES.breakbeat;
 
 // ---- saved progress ----
@@ -1118,6 +1121,8 @@ const teamGoal = (goal, n) => Math.round(goal*(1 + 0.6*(n - 1)));
 function makeCfg(idx){
   const cfg = {mode: MODE, idx, diff: RUN.diff, snake: RUN.snake, seed: (Math.random()*1e9)|0};
   if (MODE !== 1) cfg.players = (SEATS.length ? SEATS : [{kind: 'preview'}]).map(st => ({kind: st.kind, name: st.name || ''}));
+  // tag team: everyone's own lives carry from level to level, and anyone who's out stays out
+  if (MODE === 3 && RUN.tagLives && RUN.tagLives.length === cfg.players.length) cfg.lives = RUN.tagLives.slice();
   return cfg;
 }
 function loadStage(idx){ loadWorld(makeCfg(idx)); }
@@ -1147,6 +1152,7 @@ function loadWorld(cfg){
     // tag team lines up on the runway like solo; a party is spread around the arena below
     const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...colorFor(K, i)));
     p.kind = pp.kind; p.name = pp.name; p.ep = 0;
+    if (cfg.lives){ p.lives = cfg.lives[i]; if (p.lives <= 0) p.alive = false; }
     p.local = ROLE === 'host' ? pp.kind !== 'screen' : i === ME;
     return p;
   });
@@ -1498,7 +1504,7 @@ function step(d, dt){
   collide();
 }
 let SIM = false;   // true while a snake on this screen is being simulated (its fields are live in G)
-const canRespawn = p => MODE === 3 ? G.teamLives > 0 : p.lives > 0;
+const canRespawn = p => p.lives > 0;
 function update(dt){
   G.t += dt;
   G.speed = Math.min(G.max, G.base + G.t*G.D.ramp);
@@ -1528,7 +1534,7 @@ function update(dt){
     G.left -= dt;
     if (ROLE === 'host' && (G.left <= 0 || PL.every(p => !p.alive && p.lives <= 0))) endDuel();
   }
-  if (MODE === 3 && ROLE === 'host' && state === 'play' && G.teamLives <= 0 && PL.every(p => !p.alive)) endTeam(false);
+  if (MODE === 3 && ROLE === 'host' && state === 'play' && PL.every(p => !p.alive && p.lives <= 0)) endTeam(false);
 }
 // A snake that another screen is playing. Between that screen's reports (about 15 a second) it keeps
 // moving along its heading, so it glides at full frame rate, and it eases toward each fresh report.
@@ -1764,14 +1770,13 @@ function updatePauseNote(){
   $('resumeBtn').classList.toggle('waiting', !!txt);
 }
 
-// party and tag team: a crash costs a life (in tag team, one from the team's pool) and the snake
-// reappears somewhere clear a moment later
+// party and tag team: a crash costs that player one of their own lives, and the snake reappears
+// somewhere clear a moment later (unless that was its last)
 function dieP(p, cause){
   if (!p.alive) return;
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
   p.alive = false; p.cause = cause; p.respawnT = 1.4;
-  if (MODE === 3){ if (ROLE === 'host') G.teamLives = Math.max(0, G.teamLives - 1); else netSend({t: 'died'}); }
-  else p.lives--;
+  p.lives--;
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
   if (viewers().includes(p.i)) G.shake = Math.max(G.shake, 0.35);
   sfxCrash();
@@ -1870,6 +1875,7 @@ function teamClear(){
   state = 'clear'; G.clearT = 0; G.done = true; G.cardShown = false;
   const bonus = 100*(G.idx + 1)*PL.length;
   RUN.banked += PL.reduce((a, p) => a + pScore(p), 0) + bonus; RUN.lastBonus = bonus;
+  RUN.tagLives = PL.map(p => p.lives);
   if (G.idx + 1 < STAGES.length && G.idx + 2 > unlocked){ unlocked = G.idx + 2; store.set('unlocked', unlocked); }
   burst(G.x, G.y, C.gem, 30, 6);
   stopMusic(); sfxClear(); phoneSend({t: 'buzz', p: CLEAR_BUZZ});
@@ -2004,6 +2010,7 @@ function voice(f, t, dur, v1, v2, peak, dest, soft){
 function supersaw(f, t, dur, peak, filt){ for (const k of [0.993, 1, 1.007]) note('sawtooth', f*k, t, peak, dur, filt); }
 function pluck(f, t, peak, dest){ toneTo(dest || musicBus, 'triangle', f, t, peak, 0.35, 0); toneTo(dest || musicBus, 'sine', f*2, t, peak*0.4, 0.12); }
 function marimba(f, t, peak){ note('sine', f, t, peak, 0.28); note('sine', f*4, t, peak*0.25, 0.05); }
+function rhodesTo(dest, f, t, peak, dur){ toneTo(dest, 'sine', f, t, peak, dur); toneTo(dest, 'triangle', f*2, t, peak*0.18, dur*0.4); }
 function rhodes(f, t, peak, dur){ note('sine', f, t, peak, dur); note('triangle', f*2, t, peak*0.18, dur*0.4); note('sine', f*3.01, t, peak*0.05, 0.08); }
 function riser(t, dur, peak){
   const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = noiseBuf; s.loop = true;
@@ -2180,30 +2187,61 @@ const STYLES = {
       if (sec === 'melodica') hook(this.tune, s, bar, sd, (m, d) => { toneTo(E.in, 'square', mf(m), t, 0.03, d*0.9, 1500); toneTo(E.in, 'sine', mf(m), t, 0.04, d*0.9); });
       if (sec === 'bubbles' && ((i*13) % 5 === 0)){ const f = mf(72 + ((i*7) % 12)); toneTo(E.in, 'sine', f, t, 0.05, 0.09, 0, f*2.4); }
     }},
-  // level 9, sunrise above the clouds: dreamy French synth-pop in the style of Kid Francescoli.
-  // Layers come in as the sun rises: plucks first, then the drums, then a soft wordless voice
-  trance: {name: 'Dream pop', vol: 1.6, bpm: 100, lead: 'triangle',
-    melody: [69,72,74,77,79,81,79,77,74,72],
-    chords: [[50,53,57,60,64],[46,50,53,57],[53,57,60,64],[48,52,55,59]],   // Dm9, Bbmaj7, Fmaj7, Cmaj7
-    form: ['a', 'b'],
-    arp: [0, 2, 4, 2, 1, 3, 4, 3],
-    tune: [{0:77, 6:76, 8:74, 12:72}, {0:74, 6:72, 8:69, 14:72}, {0:72, 4:74, 6:76, 8:77, 12:76}, {0:76, 8:74, 12:71}],
-    tune2: [{0:81, 8:79, 12:77}, {0:77, 8:74}, {0:76, 4:77, 8:79, 12:81}, {0:79, 8:76}],
+  // level 9, sunrise above the clouds: forest lo-fi house. Dusty swung drums, warm keys pumping, birdsong,
+  // and a soft flute-like voice; layers come in as the sun rises
+  trance: {name: 'Forest house', vol: 1.25, bpm: 118, lead: 'triangle',
+    melody: [69,72,74,76,79,81,79,76,74,72],
+    chords: [[57,60,64,67],[53,57,60,64],[50,53,57,60],[52,55,59,62]],   // Am7, Fmaj7, Dm7, Em7
+    form: ['a', 'a', 'b', 'a'],
+    tune: [{0:76, 6:74, 8:72, 12:69}, {0:72, 6:74, 8:76, 14:72}, {0:74, 4:72, 6:69, 8:65, 12:69}, {0:71, 8:74, 12:76}],
+    tune2: [{0:79, 8:76, 12:74}, {0:77, 8:72}, {0:74, 4:77, 8:81, 12:79}, {0:76, 8:79}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar], p = levelProgress(), sec = sectionOf(this, i);
-      if (s === 0) ch.forEach(m => { pad(mf(m), t, sd*16, 0.02 + 0.012*p); pad(mf(m)*1.005, t, sd*16, 0.012); });
-      if (s % 2 === 0) pluck(mf(ch[this.arp[(s >> 1) % 8] % ch.length] + 12), t, 0.045 + 0.03*p);
-      if (s === 0 || s === 6 || s === 10) note('triangle', mf(ch[0] - 12), t, 0.16, sd*(s === 0 ? 5 : 3), 900);
-      if (p > 0.2){
-        if (s === 0 || s === 8 || (s === 11 && bar % 2)) kick(t, 0.55);
-        if (s === 4 || s === 12){ noise(t, 'bandpass', 2400, 0.08, 0.06, musicBus); noise(t, 'highpass', 4000, 0.03, 0.12, musicBus); }
-        if (s % 2 === 1 && p > 0.4) hat(t, 0.012, 0.03, 9000);
-      }
-      if (p > 0.45) hook(sec === 'b' && p > 0.75 ? this.tune2 : this.tune, s, bar, sd, (m, d) => voice(mf(m), t, d*0.95, 'u', s % 8 ? 'o' : 'a', 0.07, musicBus, true));
+      const ch = this.chords[bar], p = levelProgress(), sec = sectionOf(this, i), P = pumpBus(), sw = s % 4 === 2 ? sd*0.28 : 0;
+      if (s === 0 && bar === 0){ P.lp.frequency.cancelScheduledValues(t); P.lp.frequency.setValueAtTime(1200 + 5000*p, t); }
+      // dusty kick, always; the rest of the kit arrives with the light
+      if (s % 4 === 0){ kick(t, 0.7); duck(t, sd); }
+      if (s % 4 === 2) hat(t + sw, p > 0.15 ? 0.03 : 0.015, 0.07, 7000);
+      if (p > 0.3 && (s === 4 || s === 12)){ noise(t, 'bandpass', 1700, 0.09, 0.09, musicBus); noise(t + 0.012, 'bandpass', 2600, 0.05, 0.06, musicBus); }
+      if (p > 0.5 && s % 2 === 1) hat(t + sw, 0.01, 0.025, 9000);
+      // warm keys on the offbeats, pumping, and a deep bass
+      if (s === 2 || s === 7 || s === 10 || s === 14) ch.forEach(m => rhodesTo(P.in, mf(m), t + sw, 0.03, sd*1.8));
+      if (s === 0 || s === 3 || s === 8 || s === 11) toneTo(P.in, 'sine', mf(ch[0] - 24 + (s === 11 ? 7 : 0)), t, 0.26, sd*2.2);
+      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.014));
+      // the forest waking up: birds, more of them as it gets lighter
+      if (((i*37) % 23) < 1 + Math.floor(p*3)){ const f = 2600 + ((i*53) % 9)*180; toneTo(musicBus, 'sine', f, t + sd*0.3, 0.018, 0.07, 0, f*1.35); toneTo(musicBus, 'sine', f*1.1, t + sd*0.55, 0.014, 0.05, 0, f*0.9); }
+      if (p > 0.4) hook(sec === 'b' || p > 0.8 ? this.tune2 : this.tune, s, bar, sd, (m, d) => voice(mf(m + 12), t + sw, d*0.9, 'u', 'o', 0.05, musicBus, true));
     }},
-  // level 10, the rainbow road: filtered French house in the style of Daft Punk.
+  // level 10, the rainbow road: an original tune in the spirit of a kart racer's rainbow course. Bright major-key funk,
+  // a sparkling bell arpeggio, slap bass, a soaring lead and twinkly runs up the scale
+  breakbeat: {name: 'Rainbow', vol: 1.1, bpm: 138, lead: 'triangle',
+    melody: [72,76,79,81,84,86,84,81,79,76],
+    chords: [[60,64,67,71],[57,60,64,67],[50,53,57,60],[55,59,62,65]],   // Cmaj7, Am7, Dm7, G7
+    form: ['sparkle', 'lead', 'lead', 'float', 'lead2', 'lead'],
+    arp: [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 2, 3],
+    tune: [{0:79, 3:76, 4:79, 6:84, 8:83, 12:79}, {0:81, 3:79, 4:76, 8:72, 12:76, 14:79}, {0:77, 3:81, 4:84, 8:86, 10:84, 12:81}, {0:83, 4:79, 6:77, 8:74, 12:71, 14:74}],
+    tune2: [{0:84, 4:88, 6:86, 8:84, 12:79}, {0:81, 4:84, 8:88, 12:86}, {0:86, 4:84, 6:81, 8:77, 12:81}, {0:79, 4:83, 8:86, 12:91}],
+    step(s, bar, i, t, sd){
+      const ch = this.chords[bar], sec = sectionOf(this, i), tones = [...ch, ...ch.map(m => m + 12)];
+      if (sec !== 'float'){
+        if (s % 4 === 0) kick(t, 0.85);
+        if (s === 4 || s === 12) snare(t, 0.2, 2000, 0.12);
+        if (s === 7 || s === 10 || s === 15) snare(t, 0.04, 2400, 0.04);   // ghost notes
+        hat(t, s % 2 ? 0.012 : 0.022, 0.025, 9500);
+      }
+      // the bells: two octaves up and down the chord
+      const bm = tones[this.arp[s]] + 12; note('sine', mf(bm), t, 0.035, 0.22); note('sine', mf(bm)*4, t, 0.008, 0.06);
+      // slap bass: the root, popping up an octave on the offbeats
+      const pop = s === 6 || s === 14;
+      if (s === 0 || s === 3 || pop || s === 8 || s === 11) note('sawtooth', mf(ch[0] - 24 + (pop ? 12 : 0)), t, pop ? 0.07 : 0.11, sd*(pop ? 0.6 : 1.4), pop ? 2200 : 900);
+      if (s === 0) ch.forEach(m => pad(mf(m + 12), t, sd*16, sec === 'float' ? 0.05 : 0.016));
+      // a twinkling run up the scale into each new phrase
+      if (bar === 3 && s === 12) for (let k = 0; k < 12; k++) note('triangle', mf(72 + [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19][k]), t + k*sd/3, 0.02, 0.12);
+      if (sec === 'lead' || sec === 'lead2') hook(sec === 'lead2' ? this.tune2 : this.tune, s, bar, sd, (m, d) => supersaw(mf(m), t, d*0.9, 0.018, 3200));
+      if (sec === 'float') hook(this.tune, s, bar, sd, (m, d) => voice(mf(m), t, d*0.9, 'o', 'u', 0.1, musicBus, true));
+    }},
+  // the Night Market course: filtered French house in the style of Daft Punk.
   // Chopped chords and bass pump against the kick, the filter sweeps open, and a robot sings the hook
-  breakbeat: {name: 'Robot house', bpm: 122, lead: 'square',
+  robot: {name: 'Robot house', bpm: 122, lead: 'square',
     melody: [62,65,67,69,72,74,72,69,67,65],
     chords: [[50,53,57,60,64],[55,59,62,65,69],[48,52,55,59,62],[57,60,64,67,71]],   // Dm9, G9, Cmaj9, Am9
     form: ['filtered', 'groove', 'robot', 'robot', 'space', 'rise', 'robot', 'robot'],
@@ -3053,8 +3091,8 @@ function makeR3(){
         g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); } });
       // flat layers of cloud lying below the platform (they don't turn to face you), plus low puffs far off on the horizon,
       // all drifting together as one slow-turning sea
-      const cloudMat = new THREE.MeshBasicMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true, side: THREE.DoubleSide});
-      const farMat = new THREE.SpriteMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true});
+      const cloudMat = new THREE.MeshBasicMaterial({map: puff, color: col('#c48aa8'), fog: false, depthWrite: false, transparent: true, side: THREE.DoubleSide});
+      const farMat = new THREE.SpriteMaterial({map: puff, color: col('#c48aa8'), fog: false, depthWrite: false, transparent: true});
       const sea = new THREE.Group(); sea.position.set(cx, 0, cz); decor.add(sea);
       for (let i = 0; i < 120; i++){
         const a = rnd()*Math.PI*2, dist = R*0.6 + Math.pow(rnd(), 0.8)*R*3.6, sz = 14 + rnd()*20;
@@ -3070,7 +3108,7 @@ function makeR3(){
       DECOR.stars = points(500, (a, i) => { a[i] = cx + (rnd()*2 - 1)*R*3; a[i+1] = 14 + rnd()*50; a[i+2] = cz + (rnd()*2 - 1)*R*3; }, '#ffffff', 1.8);
       decor.add(DECOR.stars);
       // the sun, its halo and a fan of god rays, all rising together out of the clouds
-      const sun = new THREE.Group(); sun.position.set(cx, -14, cz - h - 80); decor.add(sun);
+      const sun = new THREE.Group(); sun.position.set(cx, -3, cz - h - 80); decor.add(sun);
       const disc = new THREE.Sprite(new THREE.SpriteMaterial({map: discTex(g => { const gr = g.createRadialGradient(128, 128, 20, 128, 128, 120);
         gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.55, '#ffe2a8'); gr.addColorStop(0.75, 'rgba(255,170,150,.6)'); gr.addColorStop(1, 'rgba(255,140,160,0)');
         g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), fog: false, depthWrite: false, transparent: true}));
@@ -3276,26 +3314,28 @@ function makeR3(){
       const S = DECOR.sun, target = Math.min(1, got/(G.S.goal || 1));
       S.p += (target - S.p)*Math.min(1, dt*0.8);
       const p = S.p, e = p*p*(3 - 2*p);
-      S.g.position.y = -14 + e*30;
+      // the sun is already cresting the clouds when the level starts, and climbs well up the sky by the goal
+      const up = 0.3 + 0.7*e;
+      S.g.position.y = -3 + e*26;
       S.fan.rotation.z += dt*0.03;
-      S.halo.material.opacity = 0.25 + 0.45*e + 0.12*beat;
-      for (const r of DECOR.rays) r.m.opacity = e*(0.06 + 0.05*Math.sin(clock*0.5 + r.ph)) + e*0.05*beat;
+      S.halo.material.opacity = 0.45 + 0.35*e + 0.1*beat;
+      for (const r of DECOR.rays) r.m.opacity = up*(0.06 + 0.05*Math.sin(clock*0.5 + r.ph)) + up*0.05*beat;
       DECOR.sea.rotation.y += dt*0.006;
-      for (const m of DECOR.cloudMats) m.color.lerpColors(col('#5a3f8f'), col('#ffe0ec'), e);
-      DECOR.stars.material.opacity = 0.9*(1 - e);
-      DECOR.shardMat.emissive.lerpColors(col('#6a4a9a'), col('#ffb38a'), e);
+      for (const m of DECOR.cloudMats) m.color.lerpColors(col('#c48aa8'), col('#fff4f2'), e);
+      DECOR.stars.material.opacity = 0.45*Math.max(0, 1 - e*2.5);
+      DECOR.shardMat.emissive.lerpColors(col('#a0609a'), col('#ffc08a'), e);
       for (const d of DECOR.shards){ d.sh.rotation.y += dt*0.3; d.sh.position.y = d.y + Math.sin(clock*0.7 + d.ph)*0.6; }
       // the sky and fog warm from night to sunrise (redrawn in small steps, not every frame)
       const step = Math.round(e*40);
       if (step !== S.drawn){
         S.drawn = step; const f = step/40, L = (a, b) => '#' + new THREE.Color().lerpColors(col(a), col(b), f).getHexString();
         const g = S.sky.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
-        gr.addColorStop(0, L('#0b0626', '#3a5fc8')); gr.addColorStop(0.62, L('#3a1f6b', '#ff9ad5')); gr.addColorStop(1, L('#4a2a6a', '#ffd2a0'));
+        gr.addColorStop(0, L('#22306e', '#5d9cf0')); gr.addColorStop(0.62, L('#d0729c', '#ffc7da')); gr.addColorStop(1, L('#ffa070', '#fff0c8'));
         g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
         if (scene.background && scene.background.isTexture && scene.background !== S.tex) scene.background.dispose();
         if (!S.tex){ S.tex = new THREE.CanvasTexture(S.sky); S.tex.colorSpace = THREE.SRGBColorSpace; }
         S.tex.needsUpdate = true; scene.background = S.tex;
-        scene.fog.color.set(L('#4a2a6a', '#ffc2b0'));
+        scene.fog.color.set(L('#e8907e', '#ffe4cc'));
       }
     }
     else if (k === 'cranes'){
@@ -3773,7 +3813,7 @@ function syncPhone(force){
     } else {
       const i = seatOf(L), p = i >= 0 && i < PL.length && state !== 'menu' ? PL[i] : null;
       msg = {t: 'state', state, go, view, mode: MODE, player: i + 1, color: p ? p.look.color : colorFor(K, Math.max(0, i))[0],
-        score: p ? pScore(p) : 0, lives: MODE === 3 ? G.teamLives : p ? p.lives : LIVES, maxLives: MODE === 3 ? Math.max(LIVES, G.teamLives) : LIVES,
+        score: p ? pScore(p) : 0, lives: p ? Math.max(0, p.lives) : LIVES, maxLives: LIVES,
         level: G.idx + 1, name: G.S.name, gems: MODE === 3 ? G.teamGems : p ? p.gems : 0, goal: MODE === 3 ? G.goal : null,
         left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
     }
@@ -3994,14 +4034,14 @@ function updateHUD(){
       $('mpTop').innerHTML = `<span class="clock${left <= 10 && state === 'play' ? ' hurry' : ''}">${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}</span>`;
     } else {
       const got = Math.min(G.teamGems, G.goal);
-      $('mpTop').innerHTML = `<span class="team"><span>Level ${G.idx + 1} / ${G.S.name}</span><span class="goal"><span class="goal-bar"><i style="width:${100*got/G.goal}%"></i></span>${got}/${G.goal} team gems</span><span class="hearts">${heartsN(G.teamLives, Math.max(LIVES, G.teamLives))}</span></span>`;
+      $('mpTop').innerHTML = `<span class="team"><span>Level ${G.idx + 1} / ${G.S.name}</span><span class="goal"><span class="goal-bar"><i style="width:${100*got/G.goal}%"></i></span>${got}/${G.goal} team gems</span></span>`;
     }
     // the scoreboard: best first in a party, player order in a team
     const order = PL.map((p, i) => i);
     if (MODE === 2) order.sort((a, b) => pScore(PL[b]) - pScore(PL[a]));
     $('mpBoard').innerHTML = order.map(i => {
       const p = PL[i], mine = ROLE === 'client' ? i === ME : vs.includes(i) && vs.length === 1;
-      const tail = MODE === 2 ? `<span class="hearts">${heartsN(p.lives, LIVES)}</span>` : `<small>${p.gems} gems</small>`;
+      const tail = `<span class="hearts">${heartsN(Math.max(0, p.lives), LIVES)}</span>` + (MODE === 3 ? `<small>${p.gems} gems</small>` : '');
       return `<li class="${mine ? 'me' : ''}${p.alive ? '' : ' out'}"><span class="sw" style="background:${p.look.color}"></span><span class="nm">${esc(playerName(i))}</span><span class="sc">${pScore(p)}</span>${tail}</li>`;
     }).join('');
     // a name tag on each view when this screen shows more than one, plus "respawning" when that snake is down
@@ -4317,7 +4357,8 @@ function showClear(){
     (host ? '' : ' Waiting for the host to start it…');
   $('clrScore').textContent = RUN.banked;
   $('clrBonus').textContent = '+' + RUN.lastBonus;
-  $('clrLives').textContent = team ? G.teamLives : RUN.lives;
+  $('clrLives').textContent = team ? `${PL.filter(p => p.lives > 0).length}/${PL.length}` : RUN.lives;
+  $('clrLives').nextElementSibling.textContent = team ? 'Still in' : 'Lives';
   $('nextBtn').textContent = `Start level ${G.idx + 2}`;
   $('nextBtn').hidden = !host;
   $('clrMenuBtn').textContent = host ? 'Main menu' : 'Leave the game';
