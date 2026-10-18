@@ -295,6 +295,10 @@ body.here #pauseBtn svg{width:26px;height:26px}
   .bigqr .qr img,.bigqr .qr canvas{width:100%!important;height:100%!important}
   .bigqr .code{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:2.4rem;line-height:1;letter-spacing:.06em;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
 }
+/* when the big QR panel is showing beside the menu, the menu doesn't repeat the QR or the code */
+@media (min-width:1000px) and (hover:hover){
+  #menu:has(.bigqr:not([hidden])) #phoneBox, #menu:has(.bigqr:not([hidden])) .way:not(.way-add){display:none}
+}
 /* computers: the top buttons have room for words */
 @media (hover:hover) and (min-width:700px){
   .icon-btn{width:auto;min-width:64px;height:54px;padding:0 12px;gap:3px;align-content:center}
