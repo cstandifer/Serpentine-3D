@@ -100,6 +100,22 @@ button{touch-action:manipulation;font:inherit}
 .icon-btn{width:42px;height:42px;display:grid;place-items:center;border:1.5px solid var(--line);background:#000;color:var(--cream);cursor:pointer;padding:0}
 .icon-btn:active{background:var(--line);color:#000}
 .icon-btn svg{width:18px;height:18px}
+.icon-btn .lbl{display:none}
+/* playing on a phone or tablet: bigger, labeled buttons in their own row across the top; Pause is the biggest */
+body.here .hud-btns{gap:8px}
+body.here .icon-btn{width:64px;height:60px;align-content:center;gap:4px;padding:0;background:rgba(0,0,0,.72)}
+body.here .icon-btn svg{width:22px;height:22px}
+body.here .icon-btn .lbl{display:block;font-family:var(--wide);font-stretch:110%;font-weight:800;font-size:.55rem;text-transform:uppercase;letter-spacing:.02em}
+body.here #pauseBtn{width:96px;order:-1}
+body.here #pauseBtn svg{width:26px;height:26px}
+@media (max-width:600px){
+  body.here .hud{flex-wrap:wrap;row-gap:10px}
+  body.here .hud-btns{order:-1;width:100%;justify-content:space-between;margin-left:0}
+  body.here .icon-btn{flex:1 1 0;width:auto;max-width:84px}
+  body.here #pauseBtn{flex:1.6 1 0;max-width:none}
+  body.here .mp-board{top:calc(env(safe-area-inset-top,0px) + 92px)}
+  body.here .mp-top{top:calc(env(safe-area-inset-top,0px) + 92px);max-width:46vw}
+}
 .chip{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:4px 8px;font-size:.68rem;background:#000;border:1px solid var(--rule-soft);color:var(--muted)}
 .chip i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
 .chip.on{color:var(--lime);border-color:var(--lime)}
@@ -249,6 +265,22 @@ button{touch-action:manipulation;font:inherit}
 /* switching controls swaps what's under them; the space stays the same height so the menu doesn't jump */
 .ctrl-more{display:grid;gap:9px;align-content:start}
 .actions.row3{grid-template-columns:1fr 1fr}
+/* the menu's Start button stays pinned to the bottom of the screen while you scroll the options */
+.startbar{position:sticky;bottom:calc(-40px - env(safe-area-inset-bottom,0px));z-index:2;display:grid;gap:10px;margin:0 -22px -24px;
+  padding:26px 22px calc(18px + env(safe-area-inset-bottom,0px) + 40px);background:linear-gradient(180deg,rgba(0,0,0,0),#000 26px)}
+@media (max-width:380px){.startbar{margin:0 -16px -20px;padding-left:16px;padding-right:16px}}
+/* the new-snake reveal: the snake pops in over slowly turning holographic rays */
+.reveal{position:relative;height:170px;display:grid;place-items:center;overflow:hidden;margin:-6px -22px}
+.rays{position:absolute;width:420px;height:420px;border-radius:50%;
+  background:repeating-conic-gradient(rgba(95,240,255,.32) 0 6deg,transparent 6deg 15deg,rgba(255,79,216,.32) 15deg 21deg,transparent 21deg 30deg,rgba(255,233,77,.28) 30deg 36deg,transparent 36deg 45deg);
+  -webkit-mask:radial-gradient(circle,#000 8%,transparent 62%);mask:radial-gradient(circle,#000 8%,transparent 62%);animation:spin 14s linear infinite}
+.unicon{position:relative;width:118px;height:118px;filter:drop-shadow(0 0 22px rgba(255,255,255,.35));animation:popin .8s cubic-bezier(.2,1.7,.4,1) .15s both}
+.unicon svg{width:100%;height:100%}
+.unlock-card .title{font-size:clamp(2rem,10vw,2.8rem)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes popin{0%{transform:scale(0) rotate(-50deg);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.rays,.unicon{animation:none}}
+.overlay.confirm{z-index:30;background:rgba(0,0,0,.78)}
 /* party and tag team */
 .mp{position:fixed;inset:0;pointer-events:none}
 .mp-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%)}
@@ -359,16 +391,16 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   <div class="hud-btns">
     <button class="icon-btn" id="setBtn" aria-label="Settings" hidden>
       <svg viewBox="0 0 20 20" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" style="fill:#000"/><circle cx="13" cy="10" r="2" style="fill:#000"/><circle cx="9" cy="15" r="2" style="fill:#000"/></svg>
-    </button>
+    <span class="lbl">Settings</span></button>
     <button class="icon-btn" id="recenterBtn" aria-label="Recenter tilt" hidden>
       <svg viewBox="0 0 20 20" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><circle cx="10" cy="10" r="6"/><path d="M10 1v4M10 15v4M1 10h4M15 10h4"/><circle cx="10" cy="10" r="1.6" style="fill:currentColor;stroke:none"/></svg>
-    </button>
+    <span class="lbl">Recenter</span></button>
     <button class="icon-btn" id="pauseBtn" aria-label="Pause" hidden>
       <svg viewBox="0 0 20 20" style="fill:currentColor"><rect x="4" y="3" width="4" height="14" rx="1"/><rect x="12" y="3" width="4" height="14" rx="1"/></svg>
-    </button>
+    <span class="lbl">Pause</span></button>
     <button class="icon-btn" id="muteBtn" aria-label="Mute sound">
       <svg viewBox="0 0 20 20" id="muteIcon" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"></svg>
-    </button>
+    <span class="lbl">Sound</span></button>
   </div>
 </div>
 
@@ -469,8 +501,10 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       </div>
       </div>
     </div>
+    <div class="startbar">
     <button class="btn" id="startBtn">Start level 1</button>
     <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Tilt or drag sideways to turn, tap to jump</span></div>
+    </div>
   </div>
 </div>
 
@@ -633,7 +667,38 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   </div>
 </div>
 
+<div class="overlay" id="unlock" hidden>
+  <div class="card unlock-card">
+    <div class="eyebrow" id="unEyebrow">Level 2 cleared</div>
+    <div class="reveal" aria-hidden="true"><div class="rays"></div><div class="unicon" id="unIcon"></div></div>
+    <div>
+      <div class="eyebrow" style="color:var(--lime)">New snake unlocked</div>
+      <h1 class="title" id="unName">Magnet</h1>
+      <div class="desc" id="unDesc" style="margin-top:10px"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="unUse">Play level 3 as Magnet</button>
+      <button class="btn btn-ghost" id="unKeep">Keep Classic, play level 3</button>
+      <button class="btn btn-ghost" id="unMenu">Main menu</button>
+    </div>
+  </div>
+</div>
+
 <div class="jumpband" id="jumpBand" hidden><span><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18l8-8 8 8"/><path d="M6 25h18"/></svg>Tap anywhere to jump<small>Tilt the screen to steer</small></span></div>
+
+<div class="overlay confirm" id="confirm" hidden>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Main menu</div>
+      <h1 class="title" id="cfTitle">Quit this run?</h1>
+      <div class="desc" id="cfDesc" style="margin-top:10px"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="cfStay">Keep playing</button>
+      <button class="btn btn-ghost" id="cfQuit">Quit to the main menu</button>
+    </div>
+  </div>
+</div>
 
 <div class="waitbar" id="waitBar" hidden><i></i><span id="waitTxt">Waiting for a phone</span></div>
 
@@ -3081,7 +3146,7 @@ function refreshMenu(){
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
-function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv']) $(id).hidden = true; }
+function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true; }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
   res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
@@ -3195,13 +3260,13 @@ function showOver(won){
 }
 function showClear(){
   if (G.idx + 1 >= STAGES.length){ if (MODE === 1) return showOver(true); if (ROLE === 'host') endTeam(true); return; }
+  if (MODE === 1 && RUN.newSnakes && RUN.newSnakes.length) return showUnlock();
   const N = STAGES[G.idx + 1], team = MODE === 3, host = ROLE === 'host';
   if (host){ stage = G.idx + 1; store.set('stage', stage); }
   $('clrEyebrow').textContent = team ? `Level ${G.idx + 1} cleared as a team` : `Level ${G.idx + 1} cleared`;
   $('clrTitle').textContent = N.name;
   $('clrDesc').innerHTML = `<b>Level ${G.idx + 2}.</b> ${team ? 'The team needs' : 'Eat'} ${team ? teamGoal(N.goal, PL.length) : N.goal} gems to clear it. Music: ${STYLES[N.music].name}.` +
-    (host ? '' : ' Waiting for the host to start it…') +
-    (MODE === 1 && RUN.newSnakes && RUN.newSnakes.length ? `<br><b>New snake unlocked: ${RUN.newSnakes.map(k => SNAKES[k].name).join(' and ')}.</b> Pick it in the main menu.` : '');
+    (host ? '' : ' Waiting for the host to start it…');
   $('clrScore').textContent = RUN.banked;
   $('clrBonus').textContent = '+' + RUN.lastBonus;
   $('clrLives').textContent = team ? G.teamLives : RUN.lives;
@@ -3212,6 +3277,42 @@ function showClear(){
   hideOverlays(); $('clear').hidden = false;
   updateMenuUI();
   if (host) setTimeout(() => $('nextBtn').focus({preventScroll: true}), 50);
+}
+// a level clear that earned a new snake gets its own card, with the choice to switch to it right away
+function showUnlock(){
+  const k = RUN.newSnakes[0], K = SNAKES[k], next = G.idx + 2;
+  stage = G.idx + 1; store.set('stage', stage);
+  $('unEyebrow').textContent = `Level ${G.idx + 1} cleared`;
+  $('unIcon').innerHTML = snakeIcon(k);
+  $('unName').textContent = K.name;
+  $('unDesc').textContent = K.desc;
+  $('unUse').textContent = `Play level ${next} as ${K.name}`;
+  $('unKeep').textContent = `Keep ${SNAKES[RUN.snake].name}, play level ${next}`;
+  G.cardShown = true;
+  hideOverlays(); $('unlock').hidden = false;
+  sfxUnlock(); buzz(CLEAR_BUZZ);
+  updateMenuUI();
+  setTimeout(() => $('unUse').focus({preventScroll: true}), 50);
+}
+function sfxUnlock(){
+  // a quick rising run up the level's own melody, then a sparkle
+  const up = [...style().melody].sort((a, b) => a - b).filter((m, i, a) => a.indexOf(m) === i);
+  sfx(t => {
+    up.slice(0, 7).forEach((m, k) => leadNote(mf(m), t + 0.35 + k*0.07, 0.18, 0.2));
+    [0, 0.06, 0.12].forEach((d, k) => tone('sine', 1760*(1 + k*0.25), t + 0.9 + d, 0.05, 0.4, sfxBus));
+  });
+}
+// leaving a run part-way asks first, because the run (or the round, for everyone) ends
+let afterQuit = null;
+function confirmQuit(){
+  const client = ROLE === 'client';
+  $('cfTitle').textContent = client ? 'Leave this game?' : MODE === 1 ? 'Quit this run?' : 'End the game for everyone?';
+  $('cfDesc').innerHTML = client ? "You'll leave the round. You can join again with the same code."
+    : MODE === 1 ? `Your score in this run (<b>${state === 'menu' ? 0 : score()}</b>) won't be saved. Levels and snakes you've unlocked stay unlocked.`
+    : 'Everyone goes back to the lobby and this round ends.';
+  $('cfQuit').textContent = client ? 'Leave the game' : 'Quit to the main menu';
+  $('confirm').hidden = false;
+  setTimeout(() => $('cfStay').focus({preventScroll: true}), 50);
 }
 function begin(){
   state = 'play';
@@ -3298,7 +3399,11 @@ $('pauseSetBtn').addEventListener('click', openSettings);
 $('lostSetBtn').addEventListener('click', openSettings);
 $('setDoneBtn').addEventListener('click', closeSettings);
 $('sSound').addEventListener('change', e => { initAudio(); setMuted(!e.target.checked); });
-for (const id of ['pauseMenuBtn', 'lostMenuBtn', 'clrMenuBtn']) $(id).addEventListener('click', toMenu);
+for (const id of ['pauseMenuBtn', 'lostMenuBtn', 'clrMenuBtn', 'unMenu']) $(id).addEventListener('click', confirmQuit);
+$('cfStay').addEventListener('click', () => { $('confirm').hidden = true; });
+$('cfQuit').addEventListener('click', () => { $('confirm').hidden = true; toMenu(); });
+$('unUse').addEventListener('click', () => { const k = RUN.newSnakes[0]; snake = k; store.set('snake', k); RUN.snake = k; RUN.newSnakes = []; nextStage(); });
+$('unKeep').addEventListener('click', () => { RUN.newSnakes = []; nextStage(); });
 $('muteBtn').addEventListener('click', () => { initAudio(); setMuted(!muted); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseAction(); });
 
@@ -3367,6 +3472,7 @@ addEventListener('keydown', e => {
   const go = k === ' ' || k === 'Enter';
   const typing = e.target && e.target.tagName === 'INPUT' && e.target.type === 'text' || e.target === $('nameIn');
   if (typing) return;
+  if (!$('confirm').hidden){ if (k === 'Escape'){ e.preventDefault(); $('confirm').hidden = true; } return; }
   if ((k === 'c' || k === 'C') && !e.repeat && !e.metaKey && !e.ctrlKey){ cycleView(); return; }
   if (state === 'play' && MODE !== 1 && ROLE === 'host'){
     const d = keyAct(k);
@@ -3385,7 +3491,7 @@ addEventListener('keydown', e => {
   } else if (state === 'menu' && go && !$('menu').hidden){ e.preventDefault(); start(MODE === 2 ? course : stage); }
   else if (state === 'over' && go){ e.preventDefault(); goAction(); }
   else if (state === 'lost' && go){ e.preventDefault(); retryLevel(); }
-  else if (state === 'clear' && go){ e.preventDefault(); nextStage(); }
+  else if (state === 'clear' && go){ e.preventDefault(); if (!$('unlock').hidden) $('unUse').click(); else nextStage(); }
   else if (state === 'paused' && (go || k === 'Escape')){ e.preventDefault(); resume(); }
 });
 
