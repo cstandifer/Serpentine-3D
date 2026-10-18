@@ -1740,7 +1740,7 @@ function updateParticles(dt){
 }
 
 // ---- audio ----
-let AC = null, master, musicBus, sfxBus, noiseBuf, musicOn = false, nextStep = 0, stepI = 0, beatTimes = [];
+let AC = null, master, musicBus, sfxBus, noiseBuf, musicOn = false, nextStep = 0, stepI = 0, beatTimes = [], curSD = 0.14;
 let muted = store.get('muted') === '1';
 function initAudio(){
   if (AC){ AC.resume && AC.resume(); return; }
@@ -1891,6 +1891,7 @@ const style = () => STYLES[G.S.music];
 function schedule(){
   if (!AC || !musicOn) return;
   const st = style(), bpm = st.bpm*(1 + Math.min(0.12, (G.speed - G.base)*0.02)), sd = 60/bpm/4;
+  curSD = sd;
   if (nextStep < AC.currentTime) nextStep = AC.currentTime + 0.02;
   while (nextStep < AC.currentTime + 0.12){
     const i = stepI++, s = i % 16;
@@ -1931,7 +1932,29 @@ function leadNote(f, t, peak, dcy){
   const st = style(), soft = st.lead === 'triangle' || st.lead === 'sine';
   tone(st.lead, f, t, soft ? peak : peak*0.4, dcy, sfxBus, 0, soft ? 0 : 3200);
 }
-function sfxTurn(){ if (MODE !== 1 && viewers().length !== 1) return; const m = style().melody, f = mf(m[G.noteI++ % m.length]); sfx(t => { leadNote(f, t, 0.22, 0.32); tone('sine', f*2, t, 0.04, 0.2, sfxBus); }); }
+// Turning plays a soft note that waits for the next eighth note of the music, so it always lands in time.
+// The notes come from whatever chord is playing right then, walked through a short up-and-down phrase,
+// so a run of turns sounds like a little tune that fits the song.
+const TURN_PHRASE = [0, 2, 1, 3, 2, 4, 3, 1];
+function turnNote(){
+  const st = style(), bar = Math.floor(Math.max(0, stepI - 1)/16) % 4;
+  let ch = st.chords ? st.chords[bar] : null;
+  if (!ch){ const r = (st.roots || [45, 45, 45, 45])[bar]; ch = [r, r + 3, r + 7]; }   // root-only styles: a minor triad
+  const tones = ch.slice(0, 3).map(m => { let n = m; while (n < 64) n += 12; while (n > 76) n -= 12; return n; }).sort((a, b) => a - b);
+  tones.push(tones[0] + 12, tones[1] + 12);
+  return tones[TURN_PHRASE[G.noteI++ % TURN_PHRASE.length]];
+}
+function nextEighthAt(){
+  if (!AC || !musicOn) return AC ? AC.currentTime : 0;
+  let t = nextStep, i = stepI;
+  while (t - curSD > AC.currentTime){ t -= curSD; i--; }
+  return i % 2 ? t + curSD : t;
+}
+function sfxTurn(){
+  if (MODE !== 1 && viewers().length !== 1) return;
+  const f = mf(turnNote()), at = nextEighthAt();
+  sfx(t => { const w = Math.max(t, at); tone('triangle', f, w, 0.13, 0.28, sfxBus); tone('sine', f*2, w, 0.022, 0.18, sfxBus); });
+}
 function sfxJump(){ sfx(t => tone('sine', 320, t, 0.22, 0.18*Math.sqrt(G.K.jump), sfxBus, 780)); }
 function sfxScrape(){ sfx(t => { noise(t, 'bandpass', 2600, 0.14, 0.08, sfxBus); tone('triangle', 520, t, 0.04, 0.06, sfxBus, 380); }); }
 function sfxLand(){ sfx(t => tone('sine', 150, t, 0.25, 0.1, sfxBus, 70)); }
