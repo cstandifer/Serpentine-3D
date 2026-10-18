@@ -511,7 +511,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <ul class="rules">
         <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Tilt to steer</b>: your phone as a controller, or the phone or tablet you're playing on, like a steering wheel. A little for a gentle curve, more for a tight one. Arrow keys and dragging work too.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> to clear low lime hurdles: for real while holding a phone controller, or <b>tap anywhere</b> on the screen you're playing on. Space works too.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Pink pillars are too tall to jump. <b>Steer around them.</b> From level 6 some slide back and forth.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Pink pillars are too tall to jump. <b>Steer around them.</b> From level 5 some slide back and forth.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="4" width="16" height="9" style="fill:var(--pillar)"/><rect x="5" y="13" width="16" height="6" style="fill:var(--hurdle)"/></svg></span><span><b>Beat gates</b> rise and fall with the music. Jump them while they're down.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can’t be jumped by any snake.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span>Gems make you longer. Don’t run into your tail, but you can jump it.</span></li>
@@ -875,18 +875,19 @@ const STAGES = [
    walls: [block(-12, -12, 3, 3), block(9, -12, 3, 3), block(-12, 9, 3, 3), block(9, 9, 3, 3)]},
   {name: 'Corridors', goal: 20, half: 21, music: 'chiptune', ...lv('#ffffff', 90),
    walls: [block(-17, -8, 14, 1), block(3, -8, 14, 1), block(-17, 8, 14, 1), block(3, 8, 14, 1), block(-1, -17, 2, 5), block(-1, 13, 2, 5)]},
-  {name: 'Rooms', goal: 24, half: 22, music: 'dnb', scaffolds: 1, ...lv('#ffffff', 200),
-   walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
-           block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
-           block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
-  {name: 'Gauntlet', goal: 30, half: 22, music: 'techno', ...lv('#ffffff', 315), walls: gauntlet()},
-  // levels 6 to 10 bring their own colors and music, plus two new obstacles:
+  {name: 'Gauntlet', goal: 24, half: 22, music: 'techno', ...lv('#ffffff', 315), walls: gauntlet()},
+  // levels 5 to 10 bring their own colors and music, plus two new obstacles:
   // movers (pink pillars that slide back and forth) and gates (bars that rise and fall with the beat)
-  {name: 'Mirror Ball', goal: 24, half: 22, music: 'disco', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
+  {name: 'Mirror Ball', goal: 26, half: 22, music: 'disco', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
    walls: [block(-3, -17, 6, 2), block(-3, 15, 6, 2)]},
   {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
   {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 1.4, gates: 0.6,
    walls: [block(-17, -16, 9, 2), block(8, -16, 9, 2), block(-17, 14, 9, 2), block(8, 14, 9, 2)]},
+  // the construction site sits late: its scaffolding makes it a real step up
+  {name: 'Rooms', goal: 30, half: 23, music: 'dnb', scaffolds: 1, ...lv('#ffffff', 200),
+   walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
+           block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
+           block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
   {name: 'Daybreak', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
    walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
   {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2,
@@ -2115,7 +2116,7 @@ const STYLES = {
         if (s === 14 && bar % 2) for (let k = 0; k < 3; k++) note('square', mf(84 + k*7), t + k*sd/3, 0.02, 0.06, 5000);   // a little coin sparkle
       }
     }},
-  // level 4, the construction site: dubstep. Half-time drums, hammer clanks, a build, then the wobble drops
+  // level 8, the construction site: dubstep. Half-time drums, hammer clanks, a build, then the wobble drops
   dnb: {name: 'Dubstep', bpm: 140, lead: 'square',
     melody: [65,68,70,72,75,77,75,72,70,68],
     chords: [[53,56,60],[49,53,56],[51,55,58],[48,52,55]],
@@ -2149,7 +2150,7 @@ const STYLES = {
       if (s === 14) clank(t, 0.1);
       for (const [st0, len, m, per] of this.wob[bar]) if (st0 === s) wobble(mf(m), t, len*sd, 1/(per*sd), 0.03);
     }},
-  // level 5, the warehouse: indie synth pop in the spirit of Hot Chip. A warm round bassline, claps and cowbell,
+  // level 4, the warehouse: indie synth pop in the spirit of Hot Chip. A warm round bassline, claps and cowbell,
   // a little steel-drum motif and soft sung chords; nothing harsh
   techno: {name: 'Synth pop', vol: 1.1, bpm: 120, lead: 'triangle',
     melody: [62,65,67,69,72,74,72,69,67,65],
@@ -2168,7 +2169,7 @@ const STYLES = {
       if (sec === 'steel') hook(this.steelT, s, bar, sd, m => { note('sine', mf(m), t, 0.06, 0.3); note('sine', mf(m)*2.76, t, 0.02, 0.08); });
       if (sec === 'vox' && s === 0) ch.slice(1, 3).forEach(m => voice(mf(m + 12), t, sd*14, 'a', 'o', 0.035, musicBus, true));
     }},
-  // level 6, the mirror ball: disco leaning toward the Bee Gees. A slower strut, chopped guitar, strings and a falsetto hook
+  // level 5, the mirror ball: disco leaning toward the Bee Gees. A slower strut, chopped guitar, strings and a falsetto hook
   disco: {name: 'Disco', bpm: 106, lead: 'square',
     melody: [72,74,76,79,76,74,72,69,72,76,79,81],
     chords: [[57,60,64,67],[50,53,57,60],[52,55,59,62],[57,60,64,67]],   // Am7, Dm7, Em7, Am7
@@ -2205,7 +2206,7 @@ const STYLES = {
       if (s % 2 === 0) hat(t, 0.02, 0.03, 9000);
       if (this.line[s] || s % 2 === 0) note('square', mf(this.roots[bar] + this.line[s]), t, 0.06, sd*0.7, 1300);
     }},
-  // level 8, the reef: dreamy French synth pop in the spirit of Kid Francescoli. Plucks echoing through the water,
+  // level 7, the reef: dreamy French synth pop in the spirit of Kid Francescoli. Plucks echoing through the water,
   // warm pads, soft drums and a wordless voice
   dub: {name: 'Dream pop', vol: 1.5, bpm: 100, lead: 'triangle',
     melody: [69,72,74,77,79,81,79,77,74,72],
