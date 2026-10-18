@@ -369,13 +369,16 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
 .vmsg{position:absolute;transform:translateX(-50%);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(1.3rem,3.2vw,2.4rem);text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px var(--cream);white-space:nowrap}
 .seats{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.seats li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule-soft)}
+.seats li{display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule-soft)}
 .seats li .sw{width:14px;height:14px}
 .seats li.me{border-color:var(--line)}
 .seats li.empty{display:block;font-size:.7rem;color:var(--muted)}
 .seats .n{display:grid;gap:2px;min-width:0}
 .seats .n b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seats .n small{font-size:.62rem;color:var(--muted)}
+.seats .snakeSel{font:inherit;font-size:.72rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:6px 8px;cursor:pointer;max-width:120px}
+.csnake{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:.72rem;color:var(--muted)}
+.csnake .snakeSel{font:inherit;font-size:.8rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:8px 10px}
 .seats .x{width:30px;height:30px;border:1px solid var(--rule);background:#000;color:var(--cream);font-size:1rem;cursor:pointer;padding:0}
 .addrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .need{font-size:.78rem;line-height:1.5;padding:9px 12px;border:1.5px solid var(--lime);color:var(--lime)}
@@ -734,6 +737,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
     <div class="pick" id="cYouBox" hidden>
       <div class="eyebrow">You</div>
       <div class="you"><span class="sw big" id="cSwatch"></span><input class="name-in" id="cName" maxlength="12" autocomplete="nickname" spellcheck="false" placeholder="Your name" aria-label="Your name"></div>
+      <label class="csnake">Your snake <select class="snakeSel" id="cSnake"></select></label>
     </div>
     <div class="pick" id="cPlayersBox" hidden>
       <div class="eyebrow">Players</div>
@@ -1086,7 +1090,7 @@ function newlyOpen(before){ return Object.keys(SNAKE_UNLOCK).filter(k => SNAKE_U
 // The movement, collision and drawing code all work on G, so load() copies one player's fields into G
 // (plus its colors) and save() copies them back. In solo there's just one player and it's always loaded.
 const DUEL_TIME = 60;
-const SNAKE_FIELDS = ['x','y','th','turn','prevTurn','turnCue','aim','sinceP','trail','air','airT','airDur','jumpBuf','tailLen','dist','gems','magCool','cam','flash','noteI','scrapeCue'];
+const SNAKE_FIELDS = ['K','x','y','th','turn','prevTurn','turnCue','aim','sinceP','trail','air','airT','airDur','jumpBuf','tailLen','dist','gems','magCool','cam','flash','noteI','scrapeCue'];
 let PL = [], CUR = null;
 function lookFor(S, color, side){
   const c = rgb(color), base = rgb(themeOf(S).floor);
@@ -1095,6 +1099,15 @@ function lookFor(S, color, side){
 // player 1 wears the chosen snake's color; everyone else gets their own, skipping one that matches it
 const MP_COLORS = [['#ffe94d', '#a8960f'], ['#9a8cff', '#4b3fa8'], ['#ff8a3d', '#a8461a'], ['#ffffff', '#8e8aa8'],
   ['#2b8cff', '#174a8a'], ['#ff3b3b', '#99201f'], ['#3dffb0', '#1a8f61'], ['#d9b37a', '#7d6234']];
+// in a multiplayer game everyone picks a snake: the first player on each snake wears its color,
+// anyone else on the same snake gets a color of their own
+const seatSnake = st => SNAKES[st && st.snake] ? st.snake : snake;
+const randomSnake = () => { const ks = Object.keys(SNAKES); return ks[Math.floor(Math.random()*ks.length)]; };
+function seatColors(list){
+  const used = new Set(), out = list.map(st => { const K = SNAKES[seatSnake(st)], c = K.color.toLowerCase(); if (used.has(c)) return null; used.add(c); return [K.color, K.side]; });
+  let k = 0;
+  return out.map(c => { if (c) return c; while (k < MP_COLORS.length - 1 && used.has(MP_COLORS[k][0].toLowerCase())) k++; const m = MP_COLORS[k % MP_COLORS.length]; used.add(m[0].toLowerCase()); k++; return m; });
+}
 function colorFor(K, i){
   if (i === 0) return [K.color, K.side];
   const pool = MP_COLORS.filter(c => c[0].toLowerCase() !== String(K.color).toLowerCase());
@@ -1120,7 +1133,7 @@ const partyTime = n => n <= 2 ? 60 : n <= 5 ? 75 : 90;
 const teamGoal = (goal, n) => Math.round(goal*(1 + 0.6*(n - 1)));
 function makeCfg(idx){
   const cfg = {mode: MODE, idx, diff: RUN.diff, snake: RUN.snake, seed: (Math.random()*1e9)|0};
-  if (MODE !== 1) cfg.players = (SEATS.length ? SEATS : [{kind: 'preview'}]).map(st => ({kind: st.kind, name: st.name || ''}));
+  if (MODE !== 1) cfg.players = (SEATS.length ? SEATS : [{kind: 'preview'}]).map(st => ({kind: st.kind, name: st.name || '', snake: seatSnake(st)}));
   // tag team: everyone's own lives carry from level to level, and anyone who's out stays out
   if (MODE === 3 && RUN.tagLives && RUN.tagLives.length === cfg.players.length) cfg.lives = RUN.tagLives.slice();
   return cfg;
@@ -1136,7 +1149,8 @@ function loadWorld(cfg){
   const roomy = Math.sqrt(Math.max(1, n/2));
   const half = Math.round((party ? S.base : S.half + Math.max(0, D.room))*roomy);   // harder never means a smaller field
   buildArena(half);
-  const lvl = party ? 2 : cfg.idx, sp = K.speed || 1, base = (D.speed + lvl*0.25)*sp;
+  // solo: the snake's speed is the run's speed; multiplayer: each snake moves at its own rate on top of a shared pace
+  const lvl = party ? 2 : cfg.idx, sp = multi ? 1 : K.speed || 1, base = (D.speed + lvl*0.25)*sp;
   G = {
     idx: cfg.idx, S, D, K,
     seed: cfg.seed, chunks: new Map(), walls: [], movers: [], gates: [], gemById: new Map(), gid: 0, runway: !party,
@@ -1147,15 +1161,15 @@ function loadWorld(cfg){
     particles: [], shake: 0, deadT: 0, cause: ''
   };
   G.walls = (typeof S.walls === 'function' ? S.walls(half) : S.walls).map(clipWall).filter(Boolean);
-  if (!multi){ PL = [newPlayer(0, 0.5, lookFor(S, K.color, K.side))]; PL[0].kind = 'solo'; PL[0].local = true; }
-  else PL = cfg.players.map((pp, i) => {
+  if (!multi){ PL = [newPlayer(0, 0.5, lookFor(S, K.color, K.side))]; PL[0].kind = 'solo'; PL[0].local = true; PL[0].K = K; }
+  else { const cols = seatColors(cfg.players.map(pp => ({snake: pp.snake || cfg.snake}))); PL = cfg.players.map((pp, i) => {
     // tag team lines up on the runway like solo; a party is spread around the arena below
-    const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...colorFor(K, i)));
-    p.kind = pp.kind; p.name = pp.name; p.ep = 0;
+    const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...cols[i]));
+    p.kind = pp.kind; p.name = pp.name; p.ep = 0; p.K = SNAKES[pp.snake] || K;
     if (cfg.lives){ p.lives = cfg.lives[i]; if (p.lives <= 0) p.alive = false; }
     p.local = ROLE === 'host' ? pp.kind !== 'screen' : i === ME;
     return p;
-  });
+  }); }
   load(PL[0]);
   if (cfg.idx === 0 && cfg.mode === 1) addThing('obs', {x: 10.2, y: -1, w: 0.6, h: 3, tall: false}); // teaches the jump
   if (!party) addThing('gems', {x: 6.5, y: 0.5, taken: false});
@@ -1524,7 +1538,7 @@ function update(dt){
     G.turnCue -= dt;
     G.prevTurn = G.turn;
     // the computer opponent can be set to move slower than you
-    const sp = G.speed*(isCPU(p.i) ? aiSkill().speed : 1);
+    const sp = G.speed*(isCPU(p.i) ? aiSkill().speed : 1)*(MODE !== 1 ? G.K.speed || 1 : 1);
     let remain = sp*dt;
     while (remain > 0 && state === 'play' && p.alive){ const d = Math.min(0.08, remain); remain -= d; step(d, d/sp); }
     save(p); SIM = false;
@@ -1562,7 +1576,7 @@ function applyPos(i, m){
   p.netRaw = m;
   p.net = {x: m.x, y: m.y, th: m.th, turn: m.tu || 0, air: !!m.a, airT: m.at, airDur: m.ad, sp: m.sp || 1, at: performance.now()};
   p.tailLen = m.tl; p.grace = m.gr || 0; p.cause = m.c || '';
-  if (MODE === 2) p.lives = m.l;
+  p.lives = m.l;
   if ((m.ep || 0) !== (p.ep || 0)){
     // it respawned somewhere new: start its body over there
     p.ep = m.ep || 0;
@@ -1575,7 +1589,7 @@ function applyPos(i, m){
 const r2 = v => Math.round(v*100)/100;
 function posOf(p){
   return {x: r2(p.x), y: r2(p.y), th: r2(p.th), tu: r2(p.turn), a: p.air ? 1 : 0, at: r2(p.airT), ad: r2(p.airDur), tl: r2(p.tailLen),
-    l: p.lives, al: p.alive ? 1 : 0, gr: r2(Math.max(0, p.grace)), ep: p.ep || 0, c: p.cause || '', sp: isCPU(p.i) ? aiSkill().speed : 1};
+    l: p.lives, al: p.alive ? 1 : 0, gr: r2(Math.max(0, p.grace)), ep: p.ep || 0, c: p.cause || '', sp: (isCPU(p.i) ? aiSkill().speed : 1)*((p.K && p.K.speed) || 1)};
 }
 // ---- computer opponent (versus) ----
 // A few times a second it picks a gem to chase (usually a near one, favoring ones ahead), fans out nine
@@ -1702,11 +1716,11 @@ function renderSheet(){
   for (let i = 0; i < hi; i++){
     const st = SEATS[i], d = document.createElement('div');
     if (st){
-      d.className = 'slot full' + (i < sheetSeen ? ' seen' : ''); d.style.setProperty('--sw', colorFor(K, i)[0]);
+      d.className = 'slot full' + (i < sheetSeen ? ' seen' : ''); d.style.setProperty('--sw', seatColors(SEATS)[i][0]);
       if (i < sheetSeen) d.style.animation = 'none';
       d.innerHTML = '<i></i><b></b><span></span>';
       d.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1);
-      d.querySelector('span').textContent = {phone: 'Phone controller', screen: 'Own screen', device: 'This screen', cpu: 'Computer', keys: 'Keyboard'}[st.kind] || '';
+      d.querySelector('span').textContent = SNAKES[seatSnake(st)].name;
     } else { d.className = 'slot' + (i < lo ? ' need' : ''); d.textContent = i < lo ? 'Needed' : 'Open'; }
     box.appendChild(d);
   }
@@ -3624,7 +3638,7 @@ function seatFor(L){
     }
   }
   if (SEATS.length >= 8){ linkSend(L, {t: 'full'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400); return; }
-  SEATS.push({kind: L.kind, link: L, name: L.name});
+  SEATS.push({kind: L.kind, link: L, name: L.name, snake});
   if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
   seatsChanged();
 }
@@ -3650,7 +3664,7 @@ function seatsChanged(){
 function addLocalSeat(kind){
   if (SEATS.length >= 8) return;
   if (kind === 'device') enableTilt();
-  SEATS.push({kind, link: null, name: ''});
+  SEATS.push({kind, link: null, name: '', snake: kind === 'cpu' ? randomSnake() : snake});
   seatsChanged();
 }
 const seatKindText = (st, i) => {
@@ -3668,9 +3682,17 @@ function renderSeats(){
   ol.innerHTML = '';
   SEATS.forEach((st, i) => {
     const li = document.createElement('li');
-    li.innerHTML = `<span class="sw" style="background:${colorFor(K, i)[0]}"></span><span class="n"><b></b><small></small></span>`;
+    li.innerHTML = `<span class="sw" style="background:${seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
     li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1) + (st.gone ? ' (dropped)' : '');
-    li.querySelector('small').textContent = seatKindText(st, i);
+    li.querySelector('small').textContent = seatKindText(st, i) + (st.kind === 'cpu' ? ' · ' + SNAKES[seatSnake(st)].name : '');
+    if (st.kind !== 'cpu'){
+      // everyone playing picks their own snake
+      const sel = document.createElement('select'); sel.className = 'snakeSel'; sel.setAttribute('aria-label', `Player ${i + 1}'s snake`);
+      for (const k in SNAKES){ const o = document.createElement('option'); o.value = k; o.textContent = SNAKES[k].name; sel.appendChild(o); }
+      sel.value = seatSnake(st);
+      sel.addEventListener('change', () => { st.snake = sel.value; seatsChanged(); });
+      li.appendChild(sel);
+    }
     if (['cpu', 'keys', 'device'].includes(st.kind) || st.gone){
       const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remove'); x.textContent = '×';
       x.addEventListener('click', () => { if (state !== 'menu') return; SEATS.splice(SEATS.indexOf(st), 1); seatsChanged(); });
@@ -3700,7 +3722,7 @@ function sendLobby(){
   if (ROLE !== 'host' || !screens().length) return;
   const K = SNAKES[snake];
   const base = {t: 'lobby', mode: MODE, where: MODE === 2 ? COURSES[course].name : `Level ${stage + 1} / ${STAGES[stage].name}`,
-    seats: SEATS.map((st, i) => ({kind: st.kind, name: st.name || '', color: colorFor(K, i)[0], gone: !!st.gone}))};
+    seats: SEATS.map((st, i) => ({kind: st.kind, name: st.name || '', color: seatColors(SEATS)[i][0], snake: seatSnake(st), gone: !!st.gone}))};
   const key = JSON.stringify(base);
   if (key === lastLobby) return;
   lastLobby = key;
@@ -3798,6 +3820,7 @@ function onScreenMsg(L, m){
   const i = seatOf(L);
   if (m.t === 'name'){ if (i >= 0){ SEATS[i].name = cleanName(m.name); if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } return; }
   if (m.t === 'pause'){ togglePause(); return; }
+  if (m.t === 'snake'){ if (i >= 0 && SNAKES[m.k] && state === 'menu'){ SEATS[i].snake = m.k; seatsChanged(); } return; }
   if (i < 0 || i >= PL.length || state === 'menu' || !G) return;
   if (m.t === 'pos') applyPos(i, m);
   else if (m.t === 'claim'){ const g = G.gemById.get(m.id); if (g && !g.taken && state === 'play'){ g.taken = true; credit(i, g); } }
@@ -3838,7 +3861,7 @@ function syncPhone(force){
          level: G.idx + 1, name: G.S.name, gems: Math.min(G.gems, G.S.goal), goal: G.S.goal};
     } else {
       const i = seatOf(L), p = i >= 0 && i < PL.length && state !== 'menu' ? PL[i] : null;
-      msg = {t: 'state', state, go, view, mode: MODE, player: i + 1, color: p ? p.look.color : colorFor(K, Math.max(0, i))[0],
+      msg = {t: 'state', state, go, view, mode: MODE, player: i + 1, color: p ? p.look.color : (seatColors(SEATS)[Math.max(0, i)] || [K.color])[0],
         score: p ? pScore(p) : 0, lives: p ? Math.max(0, p.lives) : LIVES, maxLives: LIVES,
         level: G.idx + 1, name: G.S.name, gems: MODE === 3 ? G.teamGems : p ? p.gems : 0, goal: MODE === 3 ? G.goal : null,
         left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
@@ -3917,6 +3940,10 @@ function renderClientLobby(){
     : L ? `${L.mode === 2 ? 'Party' : 'Tag team'} on ${L.where}. ${CL.msg}` : CL.msg;
   $('cSwatch').style.background = me ? me.color : 'transparent';
   $('cYouBox').hidden = !me;
+  if (me && document.activeElement !== $('cSnake')){
+    if (!$('cSnake').options.length) for (const k in SNAKES){ const o = document.createElement('option'); o.value = k; o.textContent = SNAKES[k].name; $('cSnake').appendChild(o); }
+    $('cSnake').value = me.snake || 'classic';
+  }
   const ol = $('cSeats'); ol.innerHTML = '';
   (L ? L.seats : []).forEach((st, i) => {
     const li = document.createElement('li');
@@ -4216,6 +4243,7 @@ function updateMenuUI(){
     : MODE === 2 ? `Start the party (${SEATS.length} players)` : MODE === 3 ? `Start level ${stage + 1} as a team` : `Start level ${stage + 1}`;
   $('startBtn').classList.toggle('waiting', !!wait);
   $('lobbyBox').hidden = MODE === 1;
+  $('snakeLabel').parentElement.hidden = MODE !== 1;   // in a multiplayer game each player picks a snake in the list
   $('courseBox').hidden = MODE !== 2;
   $('stageBox').hidden = MODE === 2;
   $('ctrlBox').hidden = MODE !== 1;
@@ -4512,6 +4540,7 @@ $('cpuView').checked = CPU_VIEW;
 $('cpuView').addEventListener('change', e => { CPU_VIEW = e.target.checked; store.set('cpuView', CPU_VIEW ? '1' : '0'); lastHud = ''; });
 $('cLeaveBtn').addEventListener('click', leaveGame);
 $('cTiltBtn').addEventListener('click', () => { initAudio(); enableTilt(); setTimeout(renderClientLobby, 400); });
+$('cSnake').addEventListener('change', () => { netSend({t: 'snake', k: $('cSnake').value}); $('cSnake').blur(); });
 $('cName').addEventListener('change', () => { const n = cleanName($('cName').value); store.set('name', n); netSend({t: 'name', name: n}); });
 $('cName').value = store.get('name') || '';
 $('nameBtn').addEventListener('click', () => saveName($('nameIn').value));
