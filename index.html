@@ -868,7 +868,7 @@ const THEMES = {
               pillarShape: 'cone', hurdleShape: 'barricade', decor: 'cranes'},
   techno:    {sky: ['#000000', '#0a0a0a'], fog: '#000000', floor: '#000000', grid: ['#ffffff', '#7dff5a'],
               hurdle: ['#7dff5a', '#2f8f1f'], pillar: ['#f4f4f4', '#7a7a7a'], wall: ['#0a0a0a', '#000000'], edge: '#ffffff', gem: '#ff4fd8',
-              pillarShape: 'slab', hurdleShape: 'box', decor: 'lasers'},
+              pillarShape: 'slab', hurdleShape: 'box', decor: 'rave'},
   // 70s disco: a light-up dance floor, mirror balls on every horizon, gold trim
   disco:     {sky: ['#12001c', '#8a0f5c'], fog: '#3d0730', fogNear: 10, fogFar: 50, floor: '#0c0008', grid: ['#ffcc33', '#ff9a00'],
               hurdle: ['#ffd23f', '#b38a00'], pillar: ['#ff2a6d', '#8f0f3a'], wall: ['#2a0a24', '#12000f'], edge: '#ffcc33', gem: '#00e5ff',
@@ -1151,7 +1151,7 @@ function ensureChunk(cx, cy){
     const gy = 1 + Math.floor(rnd()*(CH - 2 - (vert ? L : 1) + 1));
     const r = vert ? {x: ox+gx+0.2, y: oy+gy, w: 0.6, h: L, tall: false}
                    : {x: ox+gx, y: oy+gy+0.2, w: L, h: 0.6, tall: false};
-    if (fits(r, 1.6)) { c.obs.push(r); break; }
+    if (fits(r, 1.6)) { c.obs.push(shapeObs(r)); break; }
   }
   const nPillar = Math.floor(rnd()*(0.8 + 2.4*d)*G.D.pillars);
   for (let i = 0; i < nPillar; i++) for (let a = 0; a < 6; a++){
@@ -1159,7 +1159,7 @@ function ensureChunk(cx, cy){
     const sw = big && horiz ? 2 : 1, sh = big && !horiz ? 2 : 1;
     const gx = 1 + Math.floor(rnd()*(CH - 2 - sw + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - sh + 1));
     const r = {x: ox+gx+0.08, y: oy+gy+0.08, w: sw-0.16, h: sh-0.16, tall: true};
-    if (fits(r, 1.2)) { c.obs.push(r); break; }
+    if (fits(r, 1.2)) { c.obs.push(shapeObs(r)); break; }
   }
   // movers: a pillar sliding along a short track (the whole track is kept clear when placing it)
   const nMover = G.S.movers ? Math.floor(rnd()*(0.5 + 1.5*d)*G.S.movers + 0.35) : 0;
@@ -1167,7 +1167,7 @@ function ensureChunk(cx, cy){
     const horiz = rnd() < .5, amp = 1.4 + rnd()*1.6, per = 2.6 + rnd()*2.4, ph = rnd()*Math.PI*2;
     const gx = 2 + Math.floor(rnd()*(CH - 4)), gy = 2 + Math.floor(rnd()*(CH - 4)), bx = ox + gx + 0.1, by = oy + gy + 0.1;
     const reach = horiz ? {x: bx - amp, y: by, w: 0.8 + 2*amp, h: 0.8} : {x: bx, y: by - amp, w: 0.8, h: 0.8 + 2*amp};
-    if (fits(reach, 1.1)){ const o = {x: bx, y: by, w: 0.8, h: 0.8, tall: true, mover: {x0: bx, y0: by, ax: horiz ? 1 : 0, ay: horiz ? 0 : 1, amp, per, ph}}; c.obs.push(o); G.movers.push(o); break; }
+    if (fits(reach, 1.1)){ const o = {x: bx, y: by, w: 0.8, h: 0.8, tall: true, mover: {x0: bx, y0: by, ax: horiz ? 1 : 0, ay: horiz ? 0 : 1, amp, per, ph}}; c.obs.push(shapeObs(o)); G.movers.push(o); break; }
   }
   // gates: a hurdle-shaped bar that rises to pillar height for half of every two bars, then drops back down
   const nGate = G.S.gates ? Math.floor(rnd()*(0.5 + 1.5*d)*G.S.gates + 0.35) : 0;
@@ -1340,7 +1340,32 @@ function scrape(nx, ny, px, py, cause){
   if (G.scrapeCue <= 0){ sfxScrape(); buzz([Math.round(12 + 45*Math.max(0, into)), 25, 10]); burst(px, py, C.ink, 4, 1.5); G.scrapeCue = 0.25; }
   return false;
 }
+// Obstacles are hit by the shape you see. Round and rounded ones (round pillars, coral, crystals, mirror balls,
+// logs, rocks, rounded hurdles) use a capsule: a line down the middle of the footprint with a radius
+// (o.cap, as a fraction of the footprint's width). Everything else is its box.
+const CAP_PILLAR = {round: 0.5, octagon: 0.5, coral: 0.48, crystal: 0.34, mirror: 0.3};
+const CAP_HURDLE = {soft: 0.5, log: 0.5, rock: 0.5};
+function shapeObs(o){
+  const T = themeOf(G.S), c = o.tall ? CAP_PILLAR[T.pillarShape] : CAP_HURDLE[T.hurdleShape];
+  if (c) o.cap = c;
+  return o;
+}
+function capOf(o){
+  const r = o.cap*Math.min(o.w, o.h), cx = o.x + o.w/2, cy = o.y + o.h/2;
+  if (o.w >= o.h){ const half = Math.max(0, o.w/2 - r); return [cx - half, cy, cx + half, cy, r]; }
+  const half = Math.max(0, o.h/2 - r); return [cx, cy - half, cx, cy + half, r];
+}
+function touchCap(o, cause){
+  const [ax, ay, bx, by, r] = capOf(o), dx = bx - ax, dy = by - ay, l2 = dx*dx + dy*dy;
+  let t = l2 ? ((G.x - ax)*dx + (G.y - ay)*dy)/l2 : 0; t = Math.max(0, Math.min(1, t));
+  const qx = ax + dx*t, qy = ay + dy*t;
+  let nx = G.x - qx, ny = G.y - qy; const d = Math.hypot(nx, ny);
+  if (d >= r + R_HEAD) return false;
+  if (d > 1e-6){ nx /= d; ny /= d; } else { nx = -Math.cos(G.th); ny = -Math.sin(G.th); }
+  return scrape(nx, ny, qx + nx*r, qy + ny*r, cause);
+}
 function touchRect(o, cause){
+  if (o.cap) return touchCap(o, cause);
   if (!circleRect(G.x, G.y, R_HEAD, o)) return false;
   let px = Math.max(o.x, Math.min(G.x, o.x + o.w)), py = Math.max(o.y, Math.min(G.y, o.y + o.h));
   let nx = G.x - px, ny = G.y - py, d = Math.hypot(nx, ny);
@@ -2486,7 +2511,7 @@ function makeR3(){
         case 'round': case 'octagon': {
           const seg = T.pillarShape === 'round' ? 20 : 8;
           // wide enough that the round sides cover the corners of the square that counts as solid
-          const rr = seg === 8 ? 0.62 : 0.68;
+          const rr = 0.5;
           const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, 1, seg), cylMats); mesh.scale.set(w, H, d);
           if (seg === 8) mesh.rotation.y = Math.PI/8;
           return stood(mesh, H/2);
@@ -2505,11 +2530,11 @@ function makeR3(){
           const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), cylMats); c.scale.set(w*0.55, H*0.7, d*0.55); c.position.y = H*0.35; g.add(c);
           const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), shiny('#e8e8f0', {emissive: col(P[0]), emissiveIntensity: 0.35}));
           ball.scale.set(w, m*1.1, d); ball.position.y = H*0.72; g.add(ball); g.userData.spin = ball;
-          return plinth(g, w, d, P);
+          return g;
         }
         case 'crystal': {
           const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), shiny(P[0], {transparent: true, opacity: 0.88, emissive: col(P[1]), emissiveIntensity: 0.45}));
-          c.scale.set(w*1.05, H*1.15, d*1.05); return plinth(stood(c, H*0.58), w, d, [P[1], P[1]], 0.22);
+          c.scale.set(w*1.05, H*1.15, d*1.05); return stood(c, H*0.58);
         }
         case 'toyblocks': {
           // two or three chunky toy blocks stacked a little askew
@@ -2553,9 +2578,6 @@ function makeR3(){
           limb(0, H*0.5, 0, sx, H*1.0, -sz*0.3, r);
           limb(0, H*0.55, 0, sx*0.2, H*0.92, sz, r*0.9);
           limb(0, H*0.3, 0, -sx*0.4, H*0.6, -sz, r*0.85);
-          // the coral grows from a rocky base that covers its whole footprint
-          const base = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1, 2, 1, 2), shiny('#8a7550', {shininess: 5, specular: 0x111111, emissiveIntensity: 0.2}));
-          base.scale.set(w, 0.35, d); base.position.y = 0.175; g.add(base);
           return g;
         }
         default: { const b = new THREE.Mesh(BOX, pMats); b.scale.set(w, H, d); return stood(b, H/2); }
@@ -2598,14 +2620,14 @@ function makeR3(){
           return g;
         }
         case 'rock': {
-          // a low sandstone slab that fills its whole footprint, with a few lumps on top
+          // a row of lumpy sandstone rocks along the hurdle, as wide as it counts
           const g = new THREE.Group(), mat = shiny(Hh[0], {shininess: 5, specular: 0x111111, emissiveIntensity: 0.2});
-          const slab = new THREE.Mesh(BOX, mat); slab.scale.set(w, H*0.8, d); slab.position.y = H*0.4; g.add(slab);
-          const n = Math.max(1, Math.round(long/1.2));
+          const n = Math.max(1, Math.round(long/1.1)), wide = Math.min(w, d);
           for (let k = 0; k < n; k++){
             const f = (k + 0.5)/n - 0.5, lump = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 0), mat);
-            lump.scale.set(alongX ? long/n*0.9 : w*0.9, H*0.55, alongX ? d*0.9 : long/n*0.9);
-            lump.position.set(alongX ? f*w : 0, H*0.75, alongX ? 0 : f*d); lump.rotation.y = k + o.x; g.add(lump);
+            const len = (long - wide)/n + wide*0.95;
+            lump.scale.set(alongX ? len : wide, H*1.5, alongX ? wide : len);
+            lump.position.set(alongX ? f*(w - wide) : 0, H*0.45, alongX ? 0 : f*(d - wide)); lump.rotation.y = alongX ? 0 : Math.PI/2; g.add(lump);
           }
           return g;
         }
@@ -2665,7 +2687,7 @@ function makeR3(){
     return new THREE.Points(g, new THREE.PointsMaterial({size, map: dotTex, color: colors ? 0xffffff : col(color), vertexColors: !!colors, fog: false, transparent: true, opacity: 0.9, depthWrite: false, alphaTest: 0.02}));
   }
   function buildDecor(T){
-    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); if (o.material){ if (o.material === steel || o.material === planks) return; if (o.material.map && o.material.map !== dotTex && o.material.map !== glowTex) o.material.map.dispose(); o.material.dispose(); } });
+    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); if (o.material) for (const m of [].concat(o.material)){ if (m === steel || m === planks) continue; if (m.map && m.map !== dotTex && m.map !== glowTex) m.map.dispose(); m.dispose(); } });
     decor.clear();
     const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2, R = h + 6;
     const rnd = mulberry(G.seed ^ 0x5eed), inArena = (a, i) => { a[i] = cx + (rnd()*2 - 1)*R; a[i+2] = cz + (rnd()*2 - 1)*R; };
@@ -2705,6 +2727,42 @@ function makeR3(){
         } else {
           const b = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 60, 12, 1, true), m); b.position.set(cx + sx*(R - 3), 30, cz + sz*(R - 3)); decor.add(b); DECOR.items.push(b);
         }
+      }
+    } else if (T.decor === 'rave'){
+      // An underground warehouse rave. Ahead of the start, past the far wall: a stage with a DJ booth between
+      // two speaker stacks, a laser fan sweeping out over the floor, and a strobe on the downbeat.
+      // Overhead: a lighting truss with moving heads scanning beams and spots across the floor.
+      const sx = cx + h + 7, black = new THREE.MeshPhongMaterial({color: 0x0b0b0b, emissive: 0x050505, shininess: 30});
+      const stage = new THREE.Mesh(BOX, black); stage.scale.set(8, 1.2, 22); stage.position.set(sx + 2, 0.6, cz); decor.add(stage);
+      const booth = new THREE.Mesh(BOX, black); booth.scale.set(1.6, 1.3, 5); booth.position.set(sx, 1.85, cz); booth.add(new THREE.LineSegments(EDGES, new THREE.LineBasicMaterial({color: 0x7dff5a}))); decor.add(booth);
+      const cone = discTex(g => { g.fillStyle = '#111'; g.fillRect(0, 0, 256, 256); for (const [y, r] of [[70, 52], [190, 52]]){ const gr = g.createRadialGradient(128, y, 4, 128, y, r); gr.addColorStop(0, '#555'); gr.addColorStop(0.25, '#1a1a1a'); gr.addColorStop(0.9, '#2b2b2b'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.beginPath(); g.arc(128, y, r, 0, Math.PI*2); g.fill(); } });
+      for (const side of [-1, 1]) for (let k = 0; k < 3; k++){
+        const cab = new THREE.Mesh(BOX, [black, black, black, black, new THREE.MeshBasicMaterial({map: cone}), black]);
+        cab.scale.set(2.2, 2.2, 2.2); cab.position.set(sx + 1.5, 2.3 + k*2.25, cz + side*8.5); cab.rotation.y = -Math.PI/2; decor.add(cab);
+      }
+      // the laser fan: thin beams from the booth, spread wide, swaying and pulsing with the music
+      DECOR.lasers = [];
+      for (let k = 0; k < 14; k++){
+        const geo = new THREE.BoxGeometry(R*3, 0.04, 0.04); geo.translate(-R*1.5, 0, 0);
+        const m = new THREE.MeshBasicMaterial({color: col(k % 3 ? '#7dff5a' : '#ffffff'), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false});
+        const b = new THREE.Mesh(geo, m); b.position.set(sx - 0.8, 2.6, cz); decor.add(b);
+        DECOR.lasers.push({b, a: (k/13 - 0.5)*1.4});
+      }
+      // the strobe: a white flash over the stage on the first beat of each bar
+      DECOR.strobe = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+      DECOR.strobe.scale.set(60, 40, 1); DECOR.strobe.position.set(sx + 3, 8, cz); decor.add(DECOR.strobe);
+      // the truss overhead and its moving heads
+      const steelT = new THREE.MeshBasicMaterial({color: 0x2a2a2a});
+      for (const z of [cz - h*0.45, cz + h*0.45]){ const t = new THREE.Mesh(BOX, steelT); t.scale.set(R*2, 0.4, 0.4); t.position.set(cx, 8, z); decor.add(t); }
+      DECOR.heads = [];
+      for (let k = 0; k < 10; k++){
+        const z = k % 2 ? cz + h*0.45 : cz - h*0.45, x = cx - h*0.8 + (Math.floor(k/2) + 0.5)*(h*1.6/5);
+        const head = new THREE.Mesh(BOX, black); head.scale.set(0.6, 0.6, 0.6); head.position.set(x, 7.6, z); decor.add(head);
+        const c = col(['#7dff5a', '#ffffff', '#00e5ff'][k % 3]);
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.9, 1, 14, 1, true), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false}));
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false}));
+        spot.rotation.x = -Math.PI/2; decor.add(beam, spot);
+        DECOR.heads.push({x, z, beam, spot, ph: k*0.9, r: 3 + (k % 3)*2});
       }
     } else if (T.decor === 'space'){
       // stars all around (above and below the road), a ringed planet on the horizon
@@ -2833,7 +2891,23 @@ function makeR3(){
     if (!DECOR) return;
     const k = DECOR.kind;
     for (const s of DECOR.spinners) s.rotation.y += dt*0.8;
-    if (k === 'lasers') DECOR.items.forEach((b, i) => { b.rotation.y = b.userData.base + Math.sin(clock*0.7 + i*1.7)*0.6; b.material.opacity = 0.25 + 0.55*beat; });
+    if (k === 'rave'){
+      DECOR.lasers.forEach((L, i) => {
+        L.b.rotation.y = L.a + Math.sin(clock*0.9 + i*0.15)*0.35;
+        L.b.rotation.z = -0.06 - 0.05*Math.sin(clock*1.7 + i*0.4);
+        L.b.material.opacity = 0.2 + 0.6*beat;
+      });
+      const bar = Math.floor(clock*(STYLES.techno.bpm/60)) % 4 === 0;
+      DECOR.strobe.material.opacity = REDUCED ? 0 : (bar ? 0.55*beat : 0);
+      for (const H of DECOR.heads){
+        const tx = H.x + Math.cos(clock*0.6 + H.ph)*H.r, tz = H.z*0.6 + Math.sin(clock*0.8 + H.ph*1.3)*H.r*1.4;
+        H.spot.position.set(tx, 0.02, tz); H.spot.material.opacity = 0.3 + 0.4*beat;
+        const top = new THREE.Vector3(H.x, 7.4, H.z), dir = new THREE.Vector3(tx - H.x, -7.4, tz - H.z), len = dir.length();
+        H.beam.position.set((tx + H.x)/2, 3.7, (tz + H.z)/2); H.beam.scale.set(1, len, 1);
+        H.beam.quaternion.setFromUnitVectors(UP, dir.normalize().negate());
+      }
+    }
+    else if (k === 'lasers') DECOR.items.forEach((b, i) => { b.rotation.y = b.userData.base + Math.sin(clock*0.7 + i*1.7)*0.6; b.material.opacity = 0.25 + 0.55*beat; });
     else if (k === 'beams') DECOR.items.forEach((b, i) => { b.material.opacity = 0.12 + 0.3*beat*((i % 2) ? 1 : 0.6); });
     else if (k === 'discoball' || k === 'disco'){
       for (const b of DECOR.balls) b.rotation.y += dt*0.35;
