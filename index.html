@@ -2164,7 +2164,7 @@ function makeR3(){
     for (const [g, o] of gemObjs) dropGem(g, o);
     scene.background = col(C.void); scene.fog.color = col(C.void);
 
-    const w = ARENA.x1 - ARENA.x0, h = ARENA.y1 - ARENA.y0, px = 32;
+    const w = ARENA.x1 - ARENA.x0, h = ARENA.y1 - ARENA.y0, px = CAN_TILT ? 16 : 32;
     const fc = document.createElement('canvas'); fc.width = w*px; fc.height = h*px;
     const fg = fc.getContext('2d');
     // the floor is a perspective grid: lines in the level color (a little dimmed) between black tiles
@@ -2893,7 +2893,7 @@ function buildSeg(boxId, name, items, onPick){
     const lab = document.createElement('label');
     lab.className = 'opt';
     lab.innerHTML = `<input type="radio" name="${name}" id="${name}-${it.value}" value="${it.value}"><span>${it.html}</span>`;
-    lab.querySelector('input').addEventListener('change', () => onPick(it.value));
+    lab.querySelector('input').addEventListener('change', e => { onPick(it.value); if (CAN_TILT) e.target.blur(); });
     box.appendChild(lab);
   }
 }
@@ -3008,7 +3008,21 @@ function updateMenuUI(){
   sendLobby();
 }
 // show the chosen level and snake behind the menu
-function refreshMenu(){ updateMenuUI(); if (state === 'menu' && ROLE === 'host'){ RUN = newRunState(); loadStage(MODE === 2 ? course : stage); } }
+let previewTimer = null;
+function refreshMenu(){
+  const ov = $('menu'), top = ov.scrollTop;
+  updateMenuUI();
+  ov.scrollTop = top;
+  if (state !== 'menu' || ROLE !== 'host') return;
+  RUN = newRunState();
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    if (state !== 'menu' || ROLE !== 'host') return;
+    const t = ov.scrollTop;
+    loadStage(MODE === 2 ? course : stage);
+    ov.scrollTop = t; requestAnimationFrame(() => { ov.scrollTop = t; });
+  }, 180);
+}
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
