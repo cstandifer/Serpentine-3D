@@ -822,7 +822,7 @@ const STAGES = [
   {name: 'Gauntlet', goal: 30, half: 22, music: 'techno', ...lv('#ffffff', 315), walls: gauntlet()},
   // levels 6 to 10 bring their own colors and music, plus two new obstacles:
   // movers (pink pillars that slide back and forth) and gates (bars that rise and fall with the beat)
-  {name: 'Slide Rule', goal: 24, half: 22, music: 'house', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
+  {name: 'Mirror Ball', goal: 24, half: 22, music: 'disco', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
    walls: [block(-3, -17, 6, 2), block(-3, 15, 6, 2)]},
   {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
   {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 1.4, gates: 0.6,
@@ -869,6 +869,10 @@ const THEMES = {
   techno:    {sky: ['#000000', '#0a0a0a'], fog: '#000000', floor: '#000000', grid: ['#ffffff', '#7dff5a'],
               hurdle: ['#7dff5a', '#2f8f1f'], pillar: ['#f4f4f4', '#7a7a7a'], wall: ['#0a0a0a', '#000000'], edge: '#ffffff', gem: '#ff4fd8',
               pillarShape: 'slab', hurdleShape: 'box', decor: 'lasers'},
+  // 70s disco: a light-up dance floor, mirror balls on every horizon, gold trim
+  disco:     {sky: ['#12001c', '#8a0f5c'], fog: '#3d0730', fogNear: 10, fogFar: 50, floor: '#0c0008', grid: ['#ffcc33', '#ff9a00'],
+              hurdle: ['#ffd23f', '#b38a00'], pillar: ['#ff2a6d', '#8f0f3a'], wall: ['#2a0a24', '#12000f'], edge: '#ffcc33', gem: '#00e5ff',
+              pillarShape: 'mirror', hurdleShape: 'soft', decor: 'disco'},
   house:     {sky: ['#1f0a33', '#ff7a3d'], fog: '#5a2440', floor: '#1a0a14', grid: ['#ff6b3d', '#ffb547', '#ff4fd8'],
               hurdle: ['#3dffb0', '#1a8f61'], pillar: ['#ff4fd8', '#8f1a78'], wall: ['#2a0f24', '#12060f'], edge: '#ffb547', gem: '#ffffff',
               pillarShape: 'mirror', hurdleShape: 'soft', decor: 'discoball'},
@@ -1857,6 +1861,20 @@ const STYLES = {
       const cut = 450 + 1600*(0.5 + 0.5*Math.sin(i/10));
       note('sawtooth', mf(this.roots[bar] + this.acid[s]), t, s % 4 === 2 ? 0.09 : 0.065, sd*0.8, cut);
     }},
+  disco: {name: 'Disco', bpm: 118, lead: 'square',
+    melody: [72,74,76,79,76,74,72,69,72,76,79,81],
+    chords: [[57,60,64,67],[50,53,57,60],[52,55,59,62],[57,60,64,67]],   // Am7, Dm7, Em7, Am7
+    step(s, bar, i, t, sd){
+      const ch = this.chords[bar];
+      if (s % 4 === 0) kick(t, 0.95);                                   // four on the floor
+      if (s % 4 === 2) hat(t, 0.07, 0.12, 8000);                         // the open hi-hat on the "and"
+      else if (s % 2 === 1) hat(t, 0.015, 0.03, 9500);
+      if (s === 4 || s === 12) snare(t, 0.16, 2000, 0.12);               // clap
+      if (s % 2 === 0) note('sawtooth', mf(ch[0] - 24 + (s % 4 === 2 ? 12 : 0)), t, 0.11, sd*1.4, 700);   // octave-bouncing bass
+      if (s === 2 || s === 6 || s === 10 || s === 14) ch.forEach(m => note('sawtooth', mf(m + 12), t, 0.011, sd*1.5, 3800));   // string stabs
+      if (s % 2 === 1) note('square', mf(ch[1] + 12), t, 0.018, sd*0.45, 2200);   // chopped rhythm guitar
+      if (s === 0) ch.forEach(m => pad(mf(m + 12), t, sd*16, 0.018));
+    }},
   house: {name: 'House', bpm: 124, lead: 'square',
     melody: [69,72,76,74,72,69,67,69,72,74,76,79],
     chords: [[57,60,64,67],[53,57,60,64],[55,59,62,65],[52,55,59,62]],
@@ -2698,20 +2716,35 @@ function makeR3(){
         g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 72, 0, Math.PI*2); g.fill();
         g.save(); g.translate(128, 128); g.rotate(-0.35); g.strokeStyle = 'rgba(255,233,77,.95)'; g.lineWidth = 10; g.beginPath(); g.ellipse(0, 0, 120, 30, 0, 0, Math.PI); g.stroke(); g.restore();
       }), 60, 16, 70);
-    } else if (T.decor === 'discoball'){
-      // a big mirror ball out in the sky, slowly turning, scattering glittery specks of light across the floor
-      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(6, 2), new THREE.MeshPhongMaterial({color: 0xf4f4fb, emissive: 0x6a3a6a, flatShading: true, shininess: 160, specular: 0xffffff, fog: false}));
-      ball.position.set(cx + h + 40, 9, cz); decor.add(ball); DECOR.ball = ball;
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: col('#ffb1e6'), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
-      halo.scale.set(34, 34, 1); halo.position.copy(ball.position); decor.add(halo);
-      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 60, 4), new THREE.MeshBasicMaterial({color: 0x888888, fog: false})); wire.position.set(cx + h + 40, 9 + 37, cz); decor.add(wire);
+    } else if (T.decor === 'discoball' || T.decor === 'disco'){
+      // mirror balls out in the sky (one on every horizon for the disco, so one is always in view),
+      // scattering square glints of light across the floor
+      DECOR.balls = [];
+      const dirs = T.decor === 'disco' ? [[1, 0], [0, 1], [-1, 0], [0, -1]] : [[1, 0]];
+      for (const [dx, dz] of dirs){
+        const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(6, 2), new THREE.MeshPhongMaterial({color: 0xf4f4fb, emissive: 0x6a3a6a, flatShading: true, shininess: 160, specular: 0xffffff, fog: false}));
+        ball.position.set(cx + dx*(h + 40), 9, cz + dz*(h + 40)); decor.add(ball); DECOR.balls.push(ball);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: col('#ffb1e6'), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+        halo.scale.set(34, 34, 1); halo.position.copy(ball.position); decor.add(halo);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 60, 4), new THREE.MeshBasicMaterial({color: 0x888888, fog: false})); wire.position.set(ball.position.x, 9 + 37, ball.position.z); decor.add(wire);
+      }
+      DECOR.ball = DECOR.balls[0];
+      if (T.decor === 'disco'){
+        // the light-up dance floor: a glowing square on every tile, re-lit in a new pattern on every beat
+        const w = ARENA.x1 - ARENA.x0, hh = ARENA.y1 - ARENA.y0, n = w*hh;
+        const tiles = new THREE.InstancedMesh(PLANE_GEO, new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false}), n);
+        const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2), sc = new THREE.Vector3(0.86, 0.86, 1);
+        for (let k = 0; k < n; k++){ const x = k % w, y = Math.floor(k/w); m4.compose(new THREE.Vector3(ARENA.x0 + x + 0.5, 0.006, ARENA.y0 + y + 0.5), q, sc); tiles.setMatrixAt(k, m4); tiles.setColorAt(k, new THREE.Color(0)); }
+        tiles.frustumCulled = false; decor.add(tiles);
+        DECOR.floor = {tiles, w, hh, n, beat: -1, pal: ['#ff2a6d', '#ff9a00', '#ffd23f', '#c400ff', '#00d1ff', '#ffffff'].map(c => col(c))};
+      }
       // three layers of specks, each twinkling on its own, all turning slowly around the middle
       DECOR.glitter = [];
       const tints = [['#ffffff', '#ffe0f4'], ['#ffd6a8', '#ffffff'], ['#c9f2ff', '#ffffff']];
       for (let L = 0; L < 3; L++){
         const g = new THREE.Group(); g.position.set(cx, 0, cz); decor.add(g);
-        const pts = points(420, (a, i) => { const r = Math.sqrt(rnd())*R, th = rnd()*Math.PI*2; a[i] = Math.cos(th)*r; a[i+1] = 0.04 + rnd()*0.02; a[i+2] = Math.sin(th)*r; }, null, 0.17, tints[L]);
-        pts.material.blending = THREE.AdditiveBlending;
+        const pts = points(420, (a, i) => { const r = Math.sqrt(rnd())*R, th = rnd()*Math.PI*2; a[i] = Math.cos(th)*r; a[i+1] = 0.04 + rnd()*0.02; a[i+2] = Math.sin(th)*r; }, null, 0.11, tints[L]);
+        pts.material.blending = THREE.AdditiveBlending; pts.material.map = null; pts.material.alphaTest = 0; pts.material.needsUpdate = true;   // square glints
         pts.material.fog = true; pts.material.sizeAttenuation = true; g.add(pts);
         DECOR.glitter.push({g, m: pts.material, ph: L*2.1});
       }
@@ -2802,8 +2835,28 @@ function makeR3(){
     for (const s of DECOR.spinners) s.rotation.y += dt*0.8;
     if (k === 'lasers') DECOR.items.forEach((b, i) => { b.rotation.y = b.userData.base + Math.sin(clock*0.7 + i*1.7)*0.6; b.material.opacity = 0.25 + 0.55*beat; });
     else if (k === 'beams') DECOR.items.forEach((b, i) => { b.material.opacity = 0.12 + 0.3*beat*((i % 2) ? 1 : 0.6); });
-    else if (k === 'discoball'){
-      DECOR.ball.rotation.y += dt*0.35;
+    else if (k === 'discoball' || k === 'disco'){
+      for (const b of DECOR.balls) b.rotation.y += dt*0.35;
+      const F = DECOR.floor;
+      if (F){
+        // a new floor pattern on each beat of the music: checkers, stripes, rings out from the middle, or sparkle
+        const bi = Math.floor(clock*(STYLES.disco.bpm/60));
+        if (bi !== F.beat){
+          F.beat = bi;
+          const pat = bi % 8, black = new THREE.Color(0), cx2 = F.w/2, cz2 = F.hh/2;
+          for (let k = 0; k < F.n; k++){
+            const x = k % F.w, y = Math.floor(k/F.w);
+            const ring = Math.floor(Math.max(Math.abs(x + 0.5 - cx2), Math.abs(y + 0.5 - cz2))/2);
+            const on = pat < 2 ? (x + y + pat) % 2 === 0
+              : pat < 4 ? Math.floor((x + (pat === 2 ? y : -y))/2) % 2 === 0
+              : pat < 6 ? (ring + bi) % 3 === 0
+              : Math.random() < 0.3;
+            F.tiles.setColorAt(k, on ? F.pal[(pat < 4 ? x + y : ring) % F.pal.length] : black);
+          }
+          F.tiles.instanceColor.needsUpdate = true;
+        }
+        F.tiles.material.opacity = 0.55 + 0.3*beat;
+      }
       DECOR.glitter.forEach((L, i) => { L.g.rotation.y += dt*0.12; L.m.opacity = 0.35 + 0.45*Math.abs(Math.sin(clock*(2.2 + i*0.7) + L.ph)) + 0.25*beat; });
     }
     else if (k === 'clouds') DECOR.ring.rotation.y += dt*0.01;
