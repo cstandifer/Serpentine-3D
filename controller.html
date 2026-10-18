@@ -100,6 +100,10 @@ a.btn{text-decoration:none}
 .pad button svg{width:26px;height:26px}
 .pad button.jump{background:var(--line);color:#000;border-color:var(--line);font-size:1.2rem;min-height:clamp(84px,11vh,104px);gap:6px}
 .pad button.jump svg{width:26px;height:26px}
+.pad button.jump .any{display:block;font-family:var(--mono);font-weight:400;font-size:.62rem;text-transform:none;letter-spacing:0;opacity:.75}
+details.set summary[hidden]{display:none}
+details.set[open]{border-image:var(--holo) 1}
+.tools #setBtn[aria-expanded="true"]{background:var(--cream);color:#000}
 .pad button:not(.jump){grid-auto-flow:column;gap:4px}
 .pad button.fire,.pad button.jump.fire{background:var(--lime);color:#000;border-color:var(--lime)}
 .namecard{border-color:var(--lime)}
@@ -189,9 +193,21 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
   <section class="screen" id="ctl" hidden>
     <div class="tools">
       <button class="btn btn-ghost" id="pauseBtn">Pause</button>
-      <button class="btn btn-ghost" id="viewBtn">View</button>
       <button class="btn btn-ghost" id="recenterBtn">Recenter</button>
+      <button class="btn btn-ghost" id="setBtn" aria-expanded="false" aria-controls="setPanel">Settings</button>
     </div>
+    <details class="set" id="setPanel">
+      <summary hidden><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
+      <div class="set-body">
+        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
+        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
+        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
+        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
+        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
+        <button class="btn btn-ghost" id="viewBtn">Change the big screen's view</button>
+        <button class="btn" id="setDone">Done</button>
+      </div>
+    </details>
     <div class="status">
       <div>
         <div class="lvl" id="lvl">Waiting for the game</div>
@@ -223,16 +239,6 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       </svg>
       <div class="lab" id="gaugeLab">Straight</div>
     </div>
-    <details class="set" id="setPanel">
-      <summary><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
-      <div class="set-body">
-        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
-        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
-        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
-        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
-        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
-      </div>
-    </details>
     <div class="meter" id="meter">
       <canvas id="spark"></canvas>
       <div class="lab">Jump sensor</div>
@@ -240,7 +246,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
     <div class="hint" id="ctlHint"></div>
     <div class="pad" id="pad">
-      <button id="jumpBtn" class="jump" aria-label="Jump"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18l8-8 8 8"/><path d="M6 25h18"/></svg>Jump</button>
+      <button id="jumpBtn" class="jump" aria-label="Jump"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18l8-8 8 8"/><path d="M6 25h18"/></svg>Jump<small class="any">or tap anywhere</small></button>
       <button id="leftBtn" aria-label="Turn left"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7l-8 8 8 8"/></svg>Left</button>
       <button id="rightBtn" aria-label="Turn right"><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7l8 8-8 8"/></svg>Right</button>
     </div>
@@ -358,7 +364,7 @@ function onGame(m){
   else if (m.t === 'useScreen') location.href = screenURL();
   else if (m.t === 'state'){
     // a run just started: fold the settings away and shrink the gauges
-    if (m.state === 'play' && gameState !== 'play') $('setPanel').open = false;
+    if (m.state === 'play' && gameState !== 'play') setOpen(false);
     gameState = m.state;
     $('ctl').classList.toggle('playing', m.state === 'play');
     // party and tag team: show which player this phone is, in that snake's color, plus the clock or the level
@@ -564,6 +570,14 @@ $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') sendName()
 $('recenterBtn').addEventListener('click', () => { needCal = true; tiltV = 0; rel = 0; buzz(10); });
 $('pauseBtn').addEventListener('click', () => send({t: 'pause'}));
 $('viewBtn').addEventListener('click', () => send({t: 'view'}));
+const setOpen = on => { $('setPanel').open = on; $('setBtn').setAttribute('aria-expanded', on); };
+$('setBtn').addEventListener('click', () => setOpen(!$('setPanel').open));
+$('setDone').addEventListener('click', () => setOpen(false));
+// tap anywhere on the controller to jump (except on its buttons, settings and the name box)
+$('ctl').addEventListener('pointerdown', e => {
+  if (e.target.closest('button, a, input, label, details, summary, .namecard, .tools')) return;
+  e.preventDefault(); fireJump(false);
+});
 $('motionBtn').addEventListener('click', enableMotion);
 $('buttonsBtn').addEventListener('click', () => { SET.steer = SET.hop = false; enterController(); keepAwake(); });
 $('joinBtn').addEventListener('click', () => { connect($('codeIn').value); if (code.length === 4) show('setup'); });

@@ -284,13 +284,21 @@ body.here #pauseBtn svg{width:26px;height:26px}
 /* big screens: the phone QR sits beside the menu, large, from the moment the page opens */
 .bigqr{display:none}
 @media (min-width:1000px) and (hover:hover){
-  .bigqr:not([hidden]){display:grid;box-sizing:border-box;position:fixed;top:50%;left:calc(50% + 248px);transform:translateY(-50%);width:min(300px,calc(50vw - 260px));gap:12px;justify-items:center;text-align:center;
+  /* a wider menu on big screens, with the QR panel next to it */
+  #menu{justify-content:center;align-items:flex-start;gap:28px}
+  #menu .card{width:min(680px,calc(100vw - 64px));margin:0 0 auto}
+  #menu .card:has(~ .bigqr:not([hidden])), #menu .bigqr:not([hidden]) ~ .card{width:min(640px,calc(100vw - 400px))}
+  .bigqr:not([hidden]){display:grid;box-sizing:border-box;position:sticky;top:0;order:2;flex:none;width:300px;gap:12px;justify-items:center;text-align:center;
     padding:20px;background:#000;border:1.5px solid transparent;border-image:var(--holo) 1;z-index:3}
   .bigqr .eyebrow{color:var(--cream);font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem}
   .bigqr .qr{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;padding:10px}
   .bigqr .qr img,.bigqr .qr canvas{width:100%!important;height:100%!important}
   .bigqr .code{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:2.4rem;line-height:1;letter-spacing:.06em;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
-  #menu .card{margin-left:max(16px,calc(50% - 220px - 150px))}
+}
+/* computers: the top buttons have room for words */
+@media (hover:hover) and (min-width:700px){
+  .icon-btn{width:auto;min-width:64px;height:54px;padding:0 12px;gap:3px;align-content:center}
+  .icon-btn .lbl{display:block;font-family:var(--wide);font-stretch:110%;font-weight:800;font-size:.58rem;text-transform:uppercase;letter-spacing:.03em}
 }
 /* party and tag team */
 .mp{position:fixed;inset:0;pointer-events:none}
@@ -2855,7 +2863,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-18b';
+const CTRL_BUILD = '2026-10-18c';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
