@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Serpentine 3D: be the snake. Steer with your phone, jump for real, eat gems to clear five levels.">
+<meta name="description" content="Serpentine 3D: be the snake. Steer with your phone, jump for real, clear ten levels, or race up to 8 friends.">
 <meta name="theme-color" content="#000000">
 <!-- link previews (LinkedIn, Slack, iMessage) -->
 <meta property="og:type" content="website">
@@ -125,7 +125,7 @@ button{touch-action:manipulation;font:inherit}
 @keyframes nudge{25%{transform:translateX(calc(-50% - 8px))}75%{transform:translateX(calc(-50% + 8px))}}
 
 /* cards: thin orange frame; each setup step below the title is a numbered row divided by an orange rule */
-.overlay{position:fixed;inset:0;display:flex;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);background:rgba(0,0,0,.5)}
+.overlay{position:fixed;inset:0;display:flex;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);background:rgba(0,0,0,.5)}
 .card{width:min(100%,440px);margin:auto;background:#000;border:1.5px solid var(--line);padding:22px 22px 24px;display:grid;gap:18px;counter-reset:step}
 .eyebrow{font-size:.72rem;color:var(--muted)}
 .title{font-size:clamp(1.7rem,7vw,2.2rem);line-height:.95;margin:6px 0 0;color:var(--line);text-wrap:balance}
@@ -164,6 +164,7 @@ button{touch-action:manipulation;font:inherit}
 .opt .lock{display:none;width:15px;height:15px;color:var(--muted)}
 .opt.locked .num{display:none}
 .opt.locked .lock{display:block}
+.opt.locked .sn{display:none}
 .opt.locked span{opacity:.4}
 .opt input:checked + span{background:var(--line);border-color:var(--line);color:#000}
 .opt input:checked + span .num{color:#000;-webkit-text-stroke:0}
@@ -226,6 +227,73 @@ button{touch-action:manipulation;font:inherit}
 .vs-p .v{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:2.2rem;line-height:.9;font-variant-numeric:tabular-nums}
 .vs-p small{font-size:.64rem;color:var(--muted)}
 .vs-p.win{border-color:currentColor}
+/* playing on this phone or tablet: the bottom of the screen is the jump zone (a tap anywhere also jumps) */
+.jumpband{position:fixed;left:0;right:0;bottom:0;height:22vh;pointer-events:none;display:grid;align-items:center;justify-items:start;padding-left:18px;
+  background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));border-top:1.5px dashed rgba(255,255,255,.35)}
+.jumpband span{display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(.9rem,3.6vw,1.2rem);color:var(--cream);opacity:.85;padding-bottom:env(safe-area-inset-bottom,0px)}
+.jumpband small{font-family:var(--mono);font-weight:400;text-transform:none;font-size:.66rem;color:var(--muted)}
+.jumpband svg{width:28px;height:28px}
+.jumpband.pop{animation:pop .25s steps(3)}
+@keyframes pop{50%{background:linear-gradient(180deg,rgba(255,79,216,0),rgba(255,79,216,.35))}}
+/* settings rows (tilt sliders and toggles), used in the menu and in the Settings card */
+.srow{display:grid;gap:8px;font-size:.74rem;color:var(--cream)}
+.srow label{display:flex;justify-content:space-between;gap:10px}
+.srow output{font-variant-numeric:tabular-nums;color:var(--line)}
+.srow input[type=range]{width:100%;height:28px;accent-color:var(--pink)}
+.srow .ends{display:flex;justify-content:space-between;font-size:.62rem;color:var(--muted)}
+.scheck{display:flex;align-items:center;gap:10px;font-size:.74rem;color:var(--cream);cursor:pointer}
+.scheck input{width:18px;height:18px;accent-color:var(--pink)}
+.tiltset{display:grid;gap:14px;padding:12px;border:1.5px solid var(--rule-soft)}
+.actions.row3{grid-template-columns:1fr 1fr}
+/* party and tag team */
+.mp{position:fixed;inset:0;pointer-events:none}
+.mp-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%)}
+@media (max-width:700px){.mp-top{top:calc(env(safe-area-inset-top,0px) + 70px);left:auto;right:16px;transform:none}.mp-top .team{max-width:60vw;white-space:normal;justify-content:flex-end}}
+/* playing on this phone: the map moves to the right-hand corner so the jump label stays readable */
+body.here #stage.mini.duo{left:auto;right:16px;transform:none}
+.mp-top .clock{display:block;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:1.5rem;line-height:1;padding:7px 12px;background:#000;border:1.5px solid var(--line);color:var(--cream);font-variant-numeric:tabular-nums}
+.mp-top .clock.hurry{color:#000;background:var(--pink);border-color:var(--pink)}
+.mp-top .team{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;padding:8px 12px;background:rgba(0,0,0,.75);border:1.5px solid var(--line);font-size:.72rem;white-space:nowrap}
+.mp-top .goal{margin:0}
+.mp-top .hearts,.mp-board .hearts{display:flex;gap:3px}
+.mp-top .hearts svg{width:13px;height:13px}.mp-board .hearts svg{width:11px;height:11px}
+.mp .hearts .on{fill:var(--pink)}.mp .hearts .off{fill:none;stroke:var(--muted);stroke-width:1.6}
+.mp-board{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 14px);list-style:none;margin:0;padding:0;display:grid;gap:3px;max-width:44vw}
+.mp-board li{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:7px;align-items:center;padding:3px 7px;background:rgba(0,0,0,.7);font-size:.68rem;font-variant-numeric:tabular-nums}
+.mp-board li.me{outline:1.5px solid var(--line)}
+.mp-board li.out{opacity:.45}
+.mp-board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-board .sc{font-family:var(--wide);font-stretch:125%;font-weight:900}
+.mp-board small{color:var(--muted)}
+.sw{display:inline-block;width:10px;height:10px;flex:none}
+.sw.big{width:30px;height:30px}
+.vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
+.vmsg{position:absolute;transform:translateX(-50%);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(1.3rem,3.2vw,2.4rem);text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px var(--cream);white-space:nowrap}
+.seats{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.seats li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule-soft)}
+.seats li .sw{width:14px;height:14px}
+.seats li.me{border-color:var(--line)}
+.seats li.empty{display:block;font-size:.7rem;color:var(--muted)}
+.seats .n{display:grid;gap:2px;min-width:0}
+.seats .n b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seats .n small{font-size:.62rem;color:var(--muted)}
+.seats .x{width:30px;height:30px;border:1px solid var(--rule);background:#000;color:var(--cream);font-size:1rem;cursor:pointer;padding:0}
+.addrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addrow .btn{font-size:.72rem;padding:11px 8px}
+.addrow .btn:disabled{opacity:.35;cursor:not-allowed}
+.code-in{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:2.4rem;letter-spacing:.14em;text-align:center;width:100%;padding:10px 8px 10px 16px;border:1.5px solid var(--cream);background:#000;color:var(--line);outline:none;-webkit-user-select:text;user-select:text}
+.code-in:focus{border-color:var(--lime)}
+.you{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:center}
+.res{list-style:none;margin:0;padding:0;display:grid;gap:0;border-top:1.5px solid var(--line)}
+.res li{display:grid;grid-template-columns:22px 12px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--rule-soft);font-variant-numeric:tabular-nums}
+.res .r{font-family:var(--wide);font-stretch:125%;font-weight:900;color:var(--muted)}
+.res li:first-child .r{color:var(--line)}
+.res .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res small{font-size:.64rem;color:var(--muted)}
+.res .sc{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:1.05rem}
+.res li.me{background:var(--btn);color:#000;padding-left:6px;padding-right:6px}
+.res li.me small,.res li.me .r{color:#000}
+.actions.row3 .btn:first-child{grid-column:1/-1}
 @media (prefers-reduced-motion:reduce){.goal-bar i{transition:none}.waitbar i,.waitbar.nudge{animation:none}}
 
 /* ---- the holographic pieces ---- */
@@ -257,11 +325,10 @@ button{touch-action:manipulation;font:inherit}
 <canvas id="stage" aria-label="Serpentine map"></canvas>
 
 <div class="split" id="split" hidden></div>
-<div class="duo" id="duo" hidden>
-  <div class="duo-p" id="duo0"><span class="tag" id="duoTag0">P1</span><span class="sc">0</span><span class="hearts"></span></div>
-  <div class="duo-t" id="duoT">1:00</div>
-  <div class="duo-p" id="duo1"><span class="tag" id="duoTag1">P2</span><span class="sc">0</span><span class="hearts"></span></div>
-  <div class="duo-msg" id="duoMsg0"></div><div class="duo-msg" id="duoMsg1"></div>
+<div class="mp" id="mp" hidden>
+  <div class="mp-top" id="mpTop"></div>
+  <ol class="mp-board" id="mpBoard"></ol>
+  <div id="mpTags"></div>
 </div>
 <div class="hud">
   <div id="hudMain">
@@ -272,6 +339,12 @@ button{touch-action:manipulation;font:inherit}
     <div class="chip" id="phoneChip"><i></i><span id="phoneChipTxt">No phone</span></div>
   </div>
   <div class="hud-btns">
+    <button class="icon-btn" id="setBtn" aria-label="Settings" hidden>
+      <svg viewBox="0 0 20 20" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" style="fill:#000"/><circle cx="13" cy="10" r="2" style="fill:#000"/><circle cx="9" cy="15" r="2" style="fill:#000"/></svg>
+    </button>
+    <button class="icon-btn" id="recenterBtn" aria-label="Recenter tilt" hidden>
+      <svg viewBox="0 0 20 20" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><circle cx="10" cy="10" r="6"/><path d="M10 1v4M10 15v4M1 10h4M15 10h4"/><circle cx="10" cy="10" r="1.6" style="fill:currentColor;stroke:none"/></svg>
+    </button>
     <button class="icon-btn" id="pauseBtn" aria-label="Pause" hidden>
       <svg viewBox="0 0 20 20" style="fill:currentColor"><rect x="4" y="3" width="4" height="14" rx="1"/><rect x="12" y="3" width="4" height="14" rx="1"/></svg>
     </button>
@@ -294,16 +367,18 @@ button{touch-action:manipulation;font:inherit}
         </svg>
       </div>
     </div>
+    <button class="btn btn-ghost" id="joinOpen">Join a game on this screen</button>
     <details class="how" id="how">
       <summary>How to play</summary>
       <ul class="rules">
-        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Tilt your phone</b> to steer: a little for a gentle curve, more for a tight one. No phone? Hold the arrow keys or drag sideways.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> (for real, holding the phone) to clear low lime hurdles. Space or a tap works too.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Pink pillars are too tall to jump. <b>Steer around them.</b></span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Tilt to steer</b>: your phone as a controller, or the phone or tablet you're playing on, like a steering wheel. A little for a gentle curve, more for a tight one. Arrow keys and dragging work too.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> to clear low lime hurdles: for real while holding a phone controller, or <b>tap anywhere</b> on the screen you're playing on. Space works too.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Pink pillars are too tall to jump. <b>Steer around them.</b> From level 6 some slide back and forth.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="4" width="16" height="9" style="fill:var(--pillar)"/><rect x="5" y="13" width="16" height="6" style="fill:var(--hurdle)"/></svg></span><span><b>Beat gates</b> rise and fall with the music. Jump them while they're down.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can’t be jumped by any snake.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span>Gems make you longer. Don’t run into your tail, but you can jump it.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="10" width="20" height="6" rx="3" style="fill:rgba(246,239,253,.15)"/><rect x="3" y="10" width="13" height="6" rx="3" style="fill:var(--gem)"/></svg></span><span>Eat the level’s gem goal to <b>clear it</b> and unlock the next level.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span>You get <b>3 lives</b> per run. A crash restarts the level. Lose them all and the run is over.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span>You get <b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clear levels to unlock new snakes.</span></li>
       </ul>
     </details>
     <details class="how" id="boardBox">
@@ -316,11 +391,25 @@ button{touch-action:manipulation;font:inherit}
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="modeLabel" id="modePick"></div>
       <div class="desc" id="modeDesc"></div>
     </div>
-    <div class="pick" id="oppBox">
-      <div class="eyebrow" id="oppLabel">Opponent</div>
-      <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="oppLabel" id="oppPick"></div>
+    <div class="pick" id="lobbyBox" hidden>
+      <div class="eyebrow">Who's playing</div>
+      <div class="phone">
+        <div class="qr off" id="qr2" aria-hidden="true"></div>
+        <div>
+          <div class="eyebrow" style="color:var(--muted)">Invite code</div>
+          <div class="code" id="inviteCode">····</div>
+          <div class="desc" id="inviteDesc"></div>
+        </div>
+      </div>
+      <ol class="seats" id="seatList"></ol>
+      <div class="addrow"><button class="btn btn-ghost" id="addLocal">+ Keyboard player</button><button class="btn btn-ghost" id="addCpu">+ Computer</button></div>
     </div>
-    <div class="pick">
+    <div class="pick" id="courseBox" hidden>
+      <div class="eyebrow" id="courseLabel">Course</div>
+      <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="courseLabel" id="coursePick"></div>
+      <div class="desc" id="courseDesc"></div>
+    </div>
+    <div class="pick" id="stageBox">
       <div class="eyebrow" id="stageLabel">Level</div>
       <div class="seg" style="--n:5" role="radiogroup" aria-labelledby="stageLabel" id="stagePick"></div>
       <div class="desc" id="stageDesc"></div>
@@ -340,10 +429,12 @@ button{touch-action:manipulation;font:inherit}
       <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="viewLabel" id="viewPick"></div>
       <div class="desc" id="viewDesc"></div>
     </div>
-    <div class="pick">
+    <div class="pick" id="ctrlBox">
       <div class="eyebrow" id="ctrlLabel">Controls</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="ctrlLabel" id="ctrlPick"></div>
-      <div class="phone">
+      <div class="desc" id="ctrlDesc"></div>
+      <div class="tiltset" id="menuTilt"></div>
+      <div class="phone" id="phoneBox">
         <div class="qr off" id="qr" aria-hidden="true"></div>
         <div>
           <div class="code" id="phoneCode">····</div>
@@ -368,7 +459,10 @@ button{touch-action:manipulation;font:inherit}
       <div class="stat"><div class="v" id="clrBonus">+100</div><div class="k">Clear bonus</div></div>
       <div class="stat"><div class="v" id="clrLives">3</div><div class="k">Lives</div></div>
     </div>
-    <button class="btn" id="nextBtn">Start level 2</button>
+    <div class="actions">
+      <button class="btn" id="nextBtn">Start level 2</button>
+      <button class="btn btn-ghost" id="clrMenuBtn">Main menu</button>
+    </div>
   </div>
 </div>
 
@@ -379,7 +473,11 @@ button{touch-action:manipulation;font:inherit}
       <h1 class="title" id="lostTitle">2 lives left</h1>
       <div class="desc" id="lostDesc"></div>
     </div>
-    <button class="btn" id="retryBtn">Restart level 1</button>
+    <div class="actions row3">
+      <button class="btn" id="retryBtn">Restart level 1</button>
+      <button class="btn btn-ghost" id="lostSetBtn">Settings</button>
+      <button class="btn btn-ghost" id="lostMenuBtn">Main menu</button>
+    </div>
   </div>
 </div>
 
@@ -406,7 +504,7 @@ button{touch-action:manipulation;font:inherit}
     </div>
     <div class="actions">
       <button class="btn" id="againBtn">Retry level 1</button>
-      <button class="btn btn-ghost" id="setupBtn">Change level, snake or difficulty</button>
+      <button class="btn btn-ghost" id="setupBtn">Main menu</button>
     </div>
   </div>
 </div>
@@ -417,10 +515,8 @@ button{touch-action:manipulation;font:inherit}
       <div class="eyebrow" id="duelEyebrow">Time's up</div>
       <h1 class="title" id="duelTitle">Player 1 wins</h1>
     </div>
-    <div class="vs">
-      <div class="vs-p" id="vs0"><div class="eyebrow">Player 1</div><div class="v">0</div><small>0 gems</small></div>
-      <div class="vs-p" id="vs1"><div class="eyebrow">Player 2</div><div class="v">0</div><small>0 gems</small></div>
-    </div>
+    <ol class="res" id="resList"></ol>
+    <div class="desc" id="resWait" hidden>Waiting for the host to start another round…</div>
     <div class="actions">
       <button class="btn" id="rematchBtn">Rematch</button>
       <button class="btn btn-ghost" id="duelMenuBtn">Change level or snake</button>
@@ -435,9 +531,82 @@ button{touch-action:manipulation;font:inherit}
       <h1 class="title" id="pauseTitle">Catch your breath</h1>
       <div class="desc" id="pauseNote" style="margin-top:10px" hidden></div>
     </div>
-    <button class="btn" id="resumeBtn">Resume</button>
+    <div class="actions row3">
+      <button class="btn" id="resumeBtn">Resume</button>
+      <button class="btn btn-ghost" id="pauseSetBtn">Settings</button>
+      <button class="btn btn-ghost" id="pauseMenuBtn">Main menu</button>
+    </div>
   </div>
 </div>
+
+<div class="overlay" id="settings" hidden>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Settings</div>
+      <h1 class="title">Tune it</h1>
+    </div>
+    <div class="pick">
+      <div class="eyebrow" id="sViewLabel">View</div>
+      <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="sViewLabel" id="sViewPick"></div>
+    </div>
+    <div class="pick" id="sTiltBox">
+      <div class="eyebrow">Tilt steering</div>
+      <div class="tiltset" id="sTilt"></div>
+    </div>
+    <div class="pick">
+      <div class="eyebrow">Sound</div>
+      <label class="scheck"><input type="checkbox" id="sSound"> Music and sound effects</label>
+    </div>
+    <button class="btn" id="setDoneBtn">Done</button>
+  </div>
+</div>
+
+<div class="overlay" id="joinOv" hidden>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Join a game</div>
+      <h1 class="title">Got a code?</h1>
+      <div class="desc" style="margin-top:10px">Type the four letters shown on the game screen. You'll play your own snake on this screen.</div>
+    </div>
+    <input class="code-in" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Game code">
+    <div class="desc" id="joinMsg" style="color:var(--pink)"></div>
+    <div class="actions">
+      <button class="btn" id="joinGo">Join</button>
+      <button class="btn btn-ghost" id="joinBack">Back to the main menu</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="clientOv" hidden>
+  <div class="card">
+    <div>
+      <div class="eyebrow" id="cEyebrow">Joining</div>
+      <h1 class="title" id="cTitle">Serpentine</h1>
+      <div class="desc" id="cMsg" style="margin-top:10px"></div>
+    </div>
+    <div class="pick" id="cYouBox" hidden>
+      <div class="eyebrow">You</div>
+      <div class="you"><span class="sw big" id="cSwatch"></span><input class="name-in" id="cName" maxlength="12" autocomplete="nickname" spellcheck="false" placeholder="Your name" aria-label="Your name"></div>
+    </div>
+    <div class="pick" id="cPlayersBox" hidden>
+      <div class="eyebrow">Players</div>
+      <ol class="seats" id="cSeats"></ol>
+    </div>
+    <div class="pick">
+      <div class="eyebrow">How to steer</div>
+      <div class="desc" id="cHow"></div>
+      <button class="btn btn-ghost" id="cTiltBtn" hidden>Turn on tilt steering</button>
+      <div class="tiltset" id="cTilt"></div>
+    </div>
+    <div class="pick">
+      <div class="eyebrow" id="cViewLabel">View</div>
+      <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="cViewLabel" id="cViewPick"></div>
+    </div>
+    <button class="btn btn-ghost" id="cLeaveBtn">Leave and go to the main menu</button>
+  </div>
+</div>
+
+<div class="jumpband" id="jumpBand" hidden><span><svg viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18l8-8 8 8"/><path d="M6 25h18"/></svg>Tap anywhere to jump<small>Tilt the screen to steer</small></span></div>
 
 <div class="waitbar" id="waitBar" hidden><i></i><span id="waitTxt">Waiting for a phone</span></div>
 
@@ -489,8 +658,8 @@ const SNAKES = {
             jump: 1, grow: 1, magnet: 0, overPillars: false, shape: 'cube'},
   glider:  {name: 'Glider',  desc: 'Jumps twice as far and sails over pillars too, but grows faster.',
             jump: 2, grow: 1.4, magnet: 0, overPillars: true, shape: 'arrow'},
-  magnet:  {name: 'Magnet',  desc: 'Pulls in nearby gems, then needs 3 seconds to recharge. Its jumps are shorter.',
-            jump: 0.75, grow: 1, magnet: 2.4, recharge: 3, overPillars: false, shape: 'round'},
+  magnet:  {name: 'Magnet',  desc: 'Pulls in nearby gems from a good distance, then needs a couple of seconds to recharge. Its jumps are shorter.',
+            jump: 0.75, grow: 1, magnet: 3, recharge: 2.4, overPillars: false, shape: 'round'},
   comet:   {name: 'Comet',   desc: 'The fastest snake, about 25% quicker. The catch: it needs more room to turn.',
             jump: 1, grow: 1, magnet: 0, overPillars: false, shape: 'comet', speed: 1.25, turnR: 1.45}
 };
@@ -509,13 +678,15 @@ function gauntlet(){
 // Every level is black ground ruled with a holographic grid; each level sweeps the rainbow at its own angle.
 // Walls are black blocks with thin white edges. Pillars, hurdles and gems keep one color everywhere.
 const HOLO = ['#5ff0ff', '#8a7bff', '#ff4fd8', '#ffe94d', '#7dff5a'];
-function holoFill(g, x0, y0, w, h, deg){
+function holoFill(g, x0, y0, w, h, deg, cols){
   const a = deg*Math.PI/180, cx = x0 + w/2, cy = y0 + h/2, r = Math.hypot(w, h)/2;
   const gr = g.createLinearGradient(cx - Math.cos(a)*r, cy - Math.sin(a)*r, cx + Math.cos(a)*r, cy + Math.sin(a)*r);
-  HOLO.forEach((c, i) => gr.addColorStop(i/(HOLO.length - 1), c));
+  cols = cols || C.holo || HOLO;
+  cols.forEach((c, i) => gr.addColorStop(i/(cols.length - 1), c));
   return gr;
 }
-const lv = (line, deg) => ({tiles: ['#000000', '#000000'], void: '#000000', line, deg, wall: ['#141218', '#000000']});
+// each level can sweep its own set of colors across the floor grid (the default is the full holographic sweep)
+const lv = (line, deg, holo) => ({tiles: ['#000000', '#000000'], void: '#000000', line, deg, holo: holo || HOLO, wall: ['#141218', '#000000']});
 const STAGES = [
   {name: 'Open Floor', goal: 12, half: 18, music: 'lofi', ...lv('#ffffff', 20), walls: []},
   {name: 'Four Pillars', goal: 16, half: 20, music: 'synthwave', ...lv('#ffffff', 135),
@@ -526,7 +697,31 @@ const STAGES = [
    walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
            block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
-  {name: 'Gauntlet', goal: 30, half: 22, music: 'techno', ...lv('#ffffff', 315), walls: gauntlet()}
+  {name: 'Gauntlet', goal: 30, half: 22, music: 'techno', ...lv('#ffffff', 315), walls: gauntlet()},
+  // levels 6 to 10 bring their own colors and music, plus two new obstacles:
+  // movers (pink pillars that slide back and forth) and gates (bars that rise and fall with the beat)
+  {name: 'Slide Rule', goal: 24, half: 22, music: 'house', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
+   walls: [block(-3, -17, 6, 2), block(-3, 15, 6, 2)]},
+  {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
+  {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 1.4, gates: 0.6,
+   walls: [block(-17, -16, 9, 2), block(8, -16, 9, 2), block(-17, 14, 9, 2), block(8, 14, 9, 2)]},
+  {name: 'Strobe', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
+   walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
+  {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2,
+   walls: gauntlet()}
+];
+
+// party courses: each has its own colors, music and layout. Walls are drawn for a given arena size,
+// because the arena grows with the number of players.
+const COURSES = [
+  {name: 'Neon Bowl', base: 18, music: 'synthwave', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),
+   walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
+  {name: 'Crossroads', base: 19, music: 'techno', ...lv('#ffffff', 120, ['#ffe94d', '#ff6b3d', '#ff4fd8']),
+   walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
+  {name: 'Pinball', base: 19, music: 'electro', movers: 1.4, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
+   walls: h => { const st = Math.round(h/3), sz = Math.max(2, Math.round(st/3)), w = []; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (i || j) w.push(block(i*st - 1, j*st - 1, sz, sz)); return w; }},
+  {name: 'Night Market', base: 20, music: 'house', gates: 1.2, ...lv('#ffffff', 290, ['#ff4fd8', '#8a7bff', '#2b8cff']),
+   walls: h => { const y = Math.round(h*0.4), L = h - 7; return [block(-h + 4, -y, L, 1), block(3, -y, L, 1), block(-h + 4, y, L, 1), block(3, y, L, 1)]; }}
 ];
 
 // ---- saved progress ----
@@ -549,8 +744,12 @@ const VIEWS = {
   top:   {name: 'Top',   desc: 'The original top-down board. Arrow keys steer by compass direction.'}
 };
 let view = VIEWS[store.get('view')] ? store.get('view') : 'eye';
-let MODE = +store.get('players') === 2 ? 2 : 1;   // 1 = solo, 2 = versus
-let OPP = store.get('opp') === 'cpu' ? 'cpu' : 'friend';   // versus opponent: a friend or the computer
+// 1 = solo, 2 = party (up to 8 snakes, everyone for themselves), 3 = tag team (2 to 4 snakes sharing one gem goal)
+let MODE = [1, 2, 3].includes(+store.get('players')) ? +store.get('players') : 1;
+let ROLE = 'host';    // 'client' once this screen joins a game that another screen is hosting
+let ME = 0;           // on a client: which snake is this screen's own
+let SEATS = [];       // on the host: everyone in the party or team, in player order
+let course = Math.min(3, Math.max(0, +store.get('course') || 0));
 // a phone or tablet running the game can also steer by tilting itself (and tap to jump)
 const CAN_TILT = typeof window.matchMedia === 'function' && matchMedia('(pointer:coarse)').matches && 'DeviceOrientationEvent' in window;
 // how people play: phones as controllers, the keyboard/touch here, or tilting this screen itself
@@ -562,8 +761,8 @@ let W = 0, H = 0, DPR = 1, SCALE = 40;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
   const mini = view !== 'top';
-  cvs.classList.toggle('duo', mini && MODE === 2);
-  if (mini && MODE === 2 && ARENA){
+  cvs.classList.toggle('duo', mini && MODE !== 1);
+  if (mini && MODE !== 1 && ARENA){
     // versus: one map of the whole arena, centered between the two views
     W = H = Math.round(Math.max(150, Math.min(240, Math.min(innerWidth, innerHeight)*0.3)));
     SCALE = W/(ARENA.x1 - ARENA.x0 + 3);
@@ -597,11 +796,13 @@ const GLOW_GEM = makeGlow(C.gem);
 let RIB = [], RIB_RGB = [255,255,255], GLOW_RIB = null;
 const ribA = a => `rgba(${RIB_RGB.join(',')},${a})`;
 function applyLook(S){
-  C['tile-a'] = S.tiles[0]; C['tile-b'] = S.tiles[1]; C.void = S.void; C.wall = S.wall[0]; C['wall-side'] = S.wall[1]; C.line = S.line; C.deg = S.deg;
+  C['tile-a'] = S.tiles[0]; C['tile-b'] = S.tiles[1]; C.void = S.void; C.wall = S.wall[0]; C['wall-side'] = S.wall[1]; C.line = S.line; C.deg = S.deg; C.holo = S.holo || HOLO;
 }
 
+// vibration patterns (Android phones; iPhones don't let web pages vibrate)
+const GEM_BUZZ = [10, 40, 14], CLEAR_BUZZ = [30, 50, 30, 50, 30, 90, 140];
 // haptics go to the phone of whichever snake the event happened to (in solo, to every phone)
-const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(_) {} phoneSend({t: 'buzz', p}, MODE === 2 && CUR ? CUR.i : undefined); };
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(_) {} phoneSend({t: 'buzz', p}, MODE !== 1 && CUR ? CUR.i : undefined); };
 let wake = null;
 async function keepAwake(on){
   try {
@@ -631,7 +832,15 @@ function clipWall(o){
 
 let G, RUN, state = 'menu';
 const LIVES = 3;
-const newRunState = () => ({diff, snake, banked: 0, gems: 0, won: false, lastBonus: 0, lives: LIVES});
+// solo starts with the Classic snake and earns the others: Magnet at level 5, Glider at level 10,
+// Comet for clearing every level. Party and tag team can use any of them.
+const SNAKE_UNLOCK = {magnet: 5, glider: 10, comet: 11};
+const snakeOpen = k => MODE !== 1 || !SNAKE_UNLOCK[k] || (SNAKE_UNLOCK[k] > STAGES.length ? store.get('beat') === '1' : unlocked >= SNAKE_UNLOCK[k]);
+const unlockText = k => SNAKE_UNLOCK[k] > STAGES.length ? `Clear all ${STAGES.length} levels to unlock it.` : `Unlocks when you reach level ${SNAKE_UNLOCK[k]}.`;
+const playSnake = () => snakeOpen(snake) ? snake : 'classic';
+const newRunState = () => ({diff, snake: playSnake(), banked: 0, gems: 0, won: false, lastBonus: 0, lives: LIVES});
+// which snakes a level clear just unlocked (shown on the level-cleared card)
+function newlyOpen(before){ return Object.keys(SNAKE_UNLOCK).filter(k => SNAKE_UNLOCK[k] <= STAGES.length && before < SNAKE_UNLOCK[k] && unlocked >= SNAKE_UNLOCK[k]); }
 
 // ---- players ----
 // MODE 1 is the solo game; MODE 2 puts two snakes in one arena for a 60-second versus round.
@@ -645,8 +854,14 @@ function lookFor(S, color, side){
   const c = rgb(color), base = rgb(S.tiles[0]);
   return {color, side, ribRGB: c, glow: makeGlow(color), rib: Array.from({length: 20}, (_, i) => mix(base, c, 0.42 + 0.58*(i/19)))};
 }
-// player 2 gets its own color so the two snakes never look alike
-const P2_COLORS = K => K === SNAKES.glider ? ['#ffe94d', '#a8960f'] : ['#9a8cff', '#4b3fa8'];
+// player 1 wears the chosen snake's color; everyone else gets their own, skipping one that matches it
+const MP_COLORS = [['#ffe94d', '#a8960f'], ['#9a8cff', '#4b3fa8'], ['#ff8a3d', '#a8461a'], ['#ffffff', '#8e8aa8'],
+  ['#2b8cff', '#174a8a'], ['#ff3b3b', '#99201f'], ['#3dffb0', '#1a8f61'], ['#d9b37a', '#7d6234']];
+function colorFor(K, i){
+  if (i === 0) return [K.color, K.side];
+  const pool = MP_COLORS.filter(c => c[0].toLowerCase() !== String(K.color).toLowerCase());
+  return pool[(i - 1) % pool.length];
+}
 function newPlayer(i, y, look){
   return {i, look, x: 0.5, y, th: 0, turn: 0, prevTurn: 0, turnCue: 0, aim: null, sinceP: 0,
     trail: [{x: -6.5, y, air: false}], air: false, airT: 0, airDur: 1, jumpBuf: 0, tailLen: 7, dist: 0, gems: 0,
@@ -660,37 +875,77 @@ function load(p){
 function save(p){ for (const k of SNAKE_FIELDS) p[k] = G[k]; }
 const pScore = p => Math.floor(p.dist) + p.gems*10;
 
-function loadStage(idx){
-  const S = STAGES[idx], D = DIFFS[RUN.diff], K = SNAKES[RUN.snake];
+// A round is described by a small config, so every screen in a multiplayer game builds the identical world
+// from it: mode, level (or course), difficulty, snake, random seed, and the players with their start spots.
+let CFG = null;
+const partyTime = n => n <= 2 ? 60 : n <= 5 ? 75 : 90;
+const teamGoal = (goal, n) => Math.round(goal*(1 + 0.6*(n - 1)));
+function makeCfg(idx){
+  const cfg = {mode: MODE, idx, diff: RUN.diff, snake: RUN.snake, seed: (Math.random()*1e9)|0};
+  if (MODE !== 1) cfg.players = (SEATS.length ? SEATS : [{kind: 'preview'}]).map(st => ({kind: st.kind, name: st.name || ''}));
+  return cfg;
+}
+function loadStage(idx){ loadWorld(makeCfg(idx)); }
+function loadWorld(cfg){
+  CFG = cfg;
+  const multi = cfg.mode !== 1, party = cfg.mode === 2;
+  const S = party ? COURSES[cfg.idx] : STAGES[cfg.idx], D = DIFFS[cfg.diff], K = SNAKES[cfg.snake];
+  const n = multi ? cfg.players.length : 1;
   applyLook(S);
-  buildArena(Math.max(15, S.half + D.room));
-  const sp = K.speed || 1, base = (D.speed + idx*0.25)*sp;
+  // more snakes, more room: the arena's area grows with the number of players (two play on the regular size)
+  const roomy = Math.sqrt(Math.max(1, n/2));
+  const half = Math.round((party ? S.base : Math.max(15, S.half + D.room))*roomy);
+  buildArena(half);
+  const lvl = party ? 2 : cfg.idx, sp = K.speed || 1, base = (D.speed + lvl*0.25)*sp;
   G = {
-    idx, S, D, K,
-    seed: (Math.random()*1e9)|0, chunks: new Map(), walls: [],
-    base, speed: base, max: (D.max + idx*0.3)*sp,
-    t: 0, done: false, clearT: 0, left: DUEL_TIME,
+    idx: cfg.idx, S, D, K,
+    seed: cfg.seed, chunks: new Map(), walls: [], movers: [], gates: [], gemById: new Map(), gid: 0, runway: !party,
+    base, speed: base, max: (D.max + lvl*0.3)*sp,
+    t: 0, done: false, clearT: 0, left: party ? partyTime(n) : 0,
+    goal: cfg.mode === 3 ? teamGoal(S.goal, n) : (S.goal || 0), teamGems: 0, teamLives: LIVES + n - 1,
+    minGems: Math.round(MIN_GEMS*Math.max(1, n/2)),
     particles: [], shake: 0, deadT: 0, cause: ''
   };
-  G.walls = S.walls.map(clipWall).filter(Boolean);
-  // solo starts on the center line; versus starts side by side, both facing the same way
-  PL = MODE === 2
-    ? [newPlayer(0, -1.5, lookFor(S, K.color, K.side)), newPlayer(1, 2.5, lookFor(S, ...P2_COLORS(K)))]
-    : [newPlayer(0, 0.5, lookFor(S, K.color, K.side))];
+  G.walls = (typeof S.walls === 'function' ? S.walls(half) : S.walls).map(clipWall).filter(Boolean);
+  if (!multi){ PL = [newPlayer(0, 0.5, lookFor(S, K.color, K.side))]; PL[0].kind = 'solo'; PL[0].local = true; }
+  else PL = cfg.players.map((pp, i) => {
+    // tag team lines up on the runway like solo; a party is spread around the arena below
+    const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...colorFor(K, i)));
+    p.kind = pp.kind; p.name = pp.name; p.ep = 0;
+    p.local = ROLE === 'host' ? pp.kind !== 'screen' : i === ME;
+    return p;
+  });
   load(PL[0]);
-  if (idx === 0 && MODE === 1) addThing('obs', {x: 10.2, y: -1, w: 0.6, h: 3, tall: false}); // teaches the jump
-  addThing('gems', {x: 6.5, y: 0.5, taken: false});
+  if (cfg.idx === 0 && cfg.mode === 1) addThing('obs', {x: 10.2, y: -1, w: 0.6, h: 3, tall: false}); // teaches the jump
+  if (!party) addThing('gems', {x: 6.5, y: 0.5, taken: false});
   // the field is finite, so build all of it up front and count its gems
   for (let cx = Math.floor(ARENA.x0/CH); cx <= Math.floor((ARENA.x1 - 1)/CH); cx++)
     for (let cy = Math.floor(ARENA.y0/CH); cy <= Math.floor((ARENA.y1 - 1)/CH); cy++) ensureChunk(cx, cy);
   G.gemsLeft = 0;
   for (const c of G.chunks.values()) G.gemsLeft += c.gems.length;
+  if (party){
+    if (!cfg.spawns){ const spots = []; cfg.spawns = PL.map(() => { const sp = findSpot(null, spots) || {x: 0, y: 0, th: 0}; spots.push(sp); return sp; }); }
+    PL.forEach((p, i) => placeAt(p, cfg.spawns[i]));
+  }
+  load(PL[0]);
+  updateMovers();
   if (R3) R3.build();
-  if (MODE === 2) resize();
+  resize();
+}
+function placeAt(p, sp){
+  Object.assign(p, {x: sp.x, y: sp.y, th: sp.th, sinceP: 0, cam: {x: sp.x, y: sp.y},
+    trail: [{x: sp.x - Math.cos(sp.th)*1.5, y: sp.y - Math.sin(sp.th)*1.5, air: false}]});
+}
+// every gem gets an id so the screens in a game can agree on which one was eaten
+function regGem(g){ g.id = G.gid++; G.gemById.set(g.id, g); return g; }
+function addGem(id, x, y){
+  if (G.gemById.has(id)) return;
+  const g = {x, y, taken: false, born: G.t, id};
+  ensureChunk(Math.floor(x/CH), Math.floor(y/CH)).gems.push(g); G.gemById.set(id, g);
 }
 const overlaps = (a, b, pad) => a.x - pad < b.x + b.w && a.x + a.w + pad > b.x && a.y - pad < b.y + b.h && a.y + a.h + pad > b.y;
 function addThing(kind, o){
-  ensureChunk(Math.floor(o.x/CH), Math.floor(o.y/CH))[kind].push(o);
+  ensureChunk(Math.floor(o.x/CH), Math.floor(o.y/CH))[kind].push(kind === 'gems' ? regGem(o) : o);
 }
 function ensureChunk(cx, cy){
   const k = cx + ',' + cy;
@@ -703,7 +958,7 @@ function ensureChunk(cx, cy){
   const d = Math.min(1, Math.hypot(ox + CH/2, oy + CH/2) / (ARENA.x1*1.25));
   const placed = [];
   const fits = (r, pad) => {
-    if (r.x < 14 && r.x + r.w > -4 && r.y < 4 && r.y + r.h > -3) return false; // starting runway
+    if (G.runway && r.x < 14 && r.x + r.w > -4 && r.y < 4 && r.y + r.h > -3) return false; // starting runway
     if (r.x < ARENA.x0 + 1 || r.y < ARENA.y0 + 1 || r.x + r.w > ARENA.x1 - 1 || r.y + r.h > ARENA.y1 - 1) return false; // lane along the walls
     for (const w of G.walls) if (overlaps(r, w, pad)) return false;
     for (const p of placed) if (overlaps(r, p, pad)) return false;
@@ -726,10 +981,26 @@ function ensureChunk(cx, cy){
     const r = {x: ox+gx+0.08, y: oy+gy+0.08, w: sw-0.16, h: sh-0.16, tall: true};
     if (fits(r, 1.2)) { c.obs.push(r); break; }
   }
+  // movers: a pillar sliding along a short track (the whole track is kept clear when placing it)
+  const nMover = G.S.movers ? Math.floor(rnd()*(0.5 + 1.5*d)*G.S.movers + 0.35) : 0;
+  for (let i = 0; i < nMover; i++) for (let a = 0; a < 8; a++){
+    const horiz = rnd() < .5, amp = 1.4 + rnd()*1.6, per = 2.6 + rnd()*2.4, ph = rnd()*Math.PI*2;
+    const gx = 2 + Math.floor(rnd()*(CH - 4)), gy = 2 + Math.floor(rnd()*(CH - 4)), bx = ox + gx + 0.1, by = oy + gy + 0.1;
+    const reach = horiz ? {x: bx - amp, y: by, w: 0.8 + 2*amp, h: 0.8} : {x: bx, y: by - amp, w: 0.8, h: 0.8 + 2*amp};
+    if (fits(reach, 1.1)){ const o = {x: bx, y: by, w: 0.8, h: 0.8, tall: true, mover: {x0: bx, y0: by, ax: horiz ? 1 : 0, ay: horiz ? 0 : 1, amp, per, ph}}; c.obs.push(o); G.movers.push(o); break; }
+  }
+  // gates: a hurdle-shaped bar that rises to pillar height for half of every two bars, then drops back down
+  const nGate = G.S.gates ? Math.floor(rnd()*(0.5 + 1.5*d)*G.S.gates + 0.35) : 0;
+  for (let i = 0; i < nGate; i++) for (let a = 0; a < 8; a++){
+    const L = 2 + Math.floor(rnd()*3), vert = rnd() < .5;
+    const gx = 1 + Math.floor(rnd()*(CH - 2 - (vert ? 1 : L) + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - (vert ? L : 1) + 1));
+    const r = vert ? {x: ox+gx+0.2, y: oy+gy, w: 0.6, h: L, tall: false} : {x: ox+gx, y: oy+gy+0.2, w: L, h: 0.6, tall: false};
+    if (fits(r, 1.6)){ r.gate = {ph: rnd() < .5 ? 0 : 0.5}; r.ht = LOW_H; c.obs.push(r); G.gates.push(r); break; }
+  }
   const nGem = 1 + (rnd() < .45 ? 1 : 0);
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
     const gx = 1 + Math.floor(rnd()*(CH-2)), gy = 1 + Math.floor(rnd()*(CH-2));
-    if (fits({x: ox+gx, y: oy+gy, w: 1, h: 1}, 0.3)) { c.gems.push({x: ox+gx+.5, y: oy+gy+.5, taken: false}); break; }
+    if (fits({x: ox+gx, y: oy+gy, w: 1, h: 1}, 0.3)) { c.gems.push(regGem({x: ox+gx+.5, y: oy+gy+.5, taken: false})); break; }
   }
   return c;
 }
@@ -751,10 +1022,24 @@ function spawnGem(){
       if (n.obs.some(o => circleRect(x, y, 0.8, o)) || n.gems.some(g => !g.taken && Math.hypot(g.x - x, g.y - y) < 1.5)) ok = false;
     }
     if (!ok) continue;
-    ensureChunk(cx, cy).gems.push({x, y, taken: false, born: G.t});
-    return true;
+    const g = regGem({x, y, taken: false, born: G.t});
+    ensureChunk(cx, cy).gems.push(g);
+    return g;
   }
-  return false;
+  return null;
+}
+
+// moving pieces follow the level clock, so every screen in a multiplayer game sees them in the same place
+const smooth01 = v => { v = Math.max(0, Math.min(1, v)); return v*v*(3 - 2*v); };
+function updateMovers(){
+  for (const o of G.movers){ const m = o.mover, s = Math.sin(G.t*2*Math.PI/m.per + m.ph)*m.amp; o.x = m.x0 + m.ax*s; o.y = m.y0 + m.ay*s; }
+  if (!G.gates.length) return;
+  const P = 8*60/(STYLES[G.S.music] || STYLES.lofi).bpm;   // two bars of the level's music
+  for (const o of G.gates){
+    const f = ((G.t/P + o.gate.ph) % 1 + 1) % 1;
+    const u = f < 0.5 ? smooth01(f/0.06) : 1 - smooth01((f - 0.5)/0.06);
+    o.ht = LOW_H + (TALL_H - LOW_H)*u; o.tall = o.ht > 0.9;
+  }
 }
 
 // ---- movement ----
@@ -767,15 +1052,24 @@ function pushPoint(){
 // Steering is analog: -1 is a hard left, +1 a hard right, 0 straight, relative to where the snake faces.
 // It comes from the phone's tilt, held arrow keys, or a sideways drag. In the top view, arrow keys and
 // drags instead point the snake at a compass heading (G.aim) and it curves round to face it.
-const STEERS = [0, 1].map(() => ({keyL: false, keyR: false, drag: 0, phone: 0, phoneAt: -1e9}));
-const STEER = STEERS[0];   // solo controls (and player 1's)
+const STEERS = Array.from({length: 8}, () => ({keyL: false, keyR: false, drag: 0, phone: 0, phoneAt: -1e9}));
+const NO_STEER = {keyL: false, keyR: false, drag: 0, phone: 0, phoneAt: -1e9};
+// which snake this screen's own controls (keys, drag, tap, tilt) drive: the solo snake, this client's
+// snake, or on a party host the seat marked "this screen" or "keyboard"
+function myI(){
+  if (MODE === 1) return 0;
+  if (ROLE === 'client') return ME;
+  return PL.findIndex(p => p.kind === 'device' || p.kind === 'keys');
+}
+const mySteer = () => STEERS[myI()] || NO_STEER;
 const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 const clamp1 = v => Math.max(-1, Math.min(1, v));
-function aimAt(angle){ if (state === 'play') G.aim = angle; }
+// the top view points the snake at a compass heading; it's stored on the snake itself so it survives the next frame
+function aimAt(angle){ if (state !== 'play') return; const p = PL[myI()]; if (!p) return; p.aim = angle; if (p === CUR) G.aim = angle; }
 function steerTarget(i){
   if (isCPU(i)) return PL[i].aiSteer || 0;
-  const st = STEERS[i] || STEER;
-  if (performance.now() - st.phoneAt < 450 && Math.abs(st.phone) > 0.01){ G.aim = null; return st.phone; }
+  const st = STEERS[i] || NO_STEER;
+  // a finger or a key on this screen wins over tilt, so dragging (or pointing, in the top view) always works
   const k = (st.keyR ? 1 : 0) - (st.keyL ? 1 : 0);
   if (k){ G.aim = null; return k; }
   if (st.drag){ G.aim = null; return st.drag; }
@@ -784,6 +1078,7 @@ function steerTarget(i){
     if (Math.abs(d) < 0.02){ G.th = G.aim; G.aim = null; G.turn = 0; return 0; }
     return clamp1(d*2.5);
   }
+  if (performance.now() - st.phoneAt < 450 && Math.abs(st.phone) > 0.01) return st.phone;
   return 0;
 }
 function jump(){
@@ -795,6 +1090,7 @@ function jump(){
 // jump for one player (loads that snake, jumps, stores it back)
 function jumpFor(i){
   const p = PL[i];
+  if (p && !p.local) return;
   if (!p || state !== 'play' || !p.alive) return;
   load(p); jump(); save(p); load(PL[0]);
 }
@@ -846,7 +1142,7 @@ function scrape(nx, ny, px, py, cause){
   G.th = th; G.turn *= 0.5;
   G.x = px + nx*R_HEAD*1.02; G.y = py + ny*R_HEAD*1.02;
   if (bent || G.sinceP >= PT_GAP) pushPoint();
-  if (G.scrapeCue <= 0){ sfxScrape(); buzz(10); burst(px, py, C.ink, 4, 1.5); G.scrapeCue = 0.25; }
+  if (G.scrapeCue <= 0){ sfxScrape(); buzz([Math.round(12 + 45*Math.max(0, into)), 25, 10]); burst(px, py, C.ink, 4, 1.5); G.scrapeCue = 0.25; }
   return false;
 }
 function touchRect(o, cause){
@@ -882,8 +1178,8 @@ function collide(){
   if (crashed || !stillAlive()) return;
   if (MODE === 2 && state === 'play' && CUR.alive && !G.air && CUR.grace <= 0) for (const q of PL){
     if (q === CUR || !q.alive) continue;
-    // head to head knocks out both; hitting the other snake's body only knocks out you
-    if (!q.air && q.grace <= 0 && Math.hypot(q.x - G.x, q.y - G.y) < 0.45){ dieP(q, 'head'); return die('head'); }
+    // head to head knocks out both (each screen handles its own snake); hitting another snake's body only knocks out you
+    if (!q.air && q.grace <= 0 && Math.hypot(q.x - G.x, q.y - G.y) < 0.45){ if (q.local) dieP(q, 'head'); return die('head'); }
     if (hitsBody(q)) return die('snake');
   }
   if (state === 'play' && CUR.alive && !G.air && hitsTail()) die('tail');
@@ -917,19 +1213,24 @@ function step(d, dt){
   if (G.air){
     G.airT += dt;
     if (G.airT >= G.airDur){
-      G.air = false; pushPoint(); sfxLand(); burst(G.x, G.y, C.ribbon, 6, 2);
+      G.air = false; pushPoint(); sfxLand(); buzz(14); burst(G.x, G.y, C.ribbon, 6, 2);
       if (G.jumpBuf > 0) jump();
     }
   }
   trim();
   collide();
 }
+let SIM = false;   // true while a snake on this screen is being simulated (its fields are live in G)
+const canRespawn = p => MODE === 3 ? G.teamLives > 0 : p.lives > 0;
 function update(dt){
   G.t += dt;
   G.speed = Math.min(G.max, G.base + G.t*G.D.ramp);
+  updateMovers();
   for (const p of PL){
-    if (!p.alive){ if (MODE === 2 && p.lives > 0 && (p.respawnT -= dt) <= 0) respawn(p); continue; }
-    load(p);
+    if (!p.local){ puppetStep(p, dt); continue; }
+    if (p.kind === 'preview') continue;
+    if (!p.alive){ if (MODE !== 1 && canRespawn(p) && (p.respawnT -= dt) <= 0) respawn(p); continue; }
+    load(p); SIM = true;
     if (p.grace > 0) p.grace -= dt;
     G.scrapeCue -= dt;
     if (G.magCool > 0 && (G.magCool -= dt) <= 0) sfxRecharged();
@@ -945,13 +1246,55 @@ function update(dt){
     const sp = G.speed*(isCPU(p.i) ? aiSkill().speed : 1);
     let remain = sp*dt;
     while (remain > 0 && state === 'play' && p.alive){ const d = Math.min(0.08, remain); remain -= d; step(d, d/sp); }
-    save(p);
+    save(p); SIM = false;
   }
   load(PL[0]);
   if (MODE === 2 && state === 'play'){
     G.left -= dt;
-    if (G.left <= 0 || PL.every(p => !p.alive && p.lives <= 0)) endDuel();
+    if (ROLE === 'host' && (G.left <= 0 || PL.every(p => !p.alive && p.lives <= 0))) endDuel();
   }
+  if (MODE === 3 && ROLE === 'host' && state === 'play' && G.teamLives <= 0 && PL.every(p => !p.alive)) endTeam(false);
+}
+// A snake that another screen is playing. Between that screen's reports (about 15 a second) it keeps
+// moving along its heading, so it glides at full frame rate, and it eases toward each fresh report.
+function puppetStep(p, dt){
+  const n = p.net;
+  if (!n || !p.alive) return;
+  load(p);
+  const age = Math.min(0.3, (performance.now() - n.at)/1000), sp = G.speed*(n.sp || 1);
+  const rate = Math.min(TURN_MAX, G.speed/(TURN_R*(G.K.turnR || 1)))*n.turn;
+  const th = n.th + rate*age, tx = n.x + Math.cos(th)*sp*age, ty = n.y + Math.sin(th)*sp*age;
+  const k = 1 - Math.exp(-dt*14), ox = G.x, oy = G.y;
+  G.x += (tx - G.x)*k; G.y += (ty - G.y)*k; G.th += angDiff(th, G.th)*k; G.turn = n.turn;
+  const moved = Math.hypot(G.x - ox, G.y - oy);
+  G.dist += moved; G.sinceP += moved;
+  const wasAir = G.air;
+  G.air = n.air; G.airDur = n.airDur || 1; G.airT = Math.min(G.airDur, (n.airT || 0) + age);
+  if (G.air !== wasAir || (G.sinceP >= PT_GAP && Math.abs(G.turn) > 0.01)) pushPoint();
+  trim();
+  save(p);
+}
+// a report from the screen that plays snake i (relayed by the host to everyone else)
+function applyPos(i, m){
+  const p = PL[i];
+  if (!p || p.local) return;
+  p.netRaw = m;
+  p.net = {x: m.x, y: m.y, th: m.th, turn: m.tu || 0, air: !!m.a, airT: m.at, airDur: m.ad, sp: m.sp || 1, at: performance.now()};
+  p.tailLen = m.tl; p.grace = m.gr || 0; p.cause = m.c || '';
+  if (MODE === 2) p.lives = m.l;
+  if ((m.ep || 0) !== (p.ep || 0)){
+    // it respawned somewhere new: start its body over there
+    p.ep = m.ep || 0;
+    Object.assign(p, {x: m.x, y: m.y, th: m.th, sinceP: 0, air: false, trail: [{x: m.x, y: m.y, air: false}]});
+    if (R3) R3.snap(i);
+  }
+  if (p.alive && !m.al){ p.alive = false; burst(p.x, p.y, p.look.color, 20, 5); }
+  else if (!p.alive && m.al) p.alive = true;
+}
+const r2 = v => Math.round(v*100)/100;
+function posOf(p){
+  return {x: r2(p.x), y: r2(p.y), th: r2(p.th), tu: r2(p.turn), a: p.air ? 1 : 0, at: r2(p.airT), ad: r2(p.airDur), tl: r2(p.tailLen),
+    l: p.lives, al: p.alive ? 1 : 0, gr: r2(Math.max(0, p.grace)), ep: p.ep || 0, c: p.cause || '', sp: isCPU(p.i) ? aiSkill().speed : 1};
 }
 // ---- computer opponent (versus) ----
 // A few times a second it picks a gem to chase (usually a near one, favoring ones ahead), fans out nine
@@ -961,7 +1304,7 @@ function update(dt){
 //   think  seconds between decisions (reaction)   wobble how sloppy its choices are
 //   steer  how hard it's willing to turn          jump   chance it makes a jump it should
 //   greed  chance it goes for the best gem rather than one of the next few
-const isCPU = i => MODE === 2 && OPP === 'cpu' && i === 1;
+const isCPU = i => !!(PL[i] && PL[i].kind === 'cpu');
 const AI_SKILL = {
   easy:   {speed: 0.8,  look: 1.6, think: 0.35, wobble: 1.2,  steer: 0.6,  jump: 0.5,  greed: 0.45},
   normal: {speed: 0.9,  look: 2.4, think: 0.2,  wobble: 0.6,  steer: 0.8,  jump: 0.8,  greed: 0.75},
@@ -1032,24 +1375,22 @@ function aiThink(p, dt){
   }
 }
 // what to call each player on screen
-const playerName = i => MODE === 2 && OPP === 'cpu' ? (i === 0 ? 'You' : 'Computer') : `Player ${i + 1}`;
+const playerName = i => { const p = PL[i]; if (!p) return ''; return p.name || (p.kind === 'cpu' ? 'CPU ' + (i + 1) : ROLE === 'client' && i === ME ? 'You' : 'P' + (i + 1)); };
 
 // ---- making sure everyone has a controller before play starts ----
-const humans = () => MODE === 2 && OPP === 'friend' ? 2 : 1;
-function missingPhones(){
-  // tilting this screen: player 1 is right here, so only a versus friend needs a phone
-  if (CTRL === 'device') return humans() === 2 && !phoneOn() ? [1] : [];
-  if (CTRL !== 'phones') return [];
-  const m = [];
-  for (let i = 0; i < humans(); i++) if (!phoneOn(i)) m.push(i);
-  return m;
-}
-const readyToPlay = () => missingPhones().length === 0;
+// solo with Phone + screen needs the phone before it starts; party and tag team need enough players
+function missingPhones(){ return MODE === 1 && CTRL === 'phones' && !phoneOn() ? [0] : []; }
+const seatRange = () => MODE === 3 ? [2, 4] : [2, 8];
+function seatsOk(){ const [lo, hi] = seatRange(); return SEATS.length >= lo && SEATS.length <= hi; }
+const readyToPlay = () => ROLE === 'host' && (MODE === 1 ? missingPhones().length === 0 : seatsOk());
 function waitingText(){
-  const m = missingPhones();
-  if (!m.length) return '';
-  const who = humans() === 1 ? 'a phone' : m.length === 2 ? 'both phones' : `Player ${m[0] + 1}'s phone`;
-  return `Waiting for ${who}` + (PHONE.code ? ` (code ${PHONE.code})` : '');
+  if (MODE !== 1){
+    const [lo, hi] = seatRange();
+    if (SEATS.length > hi) return `Tag team takes ${lo} to ${hi} players`;
+    if (SEATS.length < lo) return SEATS.length ? 'Waiting for one more player' : 'Waiting for players';
+    return '';
+  }
+  return missingPhones().length ? 'Waiting for a phone' + (LINK.code ? ` (code ${LINK.code})` : '') : '';
 }
 function nudgeWaiting(){
   const b = $('waitBar'); b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge');
@@ -1057,11 +1398,12 @@ function nudgeWaiting(){
 }
 let lastWait = null, lastLive = '';
 function updateWait(){
+  if (ROLE === 'client'){ $('waitBar').hidden = true; return; }
   // phones coming and going (including going quiet) update the chip, and a missing one pauses play
-  const live = phoneOn(0) + ',' + phoneOn(1);
+  const live = String(phones().filter(linkLive).length);
   if (live !== lastLive){ lastLive = live; setPhoneUI(); }
   const txt = waitingText();
-  if (txt && state === 'play') pause();
+  if (txt && state === 'play' && MODE === 1) pause();
   const show = !!txt && state !== 'play' && state !== 'dying' && $('menu').hidden;
   const key = show + txt;
   if (key === lastWait) return;
@@ -1071,71 +1413,121 @@ function updateWait(){
   if (state === 'paused') updatePauseNote();
 }
 function updatePauseNote(){
-  const txt = waitingText();
+  const txt = MODE === 1 ? waitingText() : '';
   $('pauseTitle').textContent = txt ? 'Phone disconnected' : 'Catch your breath';
   $('pauseNote').hidden = !txt;
   $('pauseNote').textContent = txt ? txt.replace('Waiting for', 'Reconnect') + '. The game picks up once it’s back.' : '';
   $('resumeBtn').classList.toggle('waiting', !!txt);
 }
 
-// versus: a crash costs a life and the snake reappears somewhere clear a moment later
+// party and tag team: a crash costs a life (in tag team, one from the team's pool) and the snake
+// reappears somewhere clear a moment later
 function dieP(p, cause){
   if (!p.alive) return;
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
-  p.alive = false; p.lives--; p.cause = cause; p.respawnT = 1.4;
+  p.alive = false; p.cause = cause; p.respawnT = 1.4;
+  if (MODE === 3){ if (ROLE === 'host') G.teamLives = Math.max(0, G.teamLives - 1); else netSend({t: 'died'}); }
+  else p.lives--;
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
-  G.shake = Math.max(G.shake, 0.35); sfxCrash();
+  if (viewers().includes(p.i)) G.shake = Math.max(G.shake, 0.35);
+  sfxCrash();
   phoneSend({t: 'buzz', p: [40, 30, 70]}, p.i);
 }
-function respawn(p){
+// somewhere open to start or respawn: clear of walls, obstacles and other snakes, facing the middle
+function findSpot(self, spots){
   const cx = (ARENA.x0 + ARENA.x1)/2, cy = (ARENA.y0 + ARENA.y1)/2;
   const blocked = (px, py) => {
     if (px < ARENA.x0 + 2 || px > ARENA.x1 - 2 || py < ARENA.y0 + 2 || py > ARENA.y1 - 2) return true;
     if (G.walls.some(w => circleRect(px, py, 0.9, w))) return true;
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
-      if (ensureChunk(Math.floor(px/CH) + i, Math.floor(py/CH) + j).obs.some(o => circleRect(px, py, 0.9, o))) return true;
+      if (ensureChunk(Math.floor(px/CH) + i, Math.floor(py/CH) + j).obs.some(o => circleRect(px, py, o.mover ? 1.8 : 0.9, o))) return true;
+    if (spots) return spots.some(q => Math.hypot(q.x - px, q.y - py) < 6);
     for (const q of PL){
-      if (q === p || !q.alive) continue;
+      if (q === self || !q.alive) continue;
       if (Math.hypot(q.x - px, q.y - py) < 4) return true;
       for (let i = 0; i < q.trail.length; i++){ const a = q.trail[i], b = q.trail[i+1] || q; if (distSeg(px, py, a.x, a.y, b.x, b.y) < 1.5) return true; }
     }
     return false;
   };
-  for (let tries = 0; tries < 200; tries++){
+  for (let tries = 0; tries < 300; tries++){
     const x = ARENA.x0 + 3 + Math.random()*(ARENA.x1 - ARENA.x0 - 6), y = ARENA.y0 + 3 + Math.random()*(ARENA.y1 - ARENA.y0 - 6);
-    const th = Math.atan2(cy - y, cx - x);   // face the middle of the arena
+    const th = Math.atan2(cy - y, cx - x);
     let bad = false;
     for (let k = -1; k <= 3 && !bad; k++) bad = blocked(x + Math.cos(th)*k, y + Math.sin(th)*k);
-    if (bad) continue;
-    Object.assign(p, {x, y, th, turn: 0, prevTurn: 0, aim: null, sinceP: 0, air: false, airT: 0, jumpBuf: 0, tailLen: 7,
-      trail: [{x: x - Math.cos(th)*1.5, y: y - Math.sin(th)*1.5, air: false}], cam: {x, y}, alive: true, grace: 1.2, aiGem: null});
-    if (R3) R3.snap(p.i);
-    phoneSend({t: 'buzz', p: [15, 40, 15]}, p.i);
-    return;
+    if (!bad) return {x, y, th};
   }
-  p.respawnT = 0.3; // nowhere clear right now; try again in a moment
+  return null;
+}
+function respawn(p){
+  const sp = findSpot(p);
+  if (!sp){ p.respawnT = 0.3; return; }   // nowhere clear right now; try again in a moment
+  placeAt(p, sp);
+  Object.assign(p, {turn: 0, prevTurn: 0, aim: null, air: false, airT: 0, jumpBuf: 0, tailLen: 7, alive: true, grace: 1.2, aiGem: null});
+  p.ep = (p.ep || 0) + 1;
+  if (R3) R3.snap(p.i);
+  phoneSend({t: 'buzz', p: [15, 40, 15]}, p.i);
 }
 function endDuel(){
   state = 'over'; G.done = true;
   stopMusic(); sfxClear(); keepAwake(false);
   $('pauseBtn').hidden = true;
-  showDuel();
+  const res = PL.map((p, i) => ({name: playerName(i), color: p.look.color, score: pScore(p), gems: p.gems, lives: p.lives, i}))
+    .sort((a, b) => b.score - a.score);
+  const why = G.left <= 0 ? 'time' : 'lives';
+  toScreens({t: 'phase', state: 'over', res, why});
+  showDuel(res, why);
 }
+// tag team: out of team lives, or every level cleared
+function endTeam(won){
+  state = 'over'; G.done = true;
+  stopMusic(); sfxClear(); keepAwake(false);
+  $('pauseBtn').hidden = true;
+  const team = {won, level: G.idx + 1, score: RUN.banked + (won ? 0 : PL.reduce((a, p) => a + pScore(p), 0)),
+    players: PL.map((p, i) => ({name: playerName(i), color: p.look.color, gems: p.gems, i}))};
+  toScreens({t: 'phase', state: 'over', team});
+  showTeamOver(team);
+}
+// a field of the snake that's live in G while it's being simulated, and in its player object otherwise
+function bump(p, k, v){ if (p === CUR && SIM) G[k] += v; else { p[k] += v; if (p === CUR) G[k] = p[k]; } }
 function eat(g){
-  g.taken = true; G.gems++; G.tailLen += G.D.grow*G.K.grow; G.flash = 1;
-  if (G.K.recharge) G.magCool = G.K.recharge;
+  if (g.taken) return;
+  g.taken = true;
+  // on a client the host decides who got it (two snakes can reach the same gem at once)
+  if (MODE !== 1 && ROLE === 'client'){ netSend({t: 'claim', id: g.id}); burst(g.x, g.y, C.gem, 10, 3); return; }
+  credit(CUR.i, g);
+}
+function credit(i, g){
+  const p = PL[i], live = p === CUR && SIM;
+  bump(p, 'gems', 1); bump(p, 'tailLen', G.D.grow*G.K.grow);
+  if (live){ G.flash = 1; if (G.K.recharge) G.magCool = G.K.recharge; } else p.flash = 1;
   G.gemsLeft--;
-  while (G.gemsLeft < MIN_GEMS && spawnGem()) G.gemsLeft++;
-  burst(g.x, g.y, C.gem, 14, 4); sfxGem(); buzz(18);
+  const sp = [];
+  while (G.gemsLeft < G.minGems){ const n = spawnGem(); if (!n) break; sp.push([n.id, r2(n.x), r2(n.y)]); G.gemsLeft++; }
+  burst(g.x, g.y, C.gem, 14, 4);
+  if (live){ sfxGem(); buzz(GEM_BUZZ); } else if (p.local) phoneSend({t: 'buzz', p: GEM_BUZZ}, i);
+  if (MODE !== 1) toScreens({t: 'gem', id: g.id, by: i, sp});
   if (MODE === 1 && G.gems >= G.S.goal) stageClear();
+  if (MODE === 3 && state === 'play' && ++G.teamGems >= G.goal) teamClear();
+}
+// tag team: the team's gems reached the goal
+function teamClear(){
+  state = 'clear'; G.clearT = 0; G.done = true; G.cardShown = false;
+  const bonus = 100*(G.idx + 1)*PL.length;
+  RUN.banked += PL.reduce((a, p) => a + pScore(p), 0) + bonus; RUN.lastBonus = bonus;
+  if (G.idx + 1 < STAGES.length && G.idx + 2 > unlocked){ unlocked = G.idx + 2; store.set('unlocked', unlocked); }
+  burst(G.x, G.y, C.gem, 30, 6);
+  stopMusic(); sfxClear(); phoneSend({t: 'buzz', p: CLEAR_BUZZ});
+  $('pauseBtn').hidden = true;
+  toScreens({t: 'phase', state: 'clear', banked: RUN.banked, bonus});
 }
 const score = () => RUN.banked + (G.done ? 0 : Math.floor(G.dist) + G.gems*10);
 function die(cause){
   if (state !== 'play') return;
-  if (MODE === 2) return dieP(CUR, cause);
+  if (MODE !== 1) return dieP(CUR, cause);
   state = 'dying'; G.cause = cause; G.deadT = 0; G.shake = 0.6;
   burst(G.x, G.y, C.ribbon, 26, 6); burst(G.x, G.y, C.pillar, 10, 5);
   RUN.lives--;
+  RUN.carry = G.gems;   // the gems you'd collected on this level carry over to the restart
   stopMusic(); sfxCrash();
   $('pauseBtn').hidden = true;
   buzz([40, 30, 70]);
@@ -1143,11 +1535,13 @@ function die(cause){
 function stageClear(){
   state = 'clear'; G.clearT = 0;
   const bonus = 100*(G.idx + 1);
-  RUN.banked += Math.floor(G.dist) + G.gems*10 + bonus; RUN.gems += G.gems; RUN.lastBonus = bonus;
+  RUN.banked += Math.floor(G.dist) + G.gems*10 + bonus; RUN.gems += G.gems; RUN.lastBonus = bonus; RUN.carry = 0;
   G.done = true;
+  const before = unlocked;
   if (G.idx + 1 < STAGES.length && G.idx + 2 > unlocked){ unlocked = G.idx + 2; store.set('unlocked', unlocked); }
+  RUN.newSnakes = newlyOpen(before);
   burst(G.x, G.y, C.gem, 30, 6); burst(G.x, G.y, C.ribbon, 20, 5);
-  stopMusic(); sfxClear(); buzz([20, 40, 20, 40, 60]);
+  stopMusic(); sfxClear(); buzz(CLEAR_BUZZ);
   $('pauseBtn').hidden = true;
 }
 
@@ -1264,6 +1658,56 @@ const STYLES = {
       if (s === 4 || s === 12) snare(t, 0.18, 1500, 0.12);
       const cut = 450 + 1600*(0.5 + 0.5*Math.sin(i/10));
       note('sawtooth', mf(this.roots[bar] + this.acid[s]), t, s % 4 === 2 ? 0.09 : 0.065, sd*0.8, cut);
+    }},
+  house: {name: 'House', bpm: 124, lead: 'square',
+    melody: [69,72,76,74,72,69,67,69,72,74,76,79],
+    chords: [[57,60,64,67],[53,57,60,64],[55,59,62,65],[52,55,59,62]],
+    step(s, bar, i, t, sd){
+      const ch = this.chords[bar];
+      if (s % 4 === 0) kick(t, 0.95);
+      if (s % 4 === 2){ hat(t, 0.06, 0.1, 8000); note('sawtooth', mf(ch[0] - 24), t, 0.11, sd*1.5, 520); }   // open hat and bass on the offbeat
+      if (s === 4 || s === 12) snare(t, 0.14, 2300, 0.1);   // clap
+      if (s === 3 || s === 6 || s === 11 || s === 14) ch.forEach(m => note('triangle', mf(m), t, 0.035, sd*1.1, 2400));   // piano-ish stabs
+    }},
+  electro: {name: 'Electro', bpm: 116, lead: 'square',
+    melody: [64,67,71,72,71,67,64,62,64,67,69,71],
+    roots: [40,40,43,38], line: [0,0,12,0,0,7,0,10,0,0,12,0,3,0,7,0],
+    step(s, bar, i, t, sd){
+      if (s === 0 || s === 6 || s === 10) kick(t, 0.85);
+      if (s === 4 || s === 12) snare(t, 0.22, 1600, 0.16);
+      if (s % 2 === 0) hat(t, 0.02, 0.03, 9000);
+      if (this.line[s] || s % 2 === 0) note('square', mf(this.roots[bar] + this.line[s]), t, 0.06, sd*0.7, 1300);
+    }},
+  dub: {name: 'Dub', bpm: 92, lead: 'sine',
+    melody: [62,65,69,72,69,65,62,60,62,65],
+    chords: [[62,65,69],[60,64,67],[58,62,65],[60,64,67]], roots: [38,36,34,36],
+    step(s, bar, i, t, sd){
+      const ch = this.chords[bar];
+      if (s === 8){ kick(t, 0.95); snare(t, 0.12, 1200, 0.25); }   // one drop: everything lands on beat three
+      if (s % 4 === 2){ ch.forEach(m => note('square', mf(m), t, 0.028, sd*0.5, 1800)); ch.forEach(m => note('square', mf(m), t + sd*3, 0.01, sd*0.5, 1100)); }   // skank and its echo
+      if (s % 2 === 0) hat(t, 0.012, 0.03, 7000);
+      if (s === 0 || s === 3 || s === 6 || s === 10) note('sine', mf(this.roots[bar] + (s === 6 ? 7 : 0)), t, 0.32, sd*2.5);
+    }},
+  trance: {name: 'Trance', bpm: 138, lead: 'sawtooth',
+    melody: [69,72,76,81,79,76,72,74,76,79,81,84],
+    chords: [[57,60,64],[53,57,60],[55,59,62],[52,55,59]],
+    step(s, bar, i, t, sd){
+      const ch = this.chords[bar];
+      if (s % 4 === 0) kick(t, 0.95);
+      if (s % 4 === 2){ note('sawtooth', mf(ch[0] - 24), t, 0.12, sd*1.4, 600); hat(t, 0.05, 0.08, 9000); }   // rolling offbeat bass
+      if (s === 4 || s === 12) snare(t, 0.12, 2000, 0.12);
+      note('sawtooth', mf(ch[(s >> 1) % 3] + 12 + (s % 2 ? 12 : 0)), t, 0.016, sd*0.8, 3000);   // the arpeggio
+      if (s === 0) ch.forEach(m => pad(mf(m), t, sd*16, 0.028));
+    }},
+  breakbeat: {name: 'Breakbeat', bpm: 136, lead: 'triangle',
+    melody: [64,67,69,72,74,72,69,67,64,62],
+    roots: [40,43,38,45],
+    step(s, bar, i, t, sd){
+      if (s === 0 || s === 10) kick(t, 0.9);
+      if (s === 4 || s === 12) snare(t, 0.26, 1800, 0.14);
+      if (s === 7 || s === 15) snare(t, 0.07, 2200, 0.06);
+      hat(t, s % 2 ? 0.015 : 0.03, 0.03);
+      if (s === 0 || s === 6 || s === 11) note('sawtooth', mf(this.roots[bar]), t, 0.1, sd*2, 520);
     }}
 };
 const style = () => STYLES[G.S.music];
@@ -1354,7 +1798,7 @@ function drawRibbon(){
   }
 }
 function drawBlock(o){
-  const hc = o.wall ? WALL_H : o.tall ? TALL_H : LOW_H, S = SCALE, h = hc*S*OBL;
+  const hc = o.wall ? WALL_H : o.gate ? o.ht : o.tall ? TALL_H : LOW_H, S = SCALE, h = hc*S*OBL;
   const [sx, sy] = w2s(o.x, o.y), sw = o.w*S, sh = o.h*S;
   const hidesHead = (o.tall || o.wall) && G.y < o.y && G.y > o.y - hc*OBL - 0.4 && G.x > o.x - 0.5 && G.x < o.x + o.w + 0.5;
   if (hidesHead) ctx.globalAlpha = 0.5;
@@ -1415,7 +1859,7 @@ function headPath(cx, cy, size, shape){
 function drawHead(beat){
   const S = SCALE, K = G.K, p = G.air ? Math.min(1, G.airT/G.airDur) : 0;
   const jh = Math.sin(Math.PI*p)*1.2*Math.sqrt(K.jump);
-  const size = HEAD*S*(1 + 0.1*beat), [hx, hy] = w2s(G.x, G.y);
+  const size = HEAD*S*(1 + 0.035*beat), [hx, hy] = w2s(G.x, G.y);
   ctx.fillStyle = `rgba(8,4,20,${Math.max(0.15, 0.45 - 0.15*jh)})`;
   headPath(hx + S*0.06, hy + S*0.06, size*Math.max(0.5, 1 - 0.22*jh), K.shape); ctx.fill();
   const base = 0.3*S*OBL, lift = jh*S*OBL, cy = hy - base - lift;
@@ -1443,8 +1887,8 @@ function drawHead(beat){
 
 function render(clock){
   const S = SCALE, beat = beatPulse(clock);
-  RCAM = MODE === 2 ? {x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2} : G.cam;
-  const live = PL.filter(p => MODE === 1 || p.alive);
+  RCAM = MODE !== 1 ? {x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2} : G.cam;
+  const live = PL.filter(p => MODE === 1 || (p.alive && p.kind !== 'preview'));
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = C.void; ctx.fillRect(0, 0, W, H);
   if (G.shake > 0 && !REDUCED) ctx.translate((Math.random()-.5)*G.shake*24, (Math.random()-.5)*G.shake*24);
@@ -1543,6 +1987,7 @@ function makeR3(){
   catch(_) { return null; }
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   const scene = new THREE.Scene();
+  const spec = new THREE.PerspectiveCamera(45, 1, 0.5, 800);   // the whole-arena camera
   scene.fog = new THREE.Fog(0x000000, 7, 36);
   scene.add(new THREE.AmbientLight(0xffffff, 1.3));
   const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(4, 10, 3); scene.add(sun);
@@ -1705,7 +2150,7 @@ function makeR3(){
     const fc = document.createElement('canvas'); fc.width = w*px; fc.height = h*px;
     const fg = fc.getContext('2d');
     // the floor is a perspective grid: lines in the level color (a little dimmed) between black tiles
-    fg.fillStyle = holoFill(fg, 0, 0, fc.width, fc.height, C.deg); fg.globalAlpha = 0.8; fg.fillRect(0, 0, fc.width, fc.height); fg.globalAlpha = 1;
+    fg.fillStyle = holoFill(fg, 0, 0, fc.width, fc.height, C.deg, C.holo); fg.globalAlpha = 0.8; fg.fillRect(0, 0, fc.width, fc.height); fg.globalAlpha = 1;
     fg.fillStyle = '#000';
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) fg.fillRect(x*px + 1.5, y*px + 1.5, px - 3, px - 3);
     const tex = new THREE.CanvasTexture(fc);
@@ -1723,17 +2168,39 @@ function makeR3(){
     };
     for (const o of WALLS) addBox(o, WALL_H, mats.wall, true);
     for (const o of G.walls) addBox(o, WALL_H, mats.wall, true);
-    for (const c of G.chunks.values()) for (const o of c.obs) addBox(o, o.tall ? TALL_H : LOW_H, o.tall ? mats.tall : mats.low);
+    DYN = [];
+    for (const c of G.chunks.values()) for (const o of c.obs){
+      if (o.mover){ const b = new THREE.Mesh(BOX, mats.tall); b.scale.set(o.w, TALL_H, o.h); level.add(b); DYN.push({o, b}); continue; }
+      if (o.gate){
+        const top = new THREE.MeshBasicMaterial(), side = new THREE.MeshBasicMaterial(), sideZ = new THREE.MeshBasicMaterial();
+        const b = new THREE.Mesh(BOX, [side, side, top, side, sideZ, sideZ]); b.scale.set(o.w, LOW_H, o.h); level.add(b);
+        DYN.push({o, b, top, side, sideZ}); continue;
+      }
+      addBox(o, o.tall ? TALL_H : LOW_H, o.tall ? mats.tall : mats.low);
+    }
 
     GFX.forEach(dropGfx);
     GFX = PL.map(p => { load(p); return makeGfx(); });
     load(PL[0]);
   }
 
+  let DYN = [];
+  const cLow = col(C.hurdle), cLowS = col(C['hurdle-side']), cTall = col(C.pillar), cTallS = col(C['pillar-side']);
+  function syncDyn(){
+    for (const d of DYN){
+      const o = d.o, hc = o.gate ? o.ht : TALL_H;
+      d.b.position.set(o.x + o.w/2, hc/2, o.y + o.h/2);
+      if (o.gate){
+        d.b.scale.y = hc;
+        const u = (hc - LOW_H)/(TALL_H - LOW_H);
+        d.top.color.copy(cLow).lerp(cTall, u); d.side.color.copy(cLowS).lerp(cTallS, u); d.sideZ.color.copy(d.side.color).lerp(d.top.color, 0.35);
+      }
+    }
+  }
   function render(clock, dt){
     if (!G || !GFX.length) return;
     const beat = beatPulse(clock);
-    syncGems(clock);
+    syncGems(clock); syncDyn();
 
     let np = 0;
     for (const pt of G.particles){
@@ -1749,7 +2216,7 @@ function makeR3(){
     PL.forEach((p, i) => {
       const g = GFX[i]; if (!g) return;
       load(p);
-      const K = G.K, gone = MODE === 2 && !p.alive;
+      const K = G.K, gone = MODE !== 1 && (!p.alive || p.kind === 'preview');
       // the camera follows the snake's heading with a little lag, which softens any wobble
       g.yaw += angDiff(G.th, g.yaw)*(g.snap ? 1 : 1 - Math.exp(-dt*(REDUCED ? 30 : 9)));
       const fx = Math.cos(g.yaw), fz = Math.sin(g.yaw);
@@ -1758,14 +2225,14 @@ function makeR3(){
       if (gone){ g.body.count = 0; g.dots.count = 0; } else updateBody(g);
       // a solo crash flickers the head; a fresh respawn in versus blinks it while it can't be hit
       g.headShow = !gone && !(MODE === 1 && dying && Math.floor(G.deadT*12) % 2) && !(p.grace > 0 && Math.floor(clock*10) % 2);
-      g.head.position.set(G.x, jh, G.y); g.head.rotation.y = -G.th; g.head.scale.setScalar(1 + 0.1*beat);
-      if (g.headGlow) g.headGlow.scale.setScalar(HEAD*(2.4 + 0.8*beat));
+      g.head.position.set(G.x, jh, G.y); g.head.rotation.y = -G.th; g.head.scale.setScalar(1 + 0.035*beat);
+      if (g.headGlow) g.headGlow.scale.setScalar(HEAD*(2.4 + 0.3*beat));
       g.shadow.position.set(G.x, 0.011, G.y);
       g.shadow.scale.setScalar(Math.max(0.5, 1 - 0.22*jh)); g.shadow.material.opacity = Math.max(0.15, 0.45 - 0.15*jh);
-      const R = 4 + 1.5*beat + G.flash;
+      const R = 4 + 0.6*beat + G.flash;
       g.floorGlow.visible = !gone;
       g.floorGlow.position.set(G.x, 0.01, G.y); g.floorGlow.scale.set(R*2, R*2, 1);
-      g.floorGlow.material.opacity = Math.min(1, 0.25 + 0.3*beat + 0.4*G.flash);
+      g.floorGlow.material.opacity = Math.min(1, 0.25 + 0.12*beat + 0.4*G.flash);
 
       g.ring.visible = !!K.magnet && !gone;
       if (K.magnet){
@@ -1781,11 +2248,11 @@ function makeR3(){
       // cameras: eye sits inside the head; chase floats behind and above it
       const cam = g.camera, rx = (Math.random()-.5)*sh*0.4, ry = (Math.random()-.5)*sh*0.4;
       if (view === 'eye'){
-        cam.fov = 76 + 2*beat;
+        cam.fov = 76;
         cam.position.set(G.x - fx*0.12 + rx, EYE_H + jh + ry, G.y - fz*0.12);
         cam.lookAt(G.x + fx*6, 0.15 + jh*0.5, G.y + fz*6);
       } else {
-        cam.fov = (MODE === 2 ? 68 : 62) + 1.5*beat;
+        cam.fov = MODE !== 1 ? 68 : 62;
         v3.set(G.x - fx*3.6, 2.5 + jh*0.4, G.y - fz*3.6);
         if (g.snap) g.camPos.copy(v3); else g.camPos.lerp(v3, 1 - Math.exp(-dt*6));
         cam.position.set(g.camPos.x + rx, g.camPos.y + ry, g.camPos.z);
@@ -1795,17 +2262,29 @@ function makeR3(){
     });
     load(PL[0]);
 
-    // draw: full screen in solo; in versus each player gets half the screen and their own camera
-    const W3 = innerWidth, H3 = innerHeight, n = GFX.length, vw = W3/n;
-    renderer.setScissorTest(n > 1);
-    for (let i = 0; i < n; i++){
-      // you never see your own head in eye view, but you do see your rival's
-      GFX.forEach((o, j) => { o.head.visible = o.headShow && !(view === 'eye' && j === i); o.shadow.visible = o.headShow; });
-      const cam = GFX[i].camera;
-      cam.aspect = vw/H3; cam.updateProjectionMatrix();
-      renderer.setViewport(i*vw, 0, vw, H3); renderer.setScissor(i*vw, 0, vw, H3);
-      renderer.render(scene, cam);
+    // draw each player's view on this screen; with nobody playing here, show the whole arena like a stadium screen
+    const W3 = innerWidth, H3 = innerHeight, vs = viewers(), rects = gridRects(vs.length, W3, H3);
+    if (!vs.length){
+      GFX.forEach(o => { o.head.visible = o.headShow; o.shadow.visible = o.headShow; });
+      const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2;
+      spec.aspect = W3/H3; spec.updateProjectionMatrix();
+      const fit = h/Math.tan(spec.fov*Math.PI/360)*(W3 < H3 ? 1.9 : 1.15);
+      spec.position.set(cx, fit*0.85, cz + fit*0.62); spec.lookAt(cx, 0, cz + h*0.05);
+      const f0 = scene.fog.near, f1 = scene.fog.far; scene.fog.near = fit*3; scene.fog.far = fit*6;
+      renderer.setScissorTest(false); renderer.setViewport(0, 0, W3, H3); renderer.render(scene, spec);
+      scene.fog.near = f0; scene.fog.far = f1;
+      return;
     }
+    renderer.setScissorTest(vs.length > 1);
+    if (vs.length > 1){ renderer.setScissor(0, 0, W3, H3); renderer.setClearColor(0x000000, 1); renderer.clear(); }
+    vs.forEach((i, k) => {
+      // you never see your own head in eye view, but you do see everyone else's
+      GFX.forEach((o, j) => { o.head.visible = o.headShow && !(view === 'eye' && j === i); o.shadow.visible = o.headShow; });
+      const r = rects[k], cam = GFX[i].camera, y = H3 - r.y - r.h;
+      cam.aspect = r.w/r.h; cam.updateProjectionMatrix();
+      renderer.setViewport(r.x, y, r.w, r.h); renderer.setScissor(r.x, y, r.w, r.h);
+      renderer.render(scene, cam);
+    });
   }
   function snap(i){ if (GFX[i]) GFX[i].snap = true; }
   function resize(){ renderer.setSize(innerWidth, innerHeight, false); }
@@ -1813,89 +2292,95 @@ function makeR3(){
   return {build, render, resize, snap};
 }
 
-// ---- phone controller link ----
-// The big screen registers a short code with the free PeerJS broker; the phone page joins it and
-// the two talk directly over WebRTC. Phone sends {t:'steer',v}, {t:'jump'}, {t:'go'}, {t:'pause'}, {t:'view'}, {t:'name'};
-// the game sends back {t:'state',...} for the phone's screen and {t:'buzz',p} for haptics.
-// Up to two phones can join the same code: the first is player 1, the second player 2.
-const PHONE = {peer: null, conns: [null, null], seen: [0, 0], code: ''};
+// ---- linking screens and phones ----
+// The screen that sets up a game registers a short code with the free PeerJS broker, and devices join it over
+// WebRTC (through the Metered relay in ice.js when a direct path isn't possible). Two kinds join:
+//   phones running controller.html steer a snake shown on this screen. They send {t:'steer',v}, {t:'jump'},
+//     {t:'go'}, {t:'pause'}, {t:'view'}, {t:'name'} and get {t:'state',...} for their display and {t:'buzz',p}.
+//   other screens running this page (connection metadata kind 'screen') play their own snake on their own
+//     screen. Each screen moves its own snake and reports it ({t:'pos'}) so steering never waits on the network;
+//     this host referees gems ({t:'claim'} -> {t:'gem'}), the clock and the team's lives, and relays everyone's
+//     positions to every screen ({t:'w'}, about 15 a second).
+const LINK = {peer: null, code: '', links: []};   // each link: {conn, kind: 'phone' | 'screen', seen, name}
 // The STUN servers and the optional TURN relay live in ice.js, shared with the controller.
 let ICE = null;
+const PEER_OPTS = window.SERPENTINE_PEER || {};   // lets a test point PeerJS at its own broker
 // a phone that's been silent this long (locked, pocketed, tab closed) counts as gone; live phones send several messages a second
 const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-16a';
+const CTRL_BUILD = '2026-10-18a';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
-const phoneLive = i => !!(PHONE.conns[i] && PHONE.conns[i].open && performance.now() - PHONE.seen[i] < PHONE_QUIET_MS);
-const phoneOn = i => i === undefined ? phoneLive(0) || phoneLive(1) : phoneLive(i);
-function phoneSend(msg, only){
-  PHONE.conns.forEach((c, i) => { if (c && c.open && (only === undefined || only === i)) try { c.send(msg); } catch(_) {} });
+const siteName = () => location.host || 'this site';
+const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
+const phones = () => LINK.links.filter(L => L.kind === 'phone');
+const screens = () => LINK.links.filter(L => L.kind === 'screen');
+const phoneOn = () => phones().some(linkLive);
+const seatOf = L => SEATS.findIndex(st => st.link === L);
+function linkSend(L, msg){ if (L && L.conn && L.conn.open) try { L.conn.send(msg); } catch(_) {} }
+function toScreens(msg){ if (ROLE === 'host') for (const L of screens()) linkSend(L, msg); }
+// haptics and the like: to one snake's phone, or (in solo, or with no seat given) to every phone
+function phoneSend(msg, seat){
+  if (ROLE !== 'host') return;
+  for (const L of phones()) if (seat === undefined || MODE === 1 || seatOf(L) === seat) linkSend(L, msg);
 }
 function setPhoneUI(note){
-  const on = phoneOn(), both = phoneOn(0) && phoneOn(1);
-  $('phoneChip').classList.toggle('on', on);
-  // tilting this screen solo needs no phone, so the code tag only shows if a friend's phone is wanted or one is connected
-  $('phoneChip').hidden = CTRL === 'device' && !on && !(MODE === 2 && OPP === 'friend');
-  $('phoneChipTxt').textContent = both ? '2 phones connected' : on ? 'Phone connected' : PHONE.code ? 'Phone code ' + PHONE.code : 'No phone';
-  $('phoneCode').textContent = PHONE.code || '····';
-  if (note) { $('phoneDesc').textContent = note; return; }
-  if (CTRL === 'keys' && !on) { $('phoneDesc').innerHTML = CAN_TILT ? 'Drag sideways to steer, tap to jump. A phone can still join with this code.' : 'Playing on the keyboard. A phone can still join with this code.'; return; }
-  if (CTRL === 'device'){
-    const tip = '<b>Tilt this screen to steer</b>, like a steering wheel. Tap anywhere to jump.';
-    if (MODE === 2 && OPP === 'friend') { $('phoneDesc').innerHTML = on ? `${tip} Player 2's phone is connected.` : `${tip} Player 2: scan this code with your phone.`; return; }
-    $('phoneDesc').innerHTML = tip + ' Hold it how you like to play, then press Start.'; return;
-  }
-  if (MODE === 2 && OPP === 'cpu' && on) { $('phoneDesc').innerHTML = '<b>Phone connected.</b> You against the computer.'; return; }
-  if (MODE === 2 && both) { $('phoneDesc').innerHTML = '<b>Both phones connected.</b> Ready to race.'; return; }
-  if (MODE === 2 && OPP === 'friend' && on) { $('phoneDesc').innerHTML = `<b>Player ${phoneOn(0) ? 1 : 2} is connected.</b> Player ${phoneOn(0) ? 2 : 1}: scan the same code.`; return; }
-  if (on) { $('phoneDesc').innerHTML = '<b>Phone connected.</b> Tilt to steer, jump to jump.'; return; }
-  const url = controllerURL(PHONE.code);
-  $('phoneDesc').innerHTML = location.protocol === 'file:'
-    ? 'Open this game from its web address (like your Render site) so a phone can reach the controller page.'
-    : `Scan with your phone, or open <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a>. Keep the phone on the same Wi-Fi as this screen.` +
-      (location.protocol === 'http:' && !/^(localhost|127\.)/.test(location.hostname) ? ' Motion sensors need HTTPS.' : '');
+  const on = phoneOn();
+  const chip = $('phoneChip');
+  // the corner tag only matters when a phone is the controller for this screen
+  chip.hidden = ROLE === 'client' || MODE !== 1 || CTRL !== 'phones';
+  chip.classList.toggle('on', on);
+  $('phoneChipTxt').textContent = on ? 'Phone connected' : LINK.code ? 'Phone code ' + LINK.code : 'No phone';
+  $('phoneCode').textContent = $('inviteCode').textContent = LINK.code || '····';
+  const url = controllerURL(LINK.code);
+  const local = location.protocol === 'file:';
+  if (note){ $('phoneDesc').textContent = note; $('inviteDesc').textContent = note; return; }
+  $('phoneDesc').innerHTML = local ? 'Open this game from its web address (like your Render site) so a phone can reach the controller page.'
+    : on ? '<b>Phone connected.</b> Tilt to steer, jump to jump.'
+    : `Scan with your phone, or open <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a>.`;
+  $('inviteDesc').innerHTML = local ? 'Open this game from its web address so friends can join.'
+    : `<b>Phones:</b> scan to join. You can play on the phone itself or use it as a controller for this screen. <b>Laptops and tablets:</b> open ${siteName()}, press <b>Join a game</b> and type the code.`;
 }
 function drawQR(){
-  const box = $('qr'); box.innerHTML = '';
-  const ok = typeof window.QRCode === 'function' && PHONE.code && location.protocol !== 'file:';
-  box.classList.toggle('off', !ok);
-  if (ok) new window.QRCode(box, {text: controllerURL(PHONE.code), width: 200, height: 200, colorDark: '#1a1230', colorLight: '#f6effd', correctLevel: window.QRCode.CorrectLevel.M});
+  for (const box of [$('qr'), $('qr2')]){
+    box.innerHTML = '';
+    const ok = typeof window.QRCode === 'function' && LINK.code && location.protocol !== 'file:';
+    box.classList.toggle('off', !ok);
+    if (ok) new window.QRCode(box, {text: controllerURL(LINK.code), width: 200, height: 200, colorDark: '#1a1230', colorLight: '#f6effd', correctLevel: window.QRCode.CorrectLevel.M});
+  }
 }
 async function startPhoneLink(){
-  if (typeof window.Peer !== 'function'){ setPhoneUI("Phone link couldn't load (are you offline?). Keyboard still works."); return; }
-  setPhoneUI('Setting up the phone link…');
-  ICE = await window.getIceServers();
+  if (typeof window.Peer !== 'function'){ setPhoneUI("The phone link couldn't load (are you offline?). The keyboard still works."); return; }
+  setPhoneUI('Setting up the link…');
+  if (!ICE) ICE = await window.getIceServers();
+  if (ROLE !== 'host') return;
   const open = (code, attempt) => {
-    PHONE.code = code; setPhoneUI('Setting up the phone link…');
-    const peer = new window.Peer('serpentine-' + code.toLowerCase(), {debug: 0, config: {iceServers: ICE}});
-    PHONE.peer = peer;
+    LINK.code = code; setPhoneUI('Setting up the link…');
+    const peer = new window.Peer('serpentine-' + code.toLowerCase(), {debug: 0, config: {iceServers: ICE}, ...PEER_OPTS});
+    LINK.peer = peer;
     peer.on('open', () => { store.set('phone', code); drawQR(); setPhoneUI(); });
     peer.on('connection', conn => {
-      let slot = -1;
+      const meta = conn.metadata || {};
+      const L = {conn, kind: meta.kind === 'screen' ? 'screen' : 'phone', seen: performance.now(), name: cleanName(meta.name)};
       conn.on('open', () => {
-        // take the first free seat; a third phone is politely turned away
-        // (a seat whose phone went quiet can be reclaimed, e.g. by the same phone after a reload)
-        slot = [0, 1].find(i => !phoneLive(i)) ?? -1;
-        if (slot < 0){ try { conn.send({t: 'full'}); } catch(_) {} setTimeout(() => conn.close(), 300); return; }
-        const old = PHONE.conns[slot];
-        if (old && old !== conn) try { old.close(); } catch(_) {}
-        PHONE.conns[slot] = conn; PHONE.seen[slot] = performance.now(); setPhoneUI(); lastPhone[slot] = ''; syncPhone(true);
-        phoneSend({t: 'buzz', p: 30}, slot);
+        if (ROLE !== 'host'){ conn.close(); return; }
+        L.seen = performance.now();
+        LINK.links.push(L);
+        if (MODE === 1 && L.kind === 'screen'){ linkSend(L, {t: 'solo'}); }
+        else if (MODE !== 1) seatFor(L);
+        setPhoneUI(); lastPhone.delete(L); lastLobby = ''; sendLobby(); syncPhone(true);
+        if (L.kind === 'phone') linkSend(L, {t: 'buzz', p: 30});
       });
-      conn.on('data', m => { if (slot >= 0 && PHONE.conns[slot] === conn){ PHONE.seen[slot] = performance.now(); onPhone(m, slot); } });
-      conn.on('close', () => {
-        if (slot < 0 || PHONE.conns[slot] !== conn) return;
-        PHONE.conns[slot] = null; setPhoneUI();
-      });
+      conn.on('data', m => { L.seen = performance.now(); onLink(L, m); });
+      conn.on('close', () => { LINK.links = LINK.links.filter(x => x !== L); linkGone(L); });
     });
     peer.on('error', err => {
       if (err.type === 'unavailable-id'){
         // the old session can linger for a moment after a reload; keep the code a couple of times, then pick a new one
         peer.destroy(); setTimeout(() => open(attempt < 2 ? code : newCode(), attempt + 1), 1500);
       } else if (['network', 'server-error', 'socket-error', 'socket-closed'].includes(err.type)){
-        setPhoneUI('Lost the phone link server. Retrying…');
+        setPhoneUI('Lost the link server. Retrying…');
       }
     });
     peer.on('disconnected', () => setTimeout(() => { if (!peer.destroyed) try { peer.reconnect(); } catch(_) {} }, 2000));
@@ -1904,13 +2389,114 @@ async function startPhoneLink(){
   const saved = store.get('phone');
   open(saved && /^[A-Z0-9]{4}$/.test(saved) ? saved : newCode(), 0);
 }
+// ---- seats: who's playing in a party or tag team ----
+// Phones and other screens take a seat when they connect. This screen can add its own players too:
+// up to two keyboard players (or one "this screen" tilt player on a tablet) and computer snakes.
+// Seats keep their order during a round (it's the player order); one that drops out is marked gone.
+function seatFor(L){
+  // a phone or tablet hosting shows only its own player's view, so a phone that scans its code plays on itself
+  if (CAN_TILT && L.kind === 'phone'){ linkSend(L, {t: 'useScreen', code: LINK.code}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 600); return; }
+  if (state !== 'menu'){
+    // someone who dropped out mid-round gets their seat back
+    const i = SEATS.findIndex(st => st.gone && st.kind === L.kind && st.name === L.name);
+    const j = i >= 0 ? i : SEATS.findIndex(st => st.gone && st.kind === L.kind);
+    if (j >= 0 && j < PL.length){
+      SEATS[j].link = L; SEATS[j].gone = false;
+      if (L.kind === 'screen'){ linkSend(L, {t: 'hi', seat: j}); sendStart(L, j, true); }
+      seatsChanged(); return;
+    }
+  }
+  if (SEATS.length >= 8){ linkSend(L, {t: 'full'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400); return; }
+  SEATS.push({kind: L.kind, link: L, name: L.name});
+  if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
+  seatsChanged();
+}
+function linkGone(L){
+  const i = seatOf(L);
+  if (i >= 0){
+    if (state === 'menu'){ SEATS.splice(i, 1); }
+    else {
+      SEATS[i].link = null; SEATS[i].gone = true;
+      // a screen that leaves takes its snake with it; a phone's snake just stops steering until it's back
+      if (L.kind === 'screen' && PL[i]){ PL[i].alive = false; PL[i].lives = 0; }
+    }
+    seatsChanged();
+  }
+  setPhoneUI();
+}
+function seatsChanged(){
+  renderSeats(); sendLobby(); setPhoneUI();
+  if (state === 'menu' && ROLE === 'host' && MODE !== 1) refreshMenu();
+}
+function addLocalSeat(kind){
+  if (SEATS.length >= 8) return;
+  if (kind === 'device') enableTilt();
+  SEATS.push({kind, link: null, name: ''});
+  seatsChanged();
+}
+const seatKindText = (st, i) => {
+  if (st.kind === 'phone') return 'Phone controller, on this screen';
+  if (st.kind === 'screen') return 'Playing on their own screen';
+  if (st.kind === 'device') return 'This screen: tilt to steer, tap to jump';
+  if (st.kind === 'cpu') return 'Computer';
+  const ks = SEATS.filter(x => x.kind === 'keys');
+  if (ks.length < 2) return 'Keyboard: ← → steer, Space or ↑ jumps';
+  return ks.indexOf(st) === 0 ? 'Keyboard: A D steer, W jumps' : 'Keyboard: ← → steer, ↑ jumps';
+};
+function renderSeats(){
+  if (ROLE !== 'host') return;
+  const K = SNAKES[snake], ol = $('seatList');
+  ol.innerHTML = '';
+  SEATS.forEach((st, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="sw" style="background:${colorFor(K, i)[0]}"></span><span class="n"><b></b><small></small></span>`;
+    li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1) + (st.gone ? ' (dropped)' : '');
+    li.querySelector('small').textContent = seatKindText(st, i);
+    if (['cpu', 'keys', 'device'].includes(st.kind) || st.gone){
+      const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remove'); x.textContent = '×';
+      x.addEventListener('click', () => { if (state !== 'menu') return; SEATS.splice(SEATS.indexOf(st), 1); seatsChanged(); });
+      li.appendChild(x);
+    }
+    ol.appendChild(li);
+  });
+  if (!SEATS.length) ol.innerHTML = '<li class="empty">Nobody yet. Scan the code with a phone, or add players below.</li>';
+  const keysN = SEATS.filter(x => x.kind === 'keys').length, devN = SEATS.filter(x => x.kind === 'device').length;
+  $('addLocal').textContent = CAN_TILT ? '+ Me, on this screen' : '+ Keyboard player';
+  $('addLocal').disabled = SEATS.length >= 8 || (CAN_TILT ? devN >= 1 : keysN >= 2);
+  $('addCpu').disabled = SEATS.length >= 8;
+}
+let lastLobby = '';
+function sendLobby(){
+  if (ROLE !== 'host' || !screens().length) return;
+  const K = SNAKES[snake];
+  const base = {t: 'lobby', mode: MODE, where: MODE === 2 ? COURSES[course].name : `Level ${stage + 1} / ${STAGES[stage].name}`,
+    seats: SEATS.map((st, i) => ({kind: st.kind, name: st.name || '', color: colorFor(K, i)[0], gone: !!st.gone}))};
+  const key = JSON.stringify(base);
+  if (key === lastLobby) return;
+  lastLobby = key;
+  for (const L of screens()) linkSend(L, {...base, you: seatOf(L)});
+}
+function sendStart(L, i, late){
+  const m = {t: 'start', cfg: CFG, me: i, banked: RUN.banked};
+  // someone joining a round already under way also needs the clock and which gems are gone or new
+  if (late && G){
+    const taken = [], extra = [];
+    for (const g of G.gemById.values()){ if (g.taken) taken.push(g.id); else if (g.born !== undefined) extra.push([g.id, r2(g.x), r2(g.y)]); }
+    m.now = {t: G.t, taken, extra, state};
+  }
+  linkSend(L, m);
+}
+function sendStarts(){ SEATS.forEach((st, i) => { if (st.kind === 'screen' && st.link) sendStart(st.link, i); }); }
 function goAction(){
-  if (state === 'menu') start(stage);
-  else if (state === 'over') start(MODE === 2 ? G.idx : 0);
+  if (ROLE !== 'host') return;
+  if (state === 'menu') start(MODE === 2 ? course : stage);
+  else if (state === 'over') start(MODE === 2 ? G.idx : MODE === 3 ? stage : 0);
   else if (state === 'lost') retryLevel();
   else if (state === 'clear') nextStage();
   else if (state === 'paused') resume();
 }
+const togglePause = () => { if (state === 'play') pause(); else if (state === 'paused') resume(); };
+
 // ---- tilt this screen to steer ----
 // Works however the device is held: upright in portrait, sideways in landscape, or lying back in a lap.
 // At the start of each run it notes which way is "down" across the screen; tipping the right edge down
@@ -1929,8 +2515,10 @@ function enableTilt(){
     addEventListener('deviceorientation', onTilt); TILT.on = true; TILT.cal = true;
   }).catch(() => { TILT.denied = true; TILT.asked = false; setPhoneUI('Motion access was blocked, so drag sideways to steer and tap to jump. To tilt, allow motion in Safari settings and reload.'); });
 }
+// tilt steers when solo is set to Tilt, when this screen joined a game, or when a party host has a "this screen" player
+const tiltWanted = () => CAN_TILT && ((MODE === 1 && CTRL === 'device') || ROLE === 'client' || (MODE !== 1 && PL.some(p => p.kind === 'device')));
 function onTilt(e){
-  if (e.beta == null || e.gamma == null || CTRL !== 'device') return;
+  if (e.beta == null || e.gamma == null || !tiltWanted()) return;
   const b = e.beta*Math.PI/180, g = e.gamma*Math.PI/180;
   // which way gravity points, in the device's own axes (x right, y up the screen in portrait)
   const dx = Math.sin(g)*Math.cos(b), dy = -Math.sin(b);
@@ -1950,79 +2538,310 @@ function onTilt(e){
   TILT.rel += (deg - TILT.rel)*0.5;
   const a = Math.abs(TILT.rel), full = tiltFull();
   const v = a < TILT_DEAD ? 0 : Math.sign(TILT.rel)*Math.pow(Math.min(1, (a - TILT_DEAD)/(full - TILT_DEAD)), 1.7);
-  STEERS[0].phone = v; STEERS[0].phoneAt = performance.now(); TILT.seen = performance.now();
+  const st = mySteer(); st.phone = v; st.phoneAt = performance.now(); TILT.seen = performance.now();
 }
+// tilt settings: the same two controls appear under Controls in the menu and in the Settings card
+function buildTiltRows(box){
+  box.innerHTML = `<div class="srow"><label>Tilt for a full turn <output></output></label><input type="range" min="15" max="60" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
+    <label class="scheck"><input type="checkbox"> Flip left and right</label>`;
+  const r = box.querySelector('input[type=range]'), f = box.querySelector('input[type=checkbox]');
+  r.addEventListener('input', () => { store.set('ctl-fullturn', r.value); syncTiltRows(); });
+  f.addEventListener('change', () => { store.set('ctl-flip', f.checked ? '1' : '0'); syncTiltRows(); });
+}
+function syncTiltRows(){
+  for (const box of [$('menuTilt'), $('sTilt'), $('cTilt')]){
+    box.querySelector('input[type=range]').value = tiltFull(); box.querySelector('output').textContent = tiltFull() + '°';
+    box.querySelector('input[type=checkbox]').checked = store.get('ctl-flip') === '1';
+  }
+}
+function recenter(){ TILT.cal = true; buzz(10); }
 // a tilt can turn the screen sideways; settle on the new "down" when it does
 addEventListener('orientationchange', () => { TILT.cal = true; });
 // ask for motion on the first button press (Start, Resume and the like) while tilt is the control
-addEventListener('click', e => { if (CTRL === 'device' && e.target.closest && e.target.closest('button')) enableTilt(); }, true);
+addEventListener('click', e => { if (CAN_TILT && (CTRL === 'device' || ROLE === 'client') && e.target.closest && e.target.closest('button')) enableTilt(); }, true);
 
-function onPhone(m, slot){
+function onLink(L, m){
   if (!m || typeof m !== 'object') return;
-  let pi = MODE === 2 ? slot : 0;   // in solo either phone drives the one snake
-  // tilting this screen: this screen is player 1, and a friend's phone (whichever seat it took) is player 2
-  if (CTRL === 'device'){
-    if (m.t === 'steer' || m.t === 'jump'){ if (humans() !== 2) return; pi = 1; }
-  }
-  // the Controls choice decides who drives: on Keyboard, a connected phone doesn't steer anyone
-  else if (CTRL !== 'phones' && (m.t === 'steer' || m.t === 'jump')) return;
-  if (m.t === 'steer'){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); }
-  else if (m.t === 'jump') jumpFor(pi);
-  else if (m.t === 'go') goAction();
-  else if (m.t === 'pause'){ if (state === 'play') pause(); else if (state === 'paused') resume(); }
-  else if (m.t === 'view') cycleView();
-  else if (m.t === 'name') saveName(m.name);
+  if (L.kind === 'screen') onScreenMsg(L, m); else onPhone(L, m);
 }
-const lastPhone = ['', ''];
+function onScreenMsg(L, m){
+  const i = seatOf(L);
+  if (m.t === 'name'){ if (i >= 0){ SEATS[i].name = cleanName(m.name); if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } return; }
+  if (m.t === 'pause'){ togglePause(); return; }
+  if (i < 0 || i >= PL.length || state === 'menu' || !G) return;
+  if (m.t === 'pos') applyPos(i, m);
+  else if (m.t === 'claim'){ const g = G.gemById.get(m.id); if (g && !g.taken && state === 'play'){ g.taken = true; credit(i, g); } }
+  else if (m.t === 'died' && MODE === 3) G.teamLives = Math.max(0, G.teamLives - 1);
+}
+function onPhone(L, m){
+  // which snake this phone steers: solo's one snake (when Phone + screen is the control), or its own seat
+  let pi = -1;
+  if (MODE === 1){ if (CTRL === 'phones') pi = 0; }
+  else { const i = seatOf(L); if (i >= 0 && i < PL.length && PL[i].kind === 'phone' && state !== 'menu') pi = i; }
+  if (m.t === 'steer'){ if (pi >= 0){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); } }
+  else if (m.t === 'jump'){ if (pi >= 0) jumpFor(pi); }
+  else if (m.t === 'go') goAction();
+  else if (m.t === 'pause') togglePause();
+  else if (m.t === 'view') cycleView();
+  else if (m.t === 'name'){
+    if (MODE === 1) saveName(m.name);
+    else { const i = seatOf(L); if (i >= 0){ SEATS[i].name = cleanName(m.name); if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } }
+  }
+}
+const lastPhone = new Map();
 function syncPhone(force){
-  if (!phoneOn() || !G) return;
-  let go = {menu: MODE === 2 ? 'Start the race' : `Start level ${stage + 1}`, over: MODE === 2 ? 'Rematch' : 'New run',
+  if (ROLE !== 'host' || !G) return;
+  const ls = phones().filter(L => L.conn.open);
+  if (!ls.length) return;
+  let go = {menu: MODE === 2 ? 'Start the party' : MODE === 3 ? `Start level ${stage + 1} as a team` : `Start level ${stage + 1}`,
+    over: MODE === 2 ? 'Rematch' : MODE === 3 ? 'New team run' : 'New run',
     lost: `Restart level ${G.idx + 1}`, clear: `Start level ${G.idx + 2}`, paused: 'Resume'}[state] || '';
-  // while someone's phone is missing, the phones' Start button says who the game is waiting for
+  // while the game is waiting on something, the phones' Start button says what
   const wait = waitingText();
   if (go && wait && state !== 'paused') go = wait.split(' (')[0] + '…';
   const ask = MODE === 1 && pending ? {rank: rankFor(pending.diff, pending.score) + 1, score: pending.score, name: store.get('name') || ''} : null;
-  PHONE.conns.forEach((c, slot) => {
-    if (!c || !c.open) return;
-    const p = MODE === 2 ? PL[slot] : PL[0];
-    const msg = MODE === 2
-      ? {t: 'state', state, go, view, mode: 2, player: slot + 1, color: p.look.color, score: pScore(p), lives: p.lives,
-         level: G.idx + 1, name: G.S.name, gems: p.gems, goal: null, left: Math.max(0, Math.ceil(G.left)), alive: p.alive}
-      : {t: 'state', state, go, view, mode: 1, ask, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
+  const K = SNAKES[snake];
+  for (const L of ls){
+    let msg;
+    if (MODE === 1){
+      msg = {t: 'state', state, go, view, mode: 1, ask, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
          level: G.idx + 1, name: G.S.name, gems: Math.min(G.gems, G.S.goal), goal: G.S.goal};
+    } else {
+      const i = seatOf(L), p = i >= 0 && i < PL.length && state !== 'menu' ? PL[i] : null;
+      msg = {t: 'state', state, go, view, mode: MODE, player: i + 1, color: p ? p.look.color : colorFor(K, Math.max(0, i))[0],
+        score: p ? pScore(p) : 0, lives: MODE === 3 ? G.teamLives : p ? p.lives : LIVES, maxLives: MODE === 3 ? Math.max(LIVES, G.teamLives) : LIVES,
+        level: G.idx + 1, name: G.S.name, gems: MODE === 3 ? G.teamGems : p ? p.gems : 0, goal: MODE === 3 ? G.goal : null,
+        left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
+    }
     const key = JSON.stringify(msg);
-    if (!force && key === lastPhone[slot]) return;
-    lastPhone[slot] = key;
-    try { c.send(msg); } catch(_) {}
+    if (!force && key === lastPhone.get(L)) continue;
+    lastPhone.set(L, key);
+    linkSend(L, msg);
+  }
+}
+
+// ---- joining a game hosted on another screen ----
+// This screen then plays one snake with its own view and controls. Its own snake is simulated right here,
+// and everyone else's follows the host's relays.
+const CL = {peer: null, conn: null, code: '', lobby: null, msg: '', stuck: false};
+function netSend(m){ if (CL.conn && CL.conn.open) try { CL.conn.send(m); } catch(_) {} }
+function showJoin(msg){
+  hideOverlays(); $('joinOv').hidden = false;
+  $('joinMsg').textContent = msg || '';
+  setTimeout(() => $('joinCode').focus({preventScroll: true}), 50);
+}
+async function joinGame(code){
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  if (code.length !== 4) return showJoin('Type the four-letter code from the game screen.');
+  if (code === LINK.code) return showJoin("That's this screen's own code. Type the code shown on the other screen.");
+  ROLE = 'client'; CL.code = code;
+  if (location.hash !== '#join=' + code) history.replaceState(null, '', '#join=' + code);
+  // this screen stops hosting a game of its own
+  if (LINK.peer){ try { LINK.peer.destroy(); } catch(_) {} LINK.peer = null; }
+  LINK.links = []; LINK.code = '';
+  CTRL = CAN_TILT ? 'device' : 'keys';
+  if (view === 'top' && R3) setView('chase');
+  state = 'menu'; stopMusic();
+  showClient(`Connecting to game ${code}…`);
+  if (typeof window.Peer !== 'function') return showClient("Couldn't load the link library. Check your connection and reload.", true);
+  if (!ICE) ICE = await window.getIceServers();
+  if (CL.peer) try { CL.peer.destroy(); } catch(_) {}
+  const peer = CL.peer = new window.Peer({debug: 0, config: {iceServers: ICE}, ...PEER_OPTS});
+  peer.on('open', dialHost);
+  peer.on('error', err => {
+    if (err.type === 'peer-unavailable') showClient(`No game with code ${code}. Check the code on the game screen.`, true);
+    else showClient('Having trouble reaching the game. Still trying…');
+    if (err.type !== 'peer-unavailable') setTimeout(() => { if (!CL.conn && !peer.destroyed && peer.open) dialHost(); }, 3000);
   });
+  peer.on('disconnected', () => { if (!peer.destroyed) try { peer.reconnect(); } catch(_) {} });
+}
+function dialHost(){
+  const c = CL.peer.connect('serpentine-' + CL.code.toLowerCase(), {reliable: true, metadata: {kind: 'screen', name: store.get('name') || ''}});
+  const timer = setTimeout(() => {
+    if (c.open) return;
+    try { c.close(); } catch(_) {}
+    showClient("Found the game, but couldn't reach it on this network yet. Trying again… (a VPN or iCloud Private Relay can block this)");
+    setTimeout(() => { if (!CL.conn) dialHost(); }, 2000);
+  }, 10000);
+  c.on('open', () => { clearTimeout(timer); CL.conn = c; showClient('Connected. Waiting for the host to start…'); });
+  c.on('data', onHost);
+  c.on('close', () => { if (CL.conn !== c) return; CL.conn = null; hostLost(); });
+}
+function hostLost(){
+  if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); }
+  showClient('Lost the connection to the game. Reconnecting…');
+  setTimeout(() => { if (!CL.conn && CL.peer && !CL.peer.destroyed) dialHost(); }, 2000);
+}
+function leaveGame(){ history.replaceState(null, '', location.pathname + location.search); location.reload(); }
+function showClient(msg, stuck){
+  if (msg !== undefined){ CL.msg = msg; CL.stuck = !!stuck; }
+  if (state !== 'menu') return;
+  hideOverlays(); $('clientOv').hidden = false;
+  renderClientLobby();
+}
+function renderClientLobby(){
+  const L = CL.lobby, me = L && L.seats[ME];
+  $('cEyebrow').textContent = CL.code ? `Game ${CL.code}` : 'Joining';
+  $('cTitle').textContent = me ? `You're player ${ME + 1}` : 'Serpentine';
+  $('cMsg').textContent = L && L.mode === 1 ? 'That screen switched to solo. Ask the host to pick Party or Tag team.'
+    : L ? `${L.mode === 2 ? 'Party' : 'Tag team'} on ${L.where}. ${CL.msg}` : CL.msg;
+  $('cSwatch').style.background = me ? me.color : 'transparent';
+  $('cYouBox').hidden = !me;
+  const ol = $('cSeats'); ol.innerHTML = '';
+  (L ? L.seats : []).forEach((st, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="sw" style="background:${st.color}"></span><span class="n"><b></b><small></small></span>`;
+    li.querySelector('b').textContent = (i === ME ? 'You' : st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1);
+    li.querySelector('small').textContent = st.kind === 'screen' ? 'Own screen' : st.kind === 'phone' ? 'Phone controller' : st.kind === 'cpu' ? 'Computer' : 'On the host screen';
+    if (i === ME) li.className = 'me';
+    ol.appendChild(li);
+  });
+  $('cPlayersBox').hidden = !L;
+  $('cTiltBtn').hidden = !CAN_TILT || TILT.on;
+  $('cTilt').hidden = !CAN_TILT;
+  $('cHow').innerHTML = CAN_TILT ? '<b>Tilt this screen</b> like a steering wheel to turn. <b>Tap anywhere</b> to jump.'
+    : '<b>← →</b> or <b>A D</b> turn, <b>Space</b> jumps. Or drag sideways and tap.';
+  $('cView-' + view) && ($('cView-' + view).checked = true);
+}
+function onHost(m){
+  if (!m || typeof m !== 'object') return;
+  if (m.t === 'hi'){ ME = m.seat; showClient(m.playing ? "A round is under way. You'll join the next one." : 'Waiting for the host to start…'); }
+  else if (m.t === 'lobby'){ CL.lobby = m; if (m.you >= 0) ME = m.you; if (state === 'menu') renderClientLobby(); }
+  else if (m.t === 'full') showClient('This game is full (8 players).', true);
+  else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Tag team and you'll join.");
+  else if (m.t === 'start') clientStart(m);
+  else if (m.t === 'w'){ if (G && state !== 'menu') applyWorld(m); }
+  else if (m.t === 'gem'){ if (G && state !== 'menu') applyGem(m); }
+  else if (m.t === 'phase') applyPhase(m);
+}
+function clientStart(m){
+  ME = m.me; MODE = m.cfg.mode;
+  RUN = {...newRunState(), diff: m.cfg.diff, snake: m.cfg.snake, banked: m.banked || 0};
+  initAudio();
+  applyModeUI();
+  loadWorld(m.cfg);
+  if (m.now){
+    G.t = m.now.t;
+    for (const id of m.now.taken){ const g = G.gemById.get(id); if (g) g.taken = true; }
+    for (const [id, x, y] of m.now.extra) addGem(id, x, y);
+    G.gemsLeft = [...G.gemById.values()].filter(g => !g.taken).length;
+  }
+  if (view === 'top') setView('chase');
+  hideOverlays();
+  if (m.now && m.now.state === 'paused'){ state = 'play'; pause(); return; }
+  begin();
+}
+function applyWorld(m){
+  if (Math.abs(G.t - m.tt) > 0.3) G.t = m.tt; else G.t += (m.tt - G.t)*0.1;
+  if (MODE === 2 && typeof m.left === 'number') G.left = m.left;
+  if (MODE === 3){ G.teamLives = m.tl; G.teamGems = m.tg; }
+  m.ps.forEach((ps, i) => {
+    const p = PL[i]; if (!p) return;
+    if (i !== ME && ps) applyPos(i, ps);
+    p.gems = m.gm[i];
+    if (p === CUR) G.gems = p.gems;
+  });
+}
+function applyGem(m){
+  const g = G.gemById.get(m.id);
+  if (g && !g.taken){ g.taken = true; burst(g.x, g.y, C.gem, 8, 3); }
+  if (m.sp) for (const [id, x, y] of m.sp) addGem(id, x, y);
+  if (m.by === ME){
+    // the host says it's ours: grow, flash and chime
+    const p = PL[ME];
+    p.tailLen += G.D.grow*G.K.grow; p.flash = 1;
+    if (G.K.recharge) p.magCool = G.K.recharge;
+    if (p === CUR){ G.tailLen = p.tailLen; G.magCool = p.magCool; }
+    sfxGem(); buzz(GEM_BUZZ);
+  }
+}
+function applyPhase(m){
+  if (!G) return;
+  if (m.state === 'play'){ if (state !== 'play' && state !== 'menu'){ hideOverlays(); begin(); } }
+  else if (m.state === 'paused'){ if (state === 'play') pause(); }
+  else if (m.state === 'over'){
+    state = 'over'; G.done = true; stopMusic(); sfxClear(); keepAwake(false);
+    if (m.team) showTeamOver(m.team); else showDuel(m.res, m.why);
+  }
+  else if (m.state === 'clear'){
+    state = 'clear'; G.done = true; G.clearT = 0; G.cardShown = false;
+    RUN.banked = m.banked; RUN.lastBonus = m.bonus;
+    stopMusic(); sfxClear(); buzz(CLEAR_BUZZ);
+  }
+  else if (m.state === 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); showClient('Waiting for the host to start the next round…'); }
+}
+// ~15 times a second: a client reports its own snake; the host relays everyone's snakes to every screen
+let lastNet = 0;
+function netTick(now){
+  if (now - lastNet < 66) return;
+  lastNet = now;
+  if (ROLE === 'client'){
+    if (G && PL[ME] && state !== 'menu') netSend({t: 'pos', ...posOf(PL[ME])});
+    return;
+  }
+  if (MODE === 1 || state === 'menu' || !G || !screens().length) return;
+  toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems,
+    ps: PL.map(p => p.local ? posOf(p) : p.netRaw || null), gm: PL.map(p => p.gems)});
 }
 
 // ---- HUD ----
 let lastHud = '';
 const HEART = 'M8 14s-6-3.6-6-7.6A3.2 3.2 0 0 1 8 4.3a3.2 3.2 0 0 1 6 2.1C14 10.4 8 14 8 14z';
 const heartsHTML = n => Array.from({length: LIVES}, (_, i) => `<svg viewBox="0 0 16 16"><path class="${i < n ? 'on' : 'off'}" d="${HEART}"/></svg>`).join('');
-// show the solo HUD or the versus one (two scoreboards, a clock and a divider)
+const heartsN = (n, max) => Array.from({length: max}, (_, i) => `<svg viewBox="0 0 16 16"><path class="${i < n ? 'on' : 'off'}" d="${HEART}"/></svg>`).join('');
+// the solo HUD, or the party / tag team one (a clock or the team's progress, a scoreboard, and a name tag on each view)
 function applyModeUI(){
-  $('duo').hidden = MODE !== 2; $('split').hidden = MODE !== 2 || view === 'top';
-  $('hudMain').hidden = MODE === 2;
+  $('mp').hidden = MODE === 1; $('split').hidden = true;
+  $('hudMain').hidden = MODE !== 1;
   lastHud = '';
 }
+// where each player's view sits on this screen: one fills it; more share it in a grid (side by side for two)
+function gridRects(k, W, H){
+  if (k <= 1) return [{x: 0, y: 0, w: W, h: H}];
+  let cols = k <= 4 ? 2 : k <= 6 ? 3 : 4, rows = Math.ceil(k/cols);
+  if (H > W){ if (k <= 2){ cols = 1; rows = 2; } else [cols, rows] = [rows, cols]; }
+  const g = 3, w = (W - g*(cols - 1))/cols, h = (H - g*(rows - 1))/rows;
+  return Array.from({length: k}, (_, i) => ({x: (i % cols)*(w + g), y: Math.floor(i/cols)*(h + g), w, h}));
+}
+// whose views this screen draws: solo's snake, this client's snake, or a host's own players (phones, keyboard,
+// this screen). A phone or tablet only ever draws its own player. None at all means the whole-arena view.
+function viewers(){
+  if (!PL.length) return [];
+  if (MODE === 1) return [0];
+  if (ROLE === 'client') return PL[ME] ? [ME] : [];
+  if (CAN_TILT){ const i = PL.findIndex(p => p.kind === 'device'); return i >= 0 ? [i] : []; }
+  return PL.map((p, i) => ['phone', 'keys', 'device'].includes(p.kind) ? i : -1).filter(i => i >= 0);
+}
 function updateHUD(){
-  if (MODE === 2){
-    const left = Math.max(0, Math.ceil(G.left));
-    const key = PL.map(p => [pScore(p), p.lives, p.alive, p.look.color]).join('|') + '|' + left + state;
+  if (MODE !== 1){
+    const left = Math.max(0, Math.ceil(G.left)), vs = viewers();
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME]);
     if (key === lastHud) return;
     lastHud = key;
-    PL.forEach((p, i) => {
-      const el = $('duo' + i);
-      $('duoTag' + i).style.background = p.look.color;
-      $('duoTag' + i).textContent = isCPU(i) ? 'CPU' : OPP === 'cpu' && MODE === 2 ? 'You' : 'P' + (i + 1);
-      el.querySelector('.sc').textContent = pScore(p);
-      el.querySelector('.hearts').innerHTML = heartsHTML(p.lives);
-      $('duoMsg' + i).textContent = state !== 'play' || p.alive ? '' : p.lives > 0 ? 'Respawning…' : 'Out of lives';
-    });
-    $('duoT').textContent = `${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}`;
-    $('duoT').classList.toggle('hurry', left <= 10 && state === 'play');
+    if (MODE === 2){
+      $('mpTop').innerHTML = `<span class="clock${left <= 10 && state === 'play' ? ' hurry' : ''}">${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}</span>`;
+    } else {
+      const got = Math.min(G.teamGems, G.goal);
+      $('mpTop').innerHTML = `<span class="team"><span>Level ${G.idx + 1} / ${G.S.name}</span><span class="goal"><span class="goal-bar"><i style="width:${100*got/G.goal}%"></i></span>${got}/${G.goal} team gems</span><span class="hearts">${heartsN(G.teamLives, Math.max(LIVES, G.teamLives))}</span></span>`;
+    }
+    // the scoreboard: best first in a party, player order in a team
+    const order = PL.map((p, i) => i);
+    if (MODE === 2) order.sort((a, b) => pScore(PL[b]) - pScore(PL[a]));
+    $('mpBoard').innerHTML = order.map(i => {
+      const p = PL[i], mine = ROLE === 'client' ? i === ME : vs.includes(i) && vs.length === 1;
+      const tail = MODE === 2 ? `<span class="hearts">${heartsN(p.lives, LIVES)}</span>` : `<small>${p.gems} gems</small>`;
+      return `<li class="${mine ? 'me' : ''}${p.alive ? '' : ' out'}"><span class="sw" style="background:${p.look.color}"></span><span class="nm">${esc(playerName(i))}</span><span class="sc">${pScore(p)}</span>${tail}</li>`;
+    }).join('');
+    // a name tag on each view when this screen shows more than one, plus "respawning" when that snake is down
+    const rects = gridRects(vs.length, innerWidth, innerHeight);
+    $('mpTags').innerHTML = vs.map((i, k) => {
+      const p = PL[i], r = rects[k];
+      const msg = state !== 'play' || p.alive ? '' : canRespawn(p) ? 'Respawning…' : 'Out';
+      // the tag sits on the outer side of its view, clear of the map in the middle
+      const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
+      return (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
+        (msg ? `<div class="vmsg" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.42}px">${msg}</div>` : '');
+    }).join('');
     return;
   }
   const sc = state === 'menu' ? 0 : score();
@@ -2038,6 +2857,7 @@ function updateHUD(){
   $('goalFill').style.width = (100*got/G.S.goal) + '%';
   $('goalTxt').textContent = `${got}/${G.S.goal} gems`;
 }
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
 // ---- menu pickers ----
 const LOCK = '<svg class="lock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" style="fill:currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" style="fill:none;stroke:currentColor;stroke-width:1.6"/></svg>';
@@ -2059,20 +2879,21 @@ function buildSeg(boxId, name, items, onPick){
     box.appendChild(lab);
   }
 }
-buildSeg('modePick', 'mode', [{value: 1, html: '<b class="num">1</b><small>Solo</small>'}, {value: 2, html: '<b class="num">2</b><small>Versus</small>'}], v => setMode(+v));
+buildSeg('modePick', 'mode', [{value: 1, html: '<b>Solo</b><small>Just you</small>'}, {value: 2, html: '<b>Party</b><small>Up to 8</small>'}, {value: 3, html: '<b>Tag team</b><small>2 to 4 together</small>'}], v => setMode(+v));
+$('modePick').style.setProperty('--n', 3);
 function setMode(m){
   MODE = m; store.set('players', m);
-  // solo keeps its unlock order; versus can race on any level
-  if (MODE === 1 && stage >= unlocked){ stage = unlocked - 1; store.set('stage', stage); }
-  if (MODE === 2 && view === 'top') setView('chase');
-  applyModeUI(); setPhoneUI(); refreshMenu(); resize();
+  // solo keeps its unlock order; a party can play any course
+  if (MODE !== 2 && stage >= unlocked){ stage = unlocked - 1; store.set('stage', stage); }
+  if (MODE !== 1 && view === 'top') setView('chase');
+  applyModeUI(); setPhoneUI(); renderSeats(); refreshMenu(); resize();
 }
-buildSeg('oppPick', 'opp', [{value: 'friend', html: '<b>Friend</b><small>2 phones</small>'}, {value: 'cpu', html: '<b>Computer</b><small>Solo vs AI</small>'}], v => {
-  OPP = v; store.set('opp', v); setPhoneUI(); applyModeUI(); refreshMenu();
+buildSeg('coursePick', 'course', COURSES.map((S, i) => ({value: i, html: `<b>${S.name}</b><small>${STYLES[S.music].name}</small>`})), v => {
+  course = +v; store.set('course', course); refreshMenu();
 });
 buildSeg('ctrlPick', 'ctrl', CAN_TILT
-  ? [{value: 'device', html: '<b>Tilt</b><small>This screen</small>'}, {value: 'phones', html: '<b>Phones</b><small>Tilt + jump</small>'}, {value: 'keys', html: '<b>Touch</b><small>Drag + tap</small>'}]
-  : [{value: 'phones', html: '<b>Phones</b><small>Tilt + jump</small>'}, {value: 'keys', html: '<b>Keyboard</b><small>On this screen</small>'}], v => {
+  ? [{value: 'device', html: '<b>Tilt</b><small>This screen</small>'}, {value: 'phones', html: '<b>Phone + screen</b><small>Phone steers</small>'}, {value: 'keys', html: '<b>Touch</b><small>Drag + tap</small>'}]
+  : [{value: 'phones', html: '<b>Phone + screen</b><small>Phone steers</small>'}, {value: 'keys', html: '<b>Keyboard</b><small>On this screen</small>'}], v => {
   CTRL = v; store.set('ctrl', v);
   if (v === 'device') enableTilt();
   if (v !== 'device') STEERS[0].phone = 0;
@@ -2082,8 +2903,8 @@ $('ctrlPick').style.setProperty('--n', CAN_TILT ? 3 : 2);
 buildSeg('stagePick', 'stage', STAGES.map((S, i) => ({value: i, html: `<b class="num">${i + 1}</b>${LOCK}`})), v => {
   stage = +v; store.set('stage', stage); refreshMenu();
 });
-buildSeg('snakePick', 'snake', Object.keys(SNAKES).map(k => ({value: k, html: `${snakeIcon(k)}<b>${SNAKES[k].name}</b>`})), v => {
-  snake = v; store.set('snake', v); refreshMenu();
+buildSeg('snakePick', 'snake', Object.keys(SNAKES).map(k => ({value: k, html: `${snakeIcon(k)}${LOCK}<b>${SNAKES[k].name}</b>`})), v => {
+  snake = v; store.set('snake', v); renderSeats(); refreshMenu();
 });
 buildSeg('diffPick', 'diff', Object.keys(DIFFS).map(k => ({value: k, html: `<b>${DIFFS[k].name}</b><small id="best-${k}">Best 0</small>`})), v => {
   diff = v; store.set('diff', v); refreshMenu();
@@ -2095,90 +2916,117 @@ function viewIcon(k){
   return `<svg class="sn" viewBox="0 0 24 24" aria-hidden="true" style="${st}"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>`;
 }
 buildSeg('viewPick', 'view', Object.keys(VIEWS).map(k => ({value: k, html: `${viewIcon(k)}<b>${VIEWS[k].name}</b>`})), v => setView(v));
+buildSeg('sViewPick', 'view-s', Object.keys(VIEWS).map(k => ({value: k, html: `${viewIcon(k)}<b>${VIEWS[k].name}</b>`})), v => setView(v));
+buildSeg('cViewPick', 'cView', ['eye', 'chase'].map(k => ({value: k, html: `${viewIcon(k)}<b>${VIEWS[k].name}</b>`})), v => setView(v));
 function setView(v){
   if (!R3) v = 'top';
-  else if (MODE === 2 && v === 'top') v = 'chase';   // versus needs the split 3D views
+  else if (MODE !== 1 && v === 'top') v = 'chase';   // party and tag team play in the 3D views
   view = v; store.set('view', v);
   $('world').hidden = $('vig').hidden = v === 'top';
-  $('split').hidden = MODE !== 2 || v === 'top';
   pointers.clear();
   resize();
   $('view-' + v).checked = true;
+  if ($('view-s-' + v)) $('view-s-' + v).checked = true;
+  if ($('cView-' + v)) $('cView-' + v).checked = true;
   $('viewDesc').textContent = VIEWS[v].desc + (R3 ? '' : " (3D couldn't load here, so only Top is available.)");
   syncPhone();
 }
 function cycleView(){
-  const ks = Object.keys(VIEWS).filter(k => (R3 || k === 'top') && !(MODE === 2 && k === 'top'));
+  const ks = Object.keys(VIEWS).filter(k => (R3 || k === 'top') && !(MODE !== 1 && k === 'top'));
   setView(ks[(ks.indexOf(view) + 1) % ks.length]);
 }
 function updateMenuUI(){
   STAGES.forEach((S, i) => {
-    const inp = $('stage-' + i), locked = MODE === 1 && i >= unlocked;
+    const inp = $('stage-' + i), locked = i >= unlocked;
     inp.disabled = locked;
     inp.closest('.opt').classList.toggle('locked', locked);
     inp.setAttribute('aria-label', locked ? `Level ${i + 1}, locked` : `Level ${i + 1}, ${S.name}`);
   });
   $('stage-' + stage).checked = true;
-  $('snake-' + snake).checked = true;
+  $('course-' + course).checked = true;
+  for (const k in SNAKES){
+    const inp = $('snake-' + k), off = !snakeOpen(k);
+    inp.disabled = off; inp.closest('.opt').classList.toggle('locked', off);
+  }
+  $('snake-' + playSnake()).checked = true;
   $('diff-' + diff).checked = true;
   $('mode-' + MODE).checked = true;
   $('modeDesc').innerHTML = MODE === 2
-    ? '<b>Versus.</b> Two snakes, one arena, 60 seconds. Race for the same gems. Crash into anything, including each other, and you lose a life and respawn. Highest score wins. No second player? Pick the computer.'
+    ? '<b>Party.</b> Up to 8 snakes in one arena, everyone for themselves. Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins. The arena grows with the number of players.'
+    : MODE === 3 ? '<b>Tag team.</b> 2 to 4 snakes working together. Every gem anyone eats counts toward the team’s goal, and you share a pool of lives. Teammates pass right through each other.'
     : '<b>Solo.</b> Clear each level’s gem goal to unlock the next.';
   for (const k in VIEWS){
-    const inp = $('view-' + k), off = (!R3 && k !== 'top') || (MODE === 2 && k === 'top');
+    const inp = $('view-' + k), off = (!R3 && k !== 'top') || (MODE !== 1 && k === 'top');
     inp.disabled = off; inp.closest('.opt').classList.toggle('locked', off);
   }
   $('view-' + view).checked = true;
   $('viewDesc').textContent = VIEWS[view].desc;
-  const S = STAGES[stage];
-  $('stageDesc').innerHTML = MODE === 2
-    ? `<b>${S.name}.</b> Music: ${STYLES[S.music].name}.`
+  const S = STAGES[stage], Cc = COURSES[course];
+  $('stageDesc').innerHTML = MODE === 3
+    ? `<b>${S.name}.</b> The team needs ${teamGoal(S.goal, Math.max(2, SEATS.length))} gems to clear it. Music: ${STYLES[S.music].name}.`
     : `<b>${S.name}.</b> Eat ${S.goal} gems to clear it. Music: ${STYLES[S.music].name}.` +
       (unlocked < STAGES.length ? ` Level ${unlocked + 1} unlocks when you clear level ${unlocked}.` : '');
-  $('snakeDesc').textContent = SNAKES[snake].desc;
+  $('courseDesc').innerHTML = `<b>${Cc.name}.</b> Music: ${STYLES[Cc.music].name}. ${Cc.movers ? 'Sliding pillars. ' : ''}${Cc.gates ? 'Beat gates. ' : ''}${partyTime(Math.max(2, SEATS.length))}-second round.`;
+  $('snakeDesc').textContent = SNAKES[playSnake()].desc + (MODE === 1 ? ' ' + Object.keys(SNAKE_UNLOCK).filter(k => !snakeOpen(k)).map(k => `${SNAKES[k].name}: ${unlockText(k).toLowerCase()}`).join(' ') : '');
   $('diffDesc').textContent = DIFFS[diff].desc;
   $('menuBoardLabel').textContent = DIFFS[diff].name;
   renderBoard($('menuBoard'), diff, lastEntry);
   for (const k in bests) $('best-' + k).textContent = 'Best ' + bests[k];
   const wait = waitingText();
-  $('startBtn').textContent = wait ? wait.split(' (')[0] + '…' : MODE === 2 ? `Start versus on level ${stage + 1}` : `Start level ${stage + 1}`;
+  $('startBtn').textContent = wait ? wait.split(' (')[0] + '…'
+    : MODE === 2 ? `Start the party (${SEATS.length} players)` : MODE === 3 ? `Start level ${stage + 1} as a team` : `Start level ${stage + 1}`;
   $('startBtn').classList.toggle('waiting', !!wait);
-  $('oppBox').hidden = MODE !== 2;
-  $('opp-' + OPP).checked = true; $('ctrl-' + CTRL).checked = true;
-  $('snakeLabel').textContent = MODE === 2 ? 'Snake (both players)' : 'Snake';
+  $('lobbyBox').hidden = MODE === 1;
+  $('courseBox').hidden = MODE !== 2;
+  $('stageBox').hidden = MODE === 2;
+  $('ctrlBox').hidden = MODE !== 1;
+  $('ctrl-' + CTRL).checked = true;
+  $('menuTilt').hidden = CTRL !== 'device';
+  $('phoneBox').hidden = CTRL !== 'phones';
+  $('ctrlDesc').innerHTML = CTRL === 'device' ? '<b>Tilt this screen</b> like a steering wheel to turn. <b>Tap anywhere</b> to jump.'
+    : CTRL === 'keys' ? (CAN_TILT ? '<b>Drag sideways</b> to turn. <b>Tap anywhere</b> to jump.' : '<b>Arrow keys</b> turn, <b>Space</b> jumps, C changes view.')
+    : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the code below with your phone.';
+  $('snakeLabel').textContent = MODE !== 1 ? 'Snake (everyone)' : 'Snake';
+  sendLobby();
 }
 // show the chosen level and snake behind the menu
-function refreshMenu(){ updateMenuUI(); if (state === 'menu'){ RUN = newRunState(); loadStage(stage); } }
+function refreshMenu(){ updateMenuUI(); if (state === 'menu' && ROLE === 'host'){ RUN = newRunState(); loadStage(MODE === 2 ? course : stage); } }
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
-function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel']) $(id).hidden = true; }
-function showDuel(){
-  const sc = PL.map(pScore), timeUp = G.left <= 0;
-  const w = sc[0] === sc[1] ? -1 : sc[0] > sc[1] ? 0 : 1;
-  $('duelEyebrow').textContent = timeUp ? "Time's up" : 'Both snakes are out of lives';
-  $('duelTitle').textContent = w < 0 ? "It's a tie" : OPP === 'cpu' && MODE === 2 ? (w === 0 ? 'You win' : 'The computer wins') : `Player ${w + 1} wins`;
-  $('duelTitle').style.color = w < 0 ? '' : PL[w].look.color;
-  $('duelTitle').style.textShadow = '';
-  PL.forEach((p, i) => {
-    const el = $('vs' + i);
-    el.querySelector('.v').textContent = sc[i];
-    el.querySelector('.eyebrow').textContent = playerName(i);
-    el.querySelector('small').textContent = `${p.gems} ${p.gems === 1 ? 'gem' : 'gems'}, ${p.lives} ${p.lives === 1 ? 'life' : 'lives'} left`;
-    el.style.color = p.look.color; el.classList.toggle('win', i === w);
-    el.querySelector('.v').style.color = 'var(--ink)';
-  });
-  $('rematchBtn').textContent = `Rematch on level ${G.idx + 1}`;
-  hideOverlays(); $('duel').hidden = false;
+function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv']) $(id).hidden = true; }
+// party results (ranked) and tag team results share one card
+function showDuel(res, why){
+  res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
+  const w = res.length > 1 && res[0].score === res[1].score ? null : res[0];
+  $('duelEyebrow').textContent = why === 'lives' ? 'Everyone is out of lives' : "Time's up";
+  $('duelTitle').textContent = !w ? "It's a tie" : ROLE === 'client' && w.i === ME ? 'You win' : `${w.name} wins`;
+  $('duelTitle').style.color = w ? w.color : '';
+  $('resList').innerHTML = res.map((r, k) => `<li class="${ROLE === 'client' && r.i === ME ? 'me' : ''}"><span class="r">${k + 1}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${esc(r.name)}</span><small>${r.gems} ${r.gems === 1 ? 'gem' : 'gems'}</small><span class="sc">${r.score}</span></li>`).join('');
+  finishResults(MODE === 2 && G ? `Rematch on ${COURSES[G.idx].name}` : 'Rematch');
   phoneSend({t: 'buzz', p: [30, 60, 30, 60, 90]});
-  setTimeout(() => $('rematchBtn').focus({preventScroll: true}), 50);
+}
+function showTeamOver(team){
+  $('duelEyebrow').textContent = team.won ? `The team cleared all ${STAGES.length} levels` : `Out of team lives on level ${team.level}`;
+  $('duelTitle').textContent = `Team score ${team.score}`;
+  $('duelTitle').style.color = '';
+  $('resList').innerHTML = team.players.map((r, k) => `<li class="${ROLE === 'client' && r.i === ME ? 'me' : ''}"><span class="r">${k + 1}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${esc(r.name)}</span><small>level ${team.level}</small><span class="sc">${r.gems} gems</span></li>`).join('');
+  finishResults('New team run');
+}
+function finishResults(again){
+  const host = ROLE === 'host';
+  $('rematchBtn').hidden = !host; $('rematchBtn').textContent = again;
+  $('duelMenuBtn').textContent = host ? 'Main menu' : 'Leave the game';
+  $('resWait').hidden = host;
+  hideOverlays(); $('duel').hidden = false;
+  if (host) setTimeout(() => $('rematchBtn').focus({preventScroll: true}), 50);
 }
 function showLost(){
   const n = RUN.lives;
   $('lostCause').textContent = CAUSES[G.cause] || 'You crashed';
   $('lostTitle').textContent = `${n} ${n === 1 ? 'life' : 'lives'} left`;
-  $('lostDesc').innerHTML = `<b>Level ${G.idx + 1}</b> starts over. Gems from this try don’t count.` + (n === 1 ? ' This is your last life.' : '');
+  const kept = RUN.carry || 0;
+  $('lostDesc').innerHTML = `<b>Level ${G.idx + 1}</b> starts over` + (kept ? `, and you keep your <b>${kept} ${kept === 1 ? 'gem' : 'gems'}</b> (${kept}/${G.S.goal}).` : '.') + (n === 1 ? ' This is your last life.' : '');
   $('retryBtn').textContent = `Restart level ${G.idx + 1}`;
   hideOverlays(); $('lost').hidden = false;
   state = 'lost';
@@ -2189,6 +3037,7 @@ function retryLevel(){
   if (!readyToPlay()) return nudgeWaiting();
   initAudio();
   loadStage(G.idx);
+  G.gems = PL[0].gems = RUN.carry || 0;
   begin();
 }
 function saveBest(sc){
@@ -2242,7 +3091,9 @@ function showOver(won){
   $('overBoardLabel').textContent = DIFFS[RUN.diff].name + ' leaderboard';
   renderBoard($('overBoard'), RUN.diff, null);
   RUN.won = won;
-  $('cause').textContent = won ? `You cleared all ${STAGES.length} levels` : `Out of lives. ${CAUSES[G.cause] || 'You crashed'}`;
+  const firstWin = won && store.get('beat') !== '1';
+  if (won) store.set('beat', '1');
+  $('cause').textContent = won ? `You cleared all ${STAGES.length} levels` + (firstWin ? '. You unlocked the Comet snake!' : '') : `Out of lives. ${CAUSES[G.cause] || 'You crashed'}`;
   $('finalScore').textContent = sc;
   $('newBest').hidden = !isBest;
   $('stBest').textContent = bests[RUN.diff];
@@ -2256,20 +3107,24 @@ function showOver(won){
   setTimeout(() => (qual ? $('nameIn') : $('againBtn')).focus({preventScroll: true}), 50);
 }
 function showClear(){
-  if (G.idx + 1 >= STAGES.length) return showOver(true);
-  const N = STAGES[G.idx + 1];
-  stage = G.idx + 1; store.set('stage', stage);
-  $('clrEyebrow').textContent = `Level ${G.idx + 1} cleared`;
+  if (G.idx + 1 >= STAGES.length){ if (MODE === 1) return showOver(true); if (ROLE === 'host') endTeam(true); return; }
+  const N = STAGES[G.idx + 1], team = MODE === 3, host = ROLE === 'host';
+  if (host){ stage = G.idx + 1; store.set('stage', stage); }
+  $('clrEyebrow').textContent = team ? `Level ${G.idx + 1} cleared as a team` : `Level ${G.idx + 1} cleared`;
   $('clrTitle').textContent = N.name;
-  $('clrDesc').innerHTML = `<b>Level ${G.idx + 2}.</b> Eat ${N.goal} gems to clear it. Music: ${STYLES[N.music].name}.`;
+  $('clrDesc').innerHTML = `<b>Level ${G.idx + 2}.</b> ${team ? 'The team needs' : 'Eat'} ${team ? teamGoal(N.goal, PL.length) : N.goal} gems to clear it. Music: ${STYLES[N.music].name}.` +
+    (host ? '' : ' Waiting for the host to start it…') +
+    (MODE === 1 && RUN.newSnakes && RUN.newSnakes.length ? `<br><b>New snake unlocked: ${RUN.newSnakes.map(k => SNAKES[k].name).join(' and ')}.</b> Pick it in the main menu.` : '');
   $('clrScore').textContent = RUN.banked;
   $('clrBonus').textContent = '+' + RUN.lastBonus;
-  $('clrLives').textContent = RUN.lives;
+  $('clrLives').textContent = team ? G.teamLives : RUN.lives;
   $('nextBtn').textContent = `Start level ${G.idx + 2}`;
+  $('nextBtn').hidden = !host;
+  $('clrMenuBtn').textContent = host ? 'Main menu' : 'Leave the game';
   G.cardShown = true;
   hideOverlays(); $('clear').hidden = false;
   updateMenuUI();
-  setTimeout(() => $('nextBtn').focus({preventScroll: true}), 50);
+  if (host) setTimeout(() => $('nextBtn').focus({preventScroll: true}), 50);
 }
 function begin(){
   state = 'play';
@@ -2277,57 +3132,88 @@ function begin(){
   hideOverlays(); $('pauseBtn').hidden = false;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   startMusic(); keepAwake(true);
+  toScreens({t: 'phase', state: 'play'});
 }
 function start(idx){
+  if (ROLE !== 'host') return;
   if (!readyToPlay()) return nudgeWaiting();
   if (pending) saveName('');
   initAudio();
   RUN = newRunState();
+  if (MODE !== 1){ SEATS = SEATS.filter(st => !st.gone); renderSeats(); }
   loadStage(idx);
   store.set('played', 1);
+  if (MODE !== 1) sendStarts();
   begin();
 }
 function nextStage(){
-  if (state !== 'clear' || !G.cardShown) return;
+  if (state !== 'clear' || !G.cardShown || ROLE !== 'host') return;
   if (!readyToPlay()) return nudgeWaiting();
   initAudio();
   loadStage(G.idx + 1);
+  if (MODE !== 1) sendStarts();
   begin();
 }
 function toMenu(){
+  if (ROLE === 'client') return leaveGame();
   if (pending) saveName('');
-  state = 'menu';
-  RUN = newRunState(); loadStage(stage);
+  state = 'menu'; stopMusic(); keepAwake(false);
+  SEATS = SEATS.filter(st => !st.gone);
+  toScreens({t: 'phase', state: 'menu'});
+  RUN = newRunState(); loadStage(MODE === 2 ? course : stage);
   hideOverlays(); $('menu').hidden = false; $('pauseBtn').hidden = true;
-  updateMenuUI();
+  renderSeats(); updateMenuUI();
   $('startBtn').focus({preventScroll: true});
 }
 function pause(){
   if (state !== 'play') return;
   state = 'paused'; stopMusic(); pointers.clear(); for (const st of STEERS) st.drag = 0; keepAwake(false);
-  $('pause').hidden = false; $('pauseBtn').hidden = true;
+  $('pause').hidden = false; $('pauseBtn').hidden = true; $('setBtn').hidden = true;
+  $('resumeBtn').textContent = ROLE === 'client' ? 'Resume for everyone' : 'Resume';
+  $('pauseMenuBtn').textContent = ROLE === 'client' ? 'Leave the game' : 'Main menu';
   updatePauseNote();
+  toScreens({t: 'phase', state: 'paused'});
   $('resumeBtn').focus({preventScroll: true});
 }
 function resume(){
+  if (ROLE === 'client'){ netSend({t: 'pause'}); return; }
   if (state !== 'paused') return;
   if (!readyToPlay()) return nudgeWaiting();
   initAudio();
   begin();
 }
-$('startBtn').addEventListener('click', () => start(stage));
+// on a client, pausing asks the host, which pauses every screen
+const pauseAction = () => { if (ROLE === 'client') netSend({t: 'pause'}); else pause(); };
+$('startBtn').addEventListener('click', () => start(MODE === 2 ? course : stage));
 $('againBtn').addEventListener('click', () => start(0));
 $('retryBtn').addEventListener('click', retryLevel);
 $('setupBtn').addEventListener('click', toMenu);
 $('nextBtn').addEventListener('click', nextStage);
 $('resumeBtn').addEventListener('click', resume);
-$('rematchBtn').addEventListener('click', () => start(G.idx));
+$('rematchBtn').addEventListener('click', () => start(MODE === 3 ? stage : G.idx));
 $('duelMenuBtn').addEventListener('click', toMenu);
+$('joinOpen').addEventListener('click', () => showJoin(''));
+$('joinGo').addEventListener('click', () => { initAudio(); joinGame($('joinCode').value); });
+$('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('joinGo').click(); } });
+$('joinBack').addEventListener('click', () => { hideOverlays(); $('menu').hidden = false; });
+$('addLocal').addEventListener('click', () => addLocalSeat(CAN_TILT ? 'device' : 'keys'));
+$('addCpu').addEventListener('click', () => addLocalSeat('cpu'));
+$('cLeaveBtn').addEventListener('click', leaveGame);
+$('cTiltBtn').addEventListener('click', () => { initAudio(); enableTilt(); setTimeout(renderClientLobby, 400); });
+$('cName').addEventListener('change', () => { const n = cleanName($('cName').value); store.set('name', n); netSend({t: 'name', name: n}); });
+$('cName').value = store.get('name') || '';
 $('nameBtn').addEventListener('click', () => saveName($('nameIn').value));
 $('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.stopPropagation(); saveName($('nameIn').value); } });
-$('pauseBtn').addEventListener('click', pause);
+$('pauseBtn').addEventListener('click', pauseAction);
+$('setBtn').addEventListener('click', openSettings);
+$('recenterBtn').addEventListener('click', recenter);
+$('pauseSetBtn').addEventListener('click', openSettings);
+$('lostSetBtn').addEventListener('click', openSettings);
+$('setDoneBtn').addEventListener('click', closeSettings);
+$('sSound').addEventListener('change', e => { initAudio(); setMuted(!e.target.checked); });
+for (const id of ['pauseMenuBtn', 'lostMenuBtn', 'clrMenuBtn']) $(id).addEventListener('click', toMenu);
 $('muteBtn').addEventListener('click', () => { initAudio(); setMuted(!muted); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseAction(); });
 
 // ---- input: drag turns, tap jumps ----
 // top view: drag in a compass direction. 3D views: drag sideways to turn left or right from where you face.
@@ -2347,13 +3233,13 @@ for (const el of [cvs, $('world')]){
       if (view === 'top'){ aimAt(Math.atan2(dy, dx)); p.x = e.clientX; p.y = e.clientY; }
     }
     // 3D views: drag sideways like a joystick, the further from where you pressed, the harder the turn
-    if (view !== 'top' && p.turned) STEER.drag = clamp1((e.clientX - p.x0)/90);
+    if (view !== 'top' && p.turned) mySteer().drag = clamp1((e.clientX - p.x0)/90);
   });
   const endPointer = e => {
     const p = pointers.get(e.pointerId); if (!p) return;
     pointers.delete(e.pointerId);
-    if (p.turned) STEER.drag = 0;
-    if (!p.turned && e.type === 'pointerup') jumpFor(0);
+    if (p.turned) mySteer().drag = 0;
+    if (!p.turned && e.type === 'pointerup'){ jumpFor(myI()); const jb = $('jumpBand'); jb.classList.remove('pop'); void jb.offsetWidth; jb.classList.add('pop'); }
   };
   el.addEventListener('pointerup', endPointer);
   el.addEventListener('pointercancel', endPointer);
@@ -2367,10 +3253,18 @@ for (const el of [cvs, $('world')]){
 addEventListener('pointerdown', () => initAudio(), true);
 addEventListener('keydown', () => initAudio(), true);
 // held arrow keys steer while they're down
+// a party host's keyboard players: one uses the arrows (and Space or Up to jump); two split into A D W and the arrows
+function keyAct(k){
+  const ks = PL.map((p, i) => p.kind === 'keys' ? i : -1).filter(i => i >= 0);
+  if (!ks.length) return null;
+  if (ks.length >= 2){ const d = DUO_KEYS[k]; return d ? {p: ks[d.p], a: d.a} : null; }
+  if (k in REL) return {p: ks[0], a: REL[k] < 0 ? 'L' : 'R'};
+  if (k === ' ' || k === 'ArrowUp' || k === 'w' || k === 'W') return {p: ks[0], a: 'J'};
+  return null;
+}
 addEventListener('keyup', e => {
-  const d = MODE === 2 && OPP === 'friend' ? DUO_KEYS[e.key] : null;
-  if (d){ if (d.a !== 'J') STEERS[d.p]['key' + d.a] = false; }
-  else if (e.key in REL){ if (REL[e.key] < 0) STEER.keyL = false; else STEER.keyR = false; }
+  if (MODE !== 1 && ROLE === 'host'){ const d = keyAct(e.key); if (d && d.a !== 'J') STEERS[d.p]['key' + d.a] = false; return; }
+  if (e.key in REL){ const st = mySteer(); if (REL[e.key] < 0) st.keyL = false; else st.keyR = false; }
 });
 addEventListener('blur', () => { for (const st of STEERS){ st.keyL = st.keyR = false; st.drag = 0; } });
 document.addEventListener('gesturestart', e => e.preventDefault());
@@ -2387,24 +3281,61 @@ addEventListener('keydown', e => {
   const typing = e.target && e.target.tagName === 'INPUT' && e.target.type === 'text' || e.target === $('nameIn');
   if (typing) return;
   if ((k === 'c' || k === 'C') && !e.repeat && !e.metaKey && !e.ctrlKey){ cycleView(); return; }
-  if (state === 'play' && MODE === 2 && OPP === 'friend'){
-    const d = DUO_KEYS[k];
+  if (state === 'play' && MODE !== 1 && ROLE === 'host'){
+    const d = keyAct(k);
     if (d){ e.preventDefault(); if (d.a === 'J'){ if (!e.repeat) jumpFor(d.p); } else STEERS[d.p]['key' + d.a] = true; }
     else if (k === 'Escape' || k === 'p' || k === 'P') pause();
     else if (k === ' ' || k === 'ArrowDown') e.preventDefault();
   } else if (state === 'play'){
-    if (view !== 'top' && k in KEYS){ e.preventDefault(); if (k in REL){ if (REL[k] < 0) STEER.keyL = true; else STEER.keyR = true; } }
+    if (view !== 'top' && k in KEYS){ e.preventDefault(); const st = mySteer(); if (k in REL){ if (REL[k] < 0) st.keyL = true; else st.keyR = true; } }
     else if (k in KEYS){ e.preventDefault(); aimAt(Math.atan2(DIRS[KEYS[k]][1], DIRS[KEYS[k]][0])); }
-    else if (k === ' '){ e.preventDefault(); if (!e.repeat) jumpFor(0); }
-    else if (k === 'Escape' || k === 'p' || k === 'P') pause();
+    else if (k === ' '){ e.preventDefault(); if (!e.repeat) jumpFor(myI()); }
+    else if (k === 'Escape' || k === 'p' || k === 'P') pauseAction();
+  } else if (ROLE === 'client'){
+    return;
   } else if (onControl) {
     return;
-  } else if (state === 'menu' && go){ e.preventDefault(); start(stage); }
-  else if (state === 'over' && go){ e.preventDefault(); start(MODE === 2 ? G.idx : 0); }
+  } else if (state === 'menu' && go && !$('menu').hidden){ e.preventDefault(); start(MODE === 2 ? course : stage); }
+  else if (state === 'over' && go){ e.preventDefault(); goAction(); }
   else if (state === 'lost' && go){ e.preventDefault(); retryLevel(); }
   else if (state === 'clear' && go){ e.preventDefault(); nextStage(); }
   else if (state === 'paused' && (go || k === 'Escape')){ e.preventDefault(); resume(); }
 });
+
+// ---- playing on this phone or tablet ----
+// When the steering comes from this screen (tilt or drag), the corner map gives way to a jump zone at the
+// bottom, and the top bar adds Settings and Recenter next to Pause.
+const onThisScreen = () => CAN_TILT && ((MODE === 1 && CTRL !== 'phones') || ROLE === 'client' || (MODE !== 1 && PL.some(p => p.kind === 'device')));
+let lastBar = '';
+function updatePlayBar(){
+  const playing = state === 'play', here = onThisScreen();
+  const key = [playing, here, view, CTRL, TILT.on, MODE, ROLE].join();
+  if (key === lastBar) return;
+  lastBar = key;
+  $('jumpBand').hidden = !(playing && here);
+  document.body.classList.toggle('here', here);
+  $('setBtn').hidden = !playing;
+  $('recenterBtn').hidden = !(playing && tiltWanted());
+}
+
+// ---- settings card ----
+let setFrom = null;
+function openSettings(){
+  if (state === 'play') pause();
+  setFrom = ['pause', 'lost', 'menu'].find(id => !$(id).hidden) || null;
+  if (setFrom) $(setFrom).hidden = true;
+  $('sTiltBox').hidden = !CAN_TILT;
+  $('sSound').checked = !muted;
+  $('view-s-' + view) && ($('view-s-' + view).checked = true);
+  syncTiltRows();
+  $('settings').hidden = false;
+  setTimeout(() => $('setDoneBtn').focus({preventScroll: true}), 50);
+}
+function closeSettings(){
+  $('settings').hidden = true;
+  if (setFrom) $(setFrom).hidden = false;
+  updateMenuUI();
+}
 
 // ---- loop ----
 let last = performance.now();
@@ -2422,7 +3353,7 @@ function frame(now){
     G.deadT += dt;
     if (G.deadT > 0.9){ if (RUN.lives > 0) showLost(); else showOver(false); }
   } else if (state === 'clear'){
-    G.clearT += dt;
+    G.clearT += dt; updateMovers();
     if (G.clearT > 0.9 && !G.cardShown) showClear();
   }
   updateParticles(dt);
@@ -2433,19 +3364,25 @@ function frame(now){
   render(now/1000);
   if (R3 && view !== 'top') R3.render(now/1000, dt);
   updateHUD();
+  updatePlayBar();
   updateWait();
   syncPhone();
+  netTick(now);
   requestAnimationFrame(frame);
 }
 R3 = makeR3();
-if (!R3) MODE = 1;   // versus needs the 3D split screen
+if (!R3) MODE = 1;   // party and tag team need the 3D views
 applyModeUI();
 setMuted(muted);
 RUN = newRunState();
 loadStage(stage);
 setView(view);
 updateMenuUI();
-startPhoneLink();
+buildTiltRows($('menuTilt')); buildTiltRows($('sTilt')); buildTiltRows($('cTilt')); syncTiltRows();
+renderSeats();
+// opened from an invite (…#join=CODE): join that game on this screen; otherwise set up to host
+const joinHash = /^#join=([A-Za-z0-9]{4})$/.exec(location.hash);
+if (joinHash) joinGame(joinHash[1]); else startPhoneLink();
 $('how').open = !store.get('played');
 $('boardBox').open = Object.values(boards).some(b => b.length);
 requestAnimationFrame(frame);

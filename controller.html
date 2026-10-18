@@ -54,6 +54,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .title{font-size:2rem;line-height:.9;margin:6px 0 0;color:var(--line)}
 .desc{font-size:.74rem;line-height:1.6;color:var(--muted)}
 .desc b{color:var(--cream);font-weight:600}
+a.btn{text-decoration:none}
 .btn{font-size:1.15rem;line-height:1;background:var(--line);color:#000;border:0;padding:18px;cursor:pointer;width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left}
 .btn::after{content:"";flex:none;width:16px;height:16px;background:#000;clip-path:polygon(50% 0,59% 41%,100% 50%,59% 59%,50% 100%,41% 59%,0 50%,41% 41%)}
 .btn:active{background:var(--cream)}
@@ -178,6 +179,8 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       </div>
       <button class="btn" id="motionBtn">Enable motion</button>
       <button class="btn btn-ghost" id="buttonsBtn">Use buttons only</button>
+      <a class="btn btn-ghost" id="screenBtn" href="index.html">Play on this phone instead</a>
+      <div class="desc" style="text-align:center;margin-top:-6px">In a Party or Tag team game, play with your own view on this phone instead of watching the big screen.</div>
       <div class="hint" id="setupHint"></div>
     </div>
   </section>
@@ -295,7 +298,7 @@ async function connect(c){
   pill('Connecting…');
   if (!ICE) ICE = await window.getIceServers();
   if (!peer || peer.destroyed){
-    peer = new window.Peer({debug: 0, config: {iceServers: ICE}});
+    peer = new window.Peer({debug: 0, config: {iceServers: ICE}, ...(window.SERPENTINE_PEER || {})});
     peer.on('open', dial);
     peer.on('error', err => {
       if (err.type === 'peer-unavailable'){
@@ -350,23 +353,26 @@ let gameState = 'menu';
 function onGame(m){
   if (!m || typeof m !== 'object') return;
   if (m.t === 'buzz') buzz(m.p);
-  else if (m.t === 'full'){ pill('Game full', 'bad'); $('ctlHint').textContent = 'Two phones are already playing this game.'; $('setupEyebrow').textContent = 'Two phones are already playing this game.'; }
+  else if (m.t === 'full'){ pill('Game full', 'bad'); $('ctlHint').textContent = 'This game is full (8 players).'; $('setupEyebrow').textContent = 'This game is full (8 players).'; }
+  // the game is hosted on a phone or tablet, which only shows its own player's view: play on this phone instead
+  else if (m.t === 'useScreen') location.href = screenURL();
   else if (m.t === 'state'){
     // a run just started: fold the settings away and shrink the gauges
     if (m.state === 'play' && gameState !== 'play') $('setPanel').open = false;
     gameState = m.state;
     $('ctl').classList.toggle('playing', m.state === 'play');
-    // versus: show which player this phone is, in that snake's color, plus the clock
-    const duo = m.mode === 2;
+    // party and tag team: show which player this phone is, in that snake's color, plus the clock or the level
+    const duo = m.mode >= 2;
     $('me').classList.toggle('on', duo); $('me').textContent = 'P' + (m.player || 1);
     if (duo && m.color) $('me').style.background = m.color;
-    $('lvl').textContent = duo
-      ? (m.state === 'play' ? `Player ${m.player}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `Player ${m.player}, versus on ${m.name}`)
+    $('lvl').textContent = m.mode === 2
+      ? (m.state === 'play' ? `Player ${m.player}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `Player ${m.player}, party on ${m.name}`)
+      : m.mode === 3 ? `Player ${m.player}, team level ${m.level} / ${m.name}${m.alive === false ? ', respawning' : ''}`
       : `Level ${m.level} / ${m.name}`;
     $('score').textContent = m.score;
-    $('gems').textContent = m.goal ? `${m.gems}/${m.goal} gems` : `${m.gems} ${m.gems === 1 ? 'gem' : 'gems'}`;
+    $('gems').textContent = m.goal ? `${m.gems}/${m.goal} ${m.mode === 3 ? 'team gems' : 'gems'}` : `${m.gems} ${m.gems === 1 ? 'gem' : 'gems'}`;
     pill(duo ? `Player ${m.player}` : 'Connected', 'on');
-    $('hearts').innerHTML = Array.from({length: 3}, (_, i) => `<svg viewBox="0 0 16 16"><path class="${i < m.lives ? 'on' : 'off'}" d="${HEART}"/></svg>`).join('');
+    $('hearts').innerHTML = Array.from({length: m.maxLives || 3}, (_, i) => `<svg viewBox="0 0 16 16"><path class="${i < m.lives ? 'on' : 'off'}" d="${HEART}"/></svg>`).join('');
     $('goBtn').hidden = !m.go; $('goBtn').textContent = m.go || 'Start';
     $('pauseBtn').textContent = m.state === 'paused' ? 'Resume' : 'Pause';
     // the big screen asks for a name when a run makes the leaderboard
@@ -563,6 +569,10 @@ $('buttonsBtn').addEventListener('click', () => { SET.steer = SET.hop = false; e
 $('joinBtn').addEventListener('click', () => { connect($('codeIn').value); if (code.length === 4) show('setup'); });
 $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
 document.addEventListener('gesturestart', e => e.preventDefault());
+
+// ---- playing on this phone instead of steering the big screen ----
+const screenURL = () => { const u = new URL('index.html', location.href); u.search = ''; u.hash = code ? 'join=' + code : ''; return u.href; };
+$('screenBtn').addEventListener('click', e => { e.preventDefault(); location.href = screenURL(); });
 
 // ---- start ----
 bindSettings();
