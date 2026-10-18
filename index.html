@@ -125,14 +125,15 @@ button{touch-action:manipulation;font:inherit}
 @keyframes nudge{25%{transform:translateX(calc(-50% - 8px))}75%{transform:translateX(calc(-50% + 8px))}}
 
 /* cards: thin orange frame; each setup step below the title is a numbered row divided by an orange rule */
-.overlay{position:fixed;inset:0;display:flex;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior:contain;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);background:rgba(0,0,0,.5)}
-.card{width:min(100%,440px);margin:auto;background:#000;border:1.5px solid var(--line);padding:22px 22px 24px;display:grid;gap:18px;counter-reset:step}
+.overlay{position:fixed;inset:0;display:flex;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(12px,env(safe-area-inset-left,0px));background:rgba(0,0,0,.5)}
+.card{width:min(100%,440px);margin:auto;background:#000;border:1.5px solid var(--line);padding:22px 22px 24px;display:grid;gap:18px;counter-reset:step;container-type:inline-size;min-width:0}
+.card > *{min-width:0}
 .eyebrow{font-size:.72rem;color:var(--muted)}
-.title{font-size:clamp(1.7rem,7vw,2.2rem);line-height:.95;margin:6px 0 0;color:var(--line);text-wrap:balance}
+.title{font-size:clamp(1.5rem,7vw,2.2rem);font-size:min(2.2rem,10cqi);line-height:.95;margin:6px 0 0;color:var(--line);text-wrap:balance;overflow-wrap:anywhere}
 /* the game's name: solid on top, an outlined echo underneath, then a row of phases like the flyer's moons */
 .mast{display:grid;gap:0}
-.mast .title{font-size:clamp(2rem,10.4vw,2.85rem);white-space:nowrap;margin:8px 0 0;line-height:.88}
-.mast .echo{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(2rem,10.4vw,2.85rem);line-height:.88;white-space:nowrap;color:transparent;-webkit-text-stroke:1.2px var(--line)}
+.mast .title{font-size:clamp(1.5rem,8.4vw,2.85rem);font-size:min(2.85rem,11.2cqi);white-space:nowrap;margin:8px 0 0;line-height:.88}
+.mast .echo{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(1.5rem,8.4vw,2.85rem);font-size:min(2.85rem,11.2cqi);line-height:.88;white-space:nowrap;color:transparent;-webkit-text-stroke:1.2px var(--line)}
 .phases{display:block;width:100%;height:22px;margin-top:14px}
 .desc{font-size:.74rem;line-height:1.6;color:var(--muted)}
 .desc b{color:var(--cream);font-weight:600}
@@ -157,7 +158,8 @@ button{touch-action:manipulation;font:inherit}
 .opt input:disabled{cursor:not-allowed}
 .opt span{display:grid;justify-items:center;align-content:center;gap:4px;min-height:54px;padding:7px 4px;border:1.5px solid var(--rule-soft);text-align:center;color:var(--cream)}
 .opt:hover span{border-color:var(--line)}
-.opt b{font-family:var(--wide);font-stretch:125%;font-weight:800;font-size:.72rem;line-height:1;text-transform:uppercase}
+.opt b{font-family:var(--wide);font-stretch:125%;font-weight:800;font-size:.72rem;line-height:1.1;text-transform:uppercase;overflow-wrap:anywhere}
+@media (max-width:380px){.card{padding:18px 16px 20px}.opt b{font-size:.64rem}.opt small{font-size:.56rem}.phone{grid-template-columns:1fr;justify-items:start}}
 .opt .num{font-size:1.5rem;font-weight:900;color:transparent;-webkit-text-stroke:1.2px var(--cream)}
 .opt small{font-size:.6rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .opt .sn{width:22px;height:22px}
@@ -283,6 +285,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .addrow .btn:disabled{opacity:.35;cursor:not-allowed}
 .code-in{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:2.4rem;letter-spacing:.14em;text-align:center;width:100%;padding:10px 8px 10px 16px;border:1.5px solid var(--cream);background:#000;color:var(--line);outline:none;-webkit-user-select:text;user-select:text}
 .code-in:focus{border-color:var(--lime)}
+.code-in,.name-in{box-sizing:border-box;max-width:100%}
 .you{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:center}
 .res{list-style:none;margin:0;padding:0;display:grid;gap:0;border-top:1.5px solid var(--line)}
 .res li{display:grid;grid-template-columns:22px 12px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--rule-soft);font-variant-numeric:tabular-nums}
@@ -2310,7 +2313,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-18a';
+const CTRL_BUILD = '2026-10-18b';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
