@@ -126,12 +126,12 @@ button{touch-action:manipulation;font:inherit}
 
 /* cards: thin orange frame; each setup step below the title is a numbered row divided by an orange rule */
 .overlay{position:fixed;inset:0;display:flex;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 16px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 40px) max(12px,env(safe-area-inset-left,0px));background:rgba(0,0,0,.5)}
-.card{width:min(100%,440px);margin:auto;background:#000;border:1.5px solid var(--line);padding:22px 22px 24px;display:grid;gap:18px;counter-reset:step;container-type:inline-size;min-width:0}
+.card{width:min(100%,440px);margin:auto;background:#000;border:1.5px solid var(--line);padding:22px 22px 24px;display:grid;gap:18px;counter-reset:step;min-width:0}
 .card > *{min-width:0}
 .eyebrow{font-size:.72rem;color:var(--muted)}
-.title{font-size:clamp(1.5rem,7vw,2.2rem);font-size:min(2.2rem,10cqi);line-height:.95;margin:6px 0 0;color:var(--line);text-wrap:balance;overflow-wrap:anywhere}
+.title{font-size:clamp(1.5rem,7vw,2.2rem);line-height:.95;margin:6px 0 0;color:var(--line);text-wrap:balance;overflow-wrap:anywhere}
 /* the game's name: solid on top, an outlined echo underneath, then a row of phases like the flyer's moons */
-.mast{display:grid;gap:0}
+.mast{display:grid;gap:0;container-type:inline-size}
 .mast .title{font-size:clamp(1.5rem,8.4vw,2.85rem);font-size:min(2.85rem,11.2cqi);white-space:nowrap;margin:8px 0 0;line-height:.88}
 .mast .echo{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:clamp(1.5rem,8.4vw,2.85rem);font-size:min(2.85rem,11.2cqi);line-height:.88;white-space:nowrap;color:transparent;-webkit-text-stroke:1.2px var(--line)}
 .phases{display:block;width:100%;height:22px;margin-top:14px}
@@ -281,6 +281,19 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .seats .n small{font-size:.62rem;color:var(--muted)}
 .seats .x{width:30px;height:30px;border:1px solid var(--rule);background:#000;color:var(--cream);font-size:1rem;cursor:pointer;padding:0}
 .addrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.need{font-size:.78rem;line-height:1.5;padding:9px 12px;border:1.5px solid var(--lime);color:var(--lime)}
+.need.ok{border-color:var(--rule-soft);color:var(--cream)}
+.ways{display:grid;gap:8px}
+.way{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;padding:12px;border:1.5px solid var(--rule-soft)}
+.way b{display:block;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.82rem;text-transform:uppercase;margin-bottom:4px}
+.way span{font-size:.68rem;line-height:1.5;color:var(--muted)}
+.way span a{color:var(--cream)}
+.way .code{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:1.6rem;line-height:1;letter-spacing:.04em;min-width:108px;text-align:center;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
+.way-add{grid-template-columns:1fr;gap:10px}
+.in-game{color:var(--muted)!important}
+#lobbyBox.flash .need{animation:nudgeNeed .5s steps(4) 2}
+@keyframes nudgeNeed{50%{background:var(--lime);color:#000}}
+@media (max-width:380px){.way{grid-template-columns:1fr}.way .code{text-align:left}}
 .addrow .btn{font-size:.72rem;padding:11px 8px}
 .addrow .btn:disabled{opacity:.35;cursor:not-allowed}
 .code-in{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:2.4rem;letter-spacing:.14em;text-align:center;width:100%;padding:10px 8px 10px 16px;border:1.5px solid var(--cream);background:#000;color:var(--line);outline:none;-webkit-user-select:text;user-select:text}
@@ -395,17 +408,24 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="desc" id="modeDesc"></div>
     </div>
     <div class="pick" id="lobbyBox" hidden>
-      <div class="eyebrow">Who's playing</div>
-      <div class="phone">
-        <div class="qr off" id="qr2" aria-hidden="true"></div>
-        <div>
-          <div class="eyebrow" style="color:var(--muted)">Invite code</div>
+      <div class="eyebrow">Add players</div>
+      <div class="need" id="lobbyNeed"></div>
+      <div class="ways">
+        <div class="way">
+          <div class="qr off" id="qr2" aria-hidden="true"></div>
+          <div><b>Friends with phones</b><span>Scan this code. They can play on their own phone or use it to steer on this screen.</span></div>
+        </div>
+        <div class="way">
           <div class="code" id="inviteCode">····</div>
-          <div class="desc" id="inviteDesc"></div>
+          <div><b>Laptops and tablets</b><span id="inviteDesc"></span></div>
+        </div>
+        <div class="way way-add">
+          <div><b>Right here</b><span id="addHint">Add yourself on this screen, or computer snakes to fill out the field.</span></div>
+          <div class="addrow"><button class="btn btn-ghost" id="addLocal">+ Me, on this keyboard</button><button class="btn btn-ghost" id="addCpu">+ Computer snake</button></div>
         </div>
       </div>
+      <div class="eyebrow in-game" id="seatHead">In this game</div>
       <ol class="seats" id="seatList"></ol>
-      <div class="addrow"><button class="btn btn-ghost" id="addLocal">+ Keyboard player</button><button class="btn btn-ghost" id="addCpu">+ Computer</button></div>
     </div>
     <div class="pick" id="courseBox" hidden>
       <div class="eyebrow" id="courseLabel">Course</div>
@@ -835,9 +855,9 @@ function clipWall(o){
 
 let G, RUN, state = 'menu';
 const LIVES = 3;
-// solo starts with the Classic snake and earns the others: Magnet at level 5, Glider at level 10,
-// Comet for clearing every level. Party and tag team can use any of them.
-const SNAKE_UNLOCK = {magnet: 5, glider: 10, comet: 11};
+// solo starts with the Classic snake and earns the others by reaching a level: Magnet at 3, Glider at 5,
+// Comet at 8. Party and tag team can use any of them.
+const SNAKE_UNLOCK = {magnet: 3, glider: 5, comet: 8};
 const snakeOpen = k => MODE !== 1 || !SNAKE_UNLOCK[k] || (SNAKE_UNLOCK[k] > STAGES.length ? store.get('beat') === '1' : unlocked >= SNAKE_UNLOCK[k]);
 const unlockText = k => SNAKE_UNLOCK[k] > STAGES.length ? `Clear all ${STAGES.length} levels to unlock it.` : `Unlocks when you reach level ${SNAKE_UNLOCK[k]}.`;
 const playSnake = () => snakeOpen(snake) ? snake : 'classic';
@@ -1388,14 +1408,19 @@ function seatsOk(){ const [lo, hi] = seatRange(); return SEATS.length >= lo && S
 const readyToPlay = () => ROLE === 'host' && (MODE === 1 ? missingPhones().length === 0 : seatsOk());
 function waitingText(){
   if (MODE !== 1){
-    const [lo, hi] = seatRange();
-    if (SEATS.length > hi) return `Tag team takes ${lo} to ${hi} players`;
-    if (SEATS.length < lo) return SEATS.length ? 'Waiting for one more player' : 'Waiting for players';
+    const [lo, hi] = seatRange(), n = SEATS.length;
+    if (n > hi) return `Tag team takes ${lo} to ${hi} players. Remove ${n - hi}`;
+    if (n < lo) return `Add ${lo - n} more player${lo - n === 1 ? '' : 's'} to start`;
     return '';
   }
   return missingPhones().length ? 'Waiting for a phone' + (LINK.code ? ` (code ${LINK.code})` : '') : '';
 }
 function nudgeWaiting(){
+  // on the menu, a Start press that can't start yet shows you the Add players step
+  if (!$('menu').hidden && MODE !== 1){
+    const lb = $('lobbyBox'); lb.scrollIntoView({behavior: REDUCED ? 'auto' : 'smooth', block: 'start'});
+    lb.classList.remove('flash'); void lb.offsetWidth; lb.classList.add('flash'); return;
+  }
   const b = $('waitBar'); b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge');
   phoneSend({t: 'buzz', p: [20, 40, 20]});
 }
@@ -2353,12 +2378,12 @@ function setPhoneUI(note){
   $('phoneCode').textContent = $('inviteCode').textContent = LINK.code || '····';
   const url = controllerURL(LINK.code);
   const local = location.protocol === 'file:';
-  if (note){ $('phoneDesc').textContent = note; $('inviteDesc').textContent = note; return; }
+  const how = `Open <b>${siteName()}</b>, press <b>Join a game on this screen</b> and type this code.`;
+  if (note){ $('phoneDesc').textContent = note; $('inviteDesc').innerHTML = (local ? '' : how + '<br>') + `<i>${esc(note)}</i>`; return; }
   $('phoneDesc').innerHTML = local ? 'Open this game from its web address (like your Render site) so a phone can reach the controller page.'
     : on ? '<b>Phone connected.</b> Tilt to steer, jump to jump.'
     : `Scan with your phone, or open <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a>.`;
-  $('inviteDesc').innerHTML = local ? 'Open this game from its web address so friends can join.'
-    : `<b>Phones:</b> scan to join. You can play on the phone itself or use it as a controller for this screen. <b>Laptops and tablets:</b> open ${siteName()}, press <b>Join a game</b> and type the code.`;
+  $('inviteDesc').innerHTML = local ? 'Open this game from its web address so friends can join.' : how;
 }
 function drawQR(){
   for (const box of [$('qr'), $('qr2')]){
@@ -2477,11 +2502,21 @@ function renderSeats(){
     }
     ol.appendChild(li);
   });
-  if (!SEATS.length) ol.innerHTML = '<li class="empty">Nobody yet. Scan the code with a phone, or add players below.</li>';
+  if (!SEATS.length) ol.innerHTML = '<li class="empty">Nobody yet. Use one of the ways above.</li>';
+  const [lo, hi] = seatRange(), n = SEATS.length, mode = MODE === 3 ? 'Tag team' : 'Party';
+  $('seatHead').textContent = `In this game (${n} of ${hi})`;
+  const need = $('lobbyNeed');
+  need.classList.toggle('ok', n >= lo && n <= hi);
+  need.textContent = n > hi ? `${mode} takes ${lo} to ${hi} players. Remove ${n - hi} to start.`
+    : n < lo ? `${mode} takes ${lo} to ${hi} players. Add ${lo - n} more to start${n ? '' : ': anyone below counts, including computer snakes'}.`
+    : `Ready to play with ${n}. ${n < hi ? `Up to ${hi - n} more can still join.` : 'The game is full.'}`;
   const keysN = SEATS.filter(x => x.kind === 'keys').length, devN = SEATS.filter(x => x.kind === 'device').length;
-  $('addLocal').textContent = CAN_TILT ? '+ Me, on this screen' : '+ Keyboard player';
+  $('addLocal').textContent = CAN_TILT ? '+ Me, on this screen' : keysN ? '+ A second keyboard player' : '+ Me, on this keyboard';
+  $('addHint').textContent = CAN_TILT ? 'Play on this screen yourself (tilt to steer, tap to jump), or add computer snakes.'
+    : 'Play on this keyboard yourself (two people can share it), or add computer snakes to fill out the field.';
   $('addLocal').disabled = SEATS.length >= 8 || (CAN_TILT ? devN >= 1 : keysN >= 2);
-  $('addCpu').disabled = SEATS.length >= 8;
+  $('addCpu').disabled = SEATS.length >= hi;
+  $('addLocal').disabled = $('addLocal').disabled || SEATS.length >= hi;
 }
 let lastLobby = '';
 function sendLobby(){
@@ -2906,6 +2941,7 @@ function setMode(m){
   if (MODE !== 1 && view === 'top') setView('chase');
   applyModeUI(); setPhoneUI(); renderSeats(); refreshMenu(); resize();
 }
+
 buildSeg('coursePick', 'course', COURSES.map((S, i) => ({value: i, html: `<b>${S.name}</b><small>${STYLES[S.music].name}</small>`})), v => {
   course = +v; store.set('course', course); refreshMenu();
 });
@@ -3125,7 +3161,7 @@ function showOver(won){
   RUN.won = won;
   const firstWin = won && store.get('beat') !== '1';
   if (won) store.set('beat', '1');
-  $('cause').textContent = won ? `You cleared all ${STAGES.length} levels` + (firstWin ? '. You unlocked the Comet snake!' : '') : `Out of lives. ${CAUSES[G.cause] || 'You crashed'}`;
+  $('cause').textContent = won ? `You cleared all ${STAGES.length} levels` + (firstWin ? '. Nice work.' : '') : `Out of lives. ${CAUSES[G.cause] || 'You crashed'}`;
   $('finalScore').textContent = sc;
   $('newBest').hidden = !isBest;
   $('stBest').textContent = bests[RUN.diff];
