@@ -1737,12 +1737,27 @@ function beatPulse(clock){
   }
   return 0.25 + 0.25*Math.sin(clock*2.4);
 }
-const sfx = fn => { if (AC && !muted) try { fn(AC.currentTime); } catch(_) {} };
+// With many snakes, only the ones you're watching on this screen make their sounds (computer snakes and
+// other screens' snakes stay quiet), and a little limiter keeps a pile-up of effects from turning into noise.
+let sfxRecent = [];
+function heard(){
+  if (MODE === 1 || !SIM || !CUR) return true;
+  const vs = viewers();
+  return vs.includes(CUR.i);
+}
+const sfx = fn => {
+  if (!AC || muted || !heard()) return;
+  const now = AC.currentTime;
+  sfxRecent = sfxRecent.filter(t => now - t < 0.12);
+  if (sfxRecent.length >= 3) return;
+  sfxRecent.push(now);
+  try { fn(now); } catch(_) {}
+};
 function leadNote(f, t, peak, dcy){
   const st = style(), soft = st.lead === 'triangle' || st.lead === 'sine';
   tone(st.lead, f, t, soft ? peak : peak*0.4, dcy, sfxBus, 0, soft ? 0 : 3200);
 }
-function sfxTurn(){ const m = style().melody, f = mf(m[G.noteI++ % m.length]); sfx(t => { leadNote(f, t, 0.22, 0.32); tone('sine', f*2, t, 0.04, 0.2, sfxBus); }); }
+function sfxTurn(){ if (MODE !== 1 && viewers().length !== 1) return; const m = style().melody, f = mf(m[G.noteI++ % m.length]); sfx(t => { leadNote(f, t, 0.22, 0.32); tone('sine', f*2, t, 0.04, 0.2, sfxBus); }); }
 function sfxJump(){ sfx(t => tone('sine', 320, t, 0.22, 0.18*Math.sqrt(G.K.jump), sfxBus, 780)); }
 function sfxScrape(){ sfx(t => { noise(t, 'bandpass', 2600, 0.14, 0.08, sfxBus); tone('triangle', 520, t, 0.04, 0.06, sfxBus, 380); }); }
 function sfxLand(){ sfx(t => tone('sine', 150, t, 0.25, 0.1, sfxBus, 70)); }
