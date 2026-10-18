@@ -827,7 +827,7 @@ const STAGES = [
   {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
   {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 1.4, gates: 0.6,
    walls: [block(-17, -16, 9, 2), block(8, -16, 9, 2), block(-17, 14, 9, 2), block(8, 14, 9, 2)]},
-  {name: 'Strobe', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
+  {name: 'Daybreak', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
    walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
   {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2,
    walls: gauntlet()}
@@ -884,9 +884,10 @@ const THEMES = {
   dub:       {sky: ['#003a4a', '#00788a'], fog: '#00515e', fogNear: 5, fogFar: 30, floor: '#1c4f50', grid: ['#3fe0c8', '#2aa7a0'],
               hurdle: ['#c9b48a', '#8a7550'], pillar: ['#ff6f91', '#c2416a'], coral: ['#ff6f91', '#ff9a52', '#c86bff'], wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
               pillarShape: 'coral', hurdleShape: 'rock', decor: 'reef'},
-  trance:    {sky: ['#12002a', '#ff9ad5'], fog: '#5a2a6a', floor: '#0d0018', grid: ['#ffffff', '#ff9ad5', '#9ad5ff'],
-              hurdle: ['#9ad5ff', '#4a7fa8'], pillar: ['#ffffff', '#b9a6d6'], wall: ['#1d0a33', '#0d0018'], edge: '#ff9ad5', gem: '#ff2e63',
-              pillarShape: 'crystal', hurdleShape: 'box', decor: 'stars'},
+  // above the clouds before dawn: a glass platform over a sea of cloud, and the sun comes up as you collect gems
+  trance:    {sky: ['#0b0626', '#3a1f6b'], fog: '#4a2a6a', fogNear: 14, fogFar: 60, floor: '#140a2a', grid: ['#ffffff', '#ffb8d9', '#b8d4ff'],
+              hurdle: ['#ffffff', '#ffc2e0'], pillar: ['#ffffff', '#b9a6d6'], wall: ['#2a1a4a', '#140a2a'], edge: '#ffd6ea', gem: '#ff2e63',
+              pillarShape: 'crystal', hurdleShape: 'soft', decor: 'dawn'},
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
@@ -2687,7 +2688,7 @@ function makeR3(){
     return new THREE.Points(g, new THREE.PointsMaterial({size, map: dotTex, color: colors ? 0xffffff : col(color), vertexColors: !!colors, fog: false, transparent: true, opacity: 0.9, depthWrite: false, alphaTest: 0.02}));
   }
   function buildDecor(T){
-    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); if (o.material) for (const m of [].concat(o.material)){ if (m === steel || m === planks) continue; if (m.map && m.map !== dotTex && m.map !== glowTex) m.map.dispose(); m.dispose(); } });
+    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== PLANE_GEO) o.geometry.dispose(); if (o.material) for (const m of [].concat(o.material)){ if (m === steel || m === planks) continue; if (m.map && m.map !== dotTex && m.map !== glowTex) m.map.dispose(); m.dispose(); } });
     decor.clear();
     const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2, R = h + 6;
     const rnd = mulberry(G.seed ^ 0x5eed), inArena = (a, i) => { a[i] = cx + (rnd()*2 - 1)*R; a[i+2] = cz + (rnd()*2 - 1)*R; };
@@ -2764,6 +2765,51 @@ function makeR3(){
         spot.rotation.x = -Math.PI/2; decor.add(beam, spot);
         DECOR.heads.push({x, z, beam, spot, ph: k*0.9, r: 3 + (k % 3)*2});
       }
+    } else if (T.decor === 'dawn'){
+      // the sea of clouds all around and below the platform
+      const puff = discTex(g => { for (const [x, y, r] of [[128, 150, 90], [70, 160, 60], [186, 160, 62], [100, 118, 58], [160, 112, 64]]){
+        const gr = g.createRadialGradient(x, y, r*0.2, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); } });
+      const cloudMat = new THREE.SpriteMaterial({map: puff, color: col('#5a3f8f'), fog: false, depthWrite: false, transparent: true});
+      DECOR.clouds = [];
+      for (let i = 0; i < 90; i++){
+        const a = rnd()*Math.PI*2, dist = R + 2 + Math.pow(rnd(), 0.7)*R*3.2, sz = 12 + rnd()*18;
+        const sp = new THREE.Sprite(cloudMat); sp.scale.set(sz*1.6, sz, 1);
+        sp.position.set(cx + Math.cos(a)*dist, -2.5 - rnd()*3 + dist*0.02, cz + Math.sin(a)*dist); decor.add(sp);
+        DECOR.clouds.push({sp, a, dist, sp0: 0.004 + rnd()*0.006});
+      }
+      DECOR.cloudMat = cloudMat;
+      // stars that fade as the sky brightens
+      DECOR.stars = points(500, (a, i) => { a[i] = cx + (rnd()*2 - 1)*R*3; a[i+1] = 14 + rnd()*50; a[i+2] = cz + (rnd()*2 - 1)*R*3; }, '#ffffff', 1.8);
+      decor.add(DECOR.stars);
+      // the sun, its halo and a fan of god rays, all rising together out of the clouds
+      const sun = new THREE.Group(); sun.position.set(cx, -14, cz - h - 80); decor.add(sun);
+      const disc = new THREE.Sprite(new THREE.SpriteMaterial({map: discTex(g => { const gr = g.createRadialGradient(128, 128, 20, 128, 128, 120);
+        gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.55, '#ffe2a8'); gr.addColorStop(0.75, 'rgba(255,170,150,.6)'); gr.addColorStop(1, 'rgba(255,140,160,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), fog: false, depthWrite: false, transparent: true}));
+      disc.scale.set(30, 30, 1); sun.add(disc);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: col('#ff9ac0'), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+      halo.scale.set(110, 110, 1); sun.add(halo);
+      const rayTex = discTex(g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.15, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.beginPath(); g.moveTo(118, 0); g.lineTo(138, 0); g.lineTo(256, 256); g.lineTo(0, 256); g.closePath(); g.fill(); });
+      const fan = new THREE.Group(); sun.add(fan); DECOR.rays = [];
+      for (let i = 0; i < 12; i++){
+        const m = new THREE.MeshBasicMaterial({map: rayTex, color: col(i % 2 ? '#ffd6a8' : '#ffb8d9'), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false});
+        const ray = new THREE.Mesh(PLANE_GEO, m); ray.scale.set(14, 130, 1); ray.position.y = -65;
+        const arm = new THREE.Group(); arm.rotation.z = Math.PI + (i/12)*Math.PI*2; arm.add(ray); fan.add(arm); DECOR.rays.push({m, ph: i*1.3});
+      }
+      // crystal shards floating out over the clouds
+      DECOR.shards = [];
+      const shardMat = new THREE.MeshPhongMaterial({color: 0xffffff, emissive: 0x6a4a9a, flatShading: true, shininess: 120, specular: 0xffffff, transparent: true, opacity: 0.9, fog: false});
+      for (let i = 0; i < 9; i++){
+        const a = (i/9)*Math.PI*2 + rnd()*0.4, dist = R + 14 + rnd()*26, sz = 1.4 + rnd()*2.6;
+        const sh = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), shardMat); sh.scale.set(sz*0.7, sz*1.6, sz*0.7);
+        sh.position.set(cx + Math.cos(a)*dist, 4 + rnd()*10, cz + Math.sin(a)*dist); decor.add(sh);
+        DECOR.shards.push({sh, y: sh.position.y, ph: rnd()*6});
+      }
+      DECOR.shardMat = shardMat;
+      DECOR.sun = {g: sun, fan, halo, h, p: 0, drawn: -1, sky: document.createElement('canvas')};
+      DECOR.sun.sky.width = 2; DECOR.sun.sky.height = 256;
     } else if (T.decor === 'space'){
       // stars all around (above and below the road), a ringed planet on the horizon
       decor.add(points(900, (a, i) => { const th = rnd()*Math.PI*2, ph = Math.acos(rnd()*2 - 1), rr = R*2.4 + rnd()*40;
@@ -2798,6 +2844,8 @@ function makeR3(){
       }
       // three layers of specks, each twinkling on its own, all turning slowly around the middle
       DECOR.glitter = [];
+      // the mirror ball level lets its light-up floor do the work; the other ball level gets glints
+      if (T.decor !== 'disco'){
       const tints = [['#ffffff', '#ffe0f4'], ['#ffd6a8', '#ffffff'], ['#c9f2ff', '#ffffff']];
       for (let L = 0; L < 3; L++){
         const g = new THREE.Group(); g.position.set(cx, 0, cz); decor.add(g);
@@ -2805,6 +2853,7 @@ function makeR3(){
         pts.material.blending = THREE.AdditiveBlending; pts.material.map = null; pts.material.alphaTest = 0; pts.material.needsUpdate = true;   // square glints
         pts.material.fog = true; pts.material.sizeAttenuation = true; g.add(pts);
         DECOR.glitter.push({g, m: pts.material, ph: L*2.1});
+      }
       }
     } else if (T.decor === 'clouds'){
       // chunky low-poly clouds drifting around the horizon
@@ -2934,6 +2983,34 @@ function makeR3(){
       DECOR.glitter.forEach((L, i) => { L.g.rotation.y += dt*0.12; L.m.opacity = 0.35 + 0.45*Math.abs(Math.sin(clock*(2.2 + i*0.7) + L.ph)) + 0.25*beat; });
     }
     else if (k === 'clouds') DECOR.ring.rotation.y += dt*0.01;
+    else if (k === 'dawn'){
+      // how far the sun is up: the furthest anyone has got toward the level's goal, eased
+      let got = G.gems || 0; for (const p of PL) if (p && p.gems > got) got = p.gems;
+      const S = DECOR.sun, target = Math.min(1, got/(G.S.goal || 1));
+      S.p += (target - S.p)*Math.min(1, dt*0.8);
+      const p = S.p, e = p*p*(3 - 2*p);
+      S.g.position.y = -14 + e*30;
+      S.fan.rotation.z += dt*0.03;
+      S.halo.material.opacity = 0.25 + 0.45*e + 0.12*beat;
+      for (const r of DECOR.rays) r.m.opacity = e*(0.06 + 0.05*Math.sin(clock*0.5 + r.ph)) + e*0.05*beat;
+      for (const c of DECOR.clouds){ c.a += c.sp0*dt; c.sp.position.x = S.g.position.x + Math.cos(c.a)*c.dist; c.sp.position.z = S.g.position.z + S.h + 80 + Math.sin(c.a)*c.dist; }
+      DECOR.cloudMat.color.lerpColors(col('#5a3f8f'), col('#ffe0ec'), e);
+      DECOR.stars.material.opacity = 0.9*(1 - e);
+      DECOR.shardMat.emissive.lerpColors(col('#6a4a9a'), col('#ffb38a'), e);
+      for (const d of DECOR.shards){ d.sh.rotation.y += dt*0.3; d.sh.position.y = d.y + Math.sin(clock*0.7 + d.ph)*0.6; }
+      // the sky and fog warm from night to sunrise (redrawn in small steps, not every frame)
+      const step = Math.round(e*40);
+      if (step !== S.drawn){
+        S.drawn = step; const f = step/40, L = (a, b) => '#' + new THREE.Color().lerpColors(col(a), col(b), f).getHexString();
+        const g = S.sky.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+        gr.addColorStop(0, L('#0b0626', '#3a5fc8')); gr.addColorStop(0.62, L('#3a1f6b', '#ff9ad5')); gr.addColorStop(1, L('#4a2a6a', '#ffd2a0'));
+        g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+        if (scene.background && scene.background.isTexture && scene.background !== S.tex) scene.background.dispose();
+        if (!S.tex){ S.tex = new THREE.CanvasTexture(S.sky); S.tex.colorSpace = THREE.SRGBColorSpace; }
+        S.tex.needsUpdate = true; scene.background = S.tex;
+        scene.fog.color.set(L('#4a2a6a', '#ffc2b0'));
+      }
+    }
     else if (k === 'cranes'){
       for (const j of DECOR.jibs) j.top.rotation.y += j.sp*dt;
       const on = Math.floor(clock*1.5) % 2 === 0; for (const l of DECOR.lights) l.visible = on;
