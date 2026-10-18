@@ -815,7 +815,7 @@ const STAGES = [
    walls: [block(-12, -12, 3, 3), block(9, -12, 3, 3), block(-12, 9, 3, 3), block(9, 9, 3, 3)]},
   {name: 'Corridors', goal: 20, half: 21, music: 'chiptune', ...lv('#ffffff', 90),
    walls: [block(-17, -8, 14, 1), block(3, -8, 14, 1), block(-17, 8, 14, 1), block(3, 8, 14, 1), block(-1, -17, 2, 5), block(-1, 13, 2, 5)]},
-  {name: 'Rooms', goal: 24, half: 22, music: 'dnb', ...lv('#ffffff', 200),
+  {name: 'Rooms', goal: 24, half: 22, music: 'dnb', scaffolds: 1, ...lv('#ffffff', 200),
    walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
            block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
@@ -1127,7 +1127,7 @@ function ensureChunk(cx, cy){
   const k = cx + ',' + cy;
   let c = G.chunks.get(k);
   if (c) return c;
-  c = {obs: [], gems: []};
+  c = {obs: [], gems: [], scaf: []};
   G.chunks.set(k, c);
   const rnd = mulberry(hash(cx, cy, G.seed));
   const ox = cx*CH, oy = cy*CH;
@@ -1172,6 +1172,21 @@ function ensureChunk(cx, cy){
     const gx = 1 + Math.floor(rnd()*(CH - 2 - (vert ? 1 : L) + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - (vert ? L : 1) + 1));
     const r = vert ? {x: ox+gx+0.2, y: oy+gy, w: 0.6, h: L, tall: false} : {x: ox+gx, y: oy+gy+0.2, w: L, h: 0.6, tall: false};
     if (fits(r, 1.6)){ r.gate = {ph: rnd() < .5 ? 0 : 0.5}; r.ht = LOW_H; c.obs.push(r); G.gates.push(r); break; }
+  }
+  // scaffolds (construction level): a plank deck up high on four thin steel legs. Only the legs are solid,
+  // so a snake can thread right underneath, and gems can sit under the deck.
+  if (G.S.scaffolds && rnd() < 0.85*G.S.scaffolds) for (let a = 0; a < 16; a++){
+    const horiz = rnd() < .5, sw = horiz ? 4 : 2.6, sh = horiz ? 2.6 : 4;
+    const gx = 1 + Math.floor(rnd()*(CH - 2 - sw + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - sh + 1));
+    const r = {x: ox + gx, y: oy + gy, w: sw, h: sh};
+    if (fits(r, 0.9)){
+      placed.pop();   // the open space under the deck stays free; only the legs take room
+      const L = 0.3;
+      for (const [lx, ly] of [[r.x, r.y], [r.x + r.w - L, r.y], [r.x, r.y + r.h - L], [r.x + r.w - L, r.y + r.h - L]]){
+        const leg = {x: lx, y: ly, w: L, h: L, tall: true, leg: true}; c.obs.push(leg); placed.push(leg);
+      }
+      c.scaf.push(r); break;
+    }
   }
   const nGem = 1 + (rnd() < .45 ? 1 : 0);
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
@@ -2362,7 +2377,7 @@ function makeR3(){
 
   // level: floor, walls and obstacles are fixed once a level loads, so build them once
   function build(){
-    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); } });
+    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
     level.clear();
     for (const [g, o] of gemObjs) dropGem(g, o);
     const T = C.theme || THEMES.breakbeat;
@@ -2407,6 +2422,7 @@ function makeR3(){
     const shapes = shapeKit(T);
     DYN = [];
     for (const c of G.chunks.values()) for (const o of c.obs){
+      if (o.leg) continue;   // drawn with its scaffold below
       if (o.mover){ const b = shapes.pillar(o); level.add(b); DYN.push({o, b, base: true}); continue; }
       if (o.gate){
         const top = new THREE.MeshBasicMaterial(), side = new THREE.MeshBasicMaterial(), sideZ = new THREE.MeshBasicMaterial();
@@ -2416,6 +2432,7 @@ function makeR3(){
       const b = o.tall ? shapes.pillar(o) : shapes.hurdle(o);
       b.position.set(o.x + o.w/2, 0, o.y + o.h/2); level.add(b);
     }
+    for (const c of G.chunks.values()) for (const r of c.scaf) level.add(scaffold(r));
     buildDecor(T);
     cLow.set(C.hurdle); cLowS.set(C['hurdle-side']); cTall.set(C.pillar); cTallS.set(C['pillar-side']);
 
@@ -2441,13 +2458,16 @@ function makeR3(){
       for (let k = -h; k < w; k += 16){ g.beginPath(); g.moveTo(k, h); g.lineTo(k + 8, h); g.lineTo(k + 8 + h, 0); g.lineTo(k + h, 0); g.closePath(); g.fill(); } }, 32, 32);
     const hazardO = stripeTex((g, w, h) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); g.fillStyle = Hh[0];
       for (let k = -h; k < w; k += 16){ g.beginPath(); g.moveTo(k, h); g.lineTo(k + 8, h); g.lineTo(k + 8 + h, 0); g.lineTo(k + h, 0); g.closePath(); g.fill(); } }, 32, 32);
+    const plinth = (g, w, d, c, hh = 0.16) => { const b = new THREE.Mesh(BOX, boxMats(c[0], c[1])); b.scale.set(w, hh, d); b.position.y = hh/2; g.add(b); return g; };
     const stood = (mesh, y) => { const g = new THREE.Group(); mesh.position.y = y; g.add(mesh); return g; };
     const pillar = o => {
       const H = TALL_H, w = o.w, d = o.h, m = Math.min(w, d);
       switch (T.pillarShape){
         case 'round': case 'octagon': {
           const seg = T.pillarShape === 'round' ? 20 : 8;
-          const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, seg), cylMats); mesh.scale.set(w, H, d);
+          // wide enough that the round sides cover the corners of the square that counts as solid
+          const rr = seg === 8 ? 0.62 : 0.68;
+          const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, 1, seg), cylMats); mesh.scale.set(w, H, d);
           if (seg === 8) mesh.rotation.y = Math.PI/8;
           return stood(mesh, H/2);
         }
@@ -2465,11 +2485,11 @@ function makeR3(){
           const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), cylMats); c.scale.set(w*0.55, H*0.7, d*0.55); c.position.y = H*0.35; g.add(c);
           const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), shiny('#e8e8f0', {emissive: col(P[0]), emissiveIntensity: 0.35}));
           ball.scale.set(w, m*1.1, d); ball.position.y = H*0.72; g.add(ball); g.userData.spin = ball;
-          return g;
+          return plinth(g, w, d, P);
         }
         case 'crystal': {
           const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), shiny(P[0], {transparent: true, opacity: 0.88, emissive: col(P[1]), emissiveIntensity: 0.45}));
-          c.scale.set(w*1.05, H*1.15, d*1.05); return stood(c, H*0.58);
+          c.scale.set(w*1.05, H*1.15, d*1.05); return plinth(stood(c, H*0.58), w, d, [P[1], P[1]], 0.22);
         }
         case 'toyblocks': {
           // two or three chunky toy blocks stacked a little askew
@@ -2513,6 +2533,9 @@ function makeR3(){
           limb(0, H*0.5, 0, sx, H*1.0, -sz*0.3, r);
           limb(0, H*0.55, 0, sx*0.2, H*0.92, sz, r*0.9);
           limb(0, H*0.3, 0, -sx*0.4, H*0.6, -sz, r*0.85);
+          // the coral grows from a rocky base that covers its whole footprint
+          const base = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1, 2, 1, 2), shiny('#8a7550', {shininess: 5, specular: 0x111111, emissiveIntensity: 0.2}));
+          base.scale.set(w, 0.35, d); base.position.y = 0.175; g.add(base);
           return g;
         }
         default: { const b = new THREE.Mesh(BOX, pMats); b.scale.set(w, H, d); return stood(b, H/2); }
@@ -2555,15 +2578,53 @@ function makeR3(){
           return g;
         }
         case 'rock': {
-          // a low, lumpy sandstone rock
-          const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 0), shiny(Hh[0], {shininess: 5, specular: 0x111111, emissiveIntensity: 0.2}));
-          rk.scale.set(w*1.05, H*1.6, d*1.05); rk.rotation.y = o.x; return stood(rk, H*0.35);
+          // a low sandstone slab that fills its whole footprint, with a few lumps on top
+          const g = new THREE.Group(), mat = shiny(Hh[0], {shininess: 5, specular: 0x111111, emissiveIntensity: 0.2});
+          const slab = new THREE.Mesh(BOX, mat); slab.scale.set(w, H*0.8, d); slab.position.y = H*0.4; g.add(slab);
+          const n = Math.max(1, Math.round(long/1.2));
+          for (let k = 0; k < n; k++){
+            const f = (k + 0.5)/n - 0.5, lump = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 0), mat);
+            lump.scale.set(alongX ? long/n*0.9 : w*0.9, H*0.55, alongX ? d*0.9 : long/n*0.9);
+            lump.position.set(alongX ? f*w : 0, H*0.75, alongX ? 0 : f*d); lump.rotation.y = k + o.x; g.add(lump);
+          }
+          return g;
         }
         default: { const b = new THREE.Mesh(BOX, hMats); b.scale.set(w, H, d); return stood(b, H/2); }
       }
     };
     return {pillar, hurdle};
   }
+
+  // ---- scaffolding: steel poles, a top frame, a plank deck and a striped toe board ----
+  const steel = new THREE.MeshPhongMaterial({color: 0xb8bcc4, emissive: 0x2a2c30, shininess: 60, specular: 0x666666});
+  const planks = new THREE.MeshPhongMaterial({color: 0x9c6b3c, emissive: 0x2a1a0c, flatShading: true, shininess: 10});
+  const POLE = new THREE.CylinderGeometry(0.07, 0.07, 1, 8);
+  function scaffold(r, deckY = 2.7, legs = true){
+    const g = new THREE.Group(), x0 = r.x, z0 = r.y, x1 = r.x + r.w, z1 = r.y + r.h;
+    const pole = (x, z, y0, y1) => { const m = new THREE.Mesh(POLE, steel); m.scale.y = y1 - y0; m.position.set(x, (y0 + y1)/2, z); g.add(m); };
+    const tube = (ax, ay, az, bx, by, bz) => {
+      const a = new THREE.Vector3(ax, ay, az), b = new THREE.Vector3(bx, by, bz), d = b.clone().sub(a), m = new THREE.Mesh(POLE, steel);
+      m.scale.y = d.length(); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, d.normalize()); g.add(m);
+    };
+    const i = 0.15;
+    if (legs) for (const [x, z] of [[x0 + i, z0 + i], [x1 - i, z0 + i], [x0 + i, z1 - i], [x1 - i, z1 - i]]) pole(x, z, 0, deckY + 1.1);
+    // top frame and guard rail
+    for (const y of [deckY, deckY + 1]){
+      tube(x0 + i, y, z0 + i, x1 - i, y, z0 + i); tube(x0 + i, y, z1 - i, x1 - i, y, z1 - i);
+      tube(x0 + i, y, z0 + i, x0 + i, y, z1 - i); tube(x1 - i, y, z0 + i, x1 - i, y, z1 - i);
+    }
+    // cross braces on the guard rail sides
+    tube(x0 + i, deckY, z0 + i, x1 - i, deckY + 1, z0 + i); tube(x0 + i, deckY, z1 - i, x1 - i, deckY + 1, z1 - i);
+    const deck = new THREE.Mesh(BOX, planks); deck.scale.set(r.w - 0.2, 0.1, r.h - 0.2); deck.position.set((x0 + x1)/2, deckY + 0.05, (z0 + z1)/2); g.add(deck);
+    const t = hazardTexB.clone(); t.needsUpdate = true; t.repeat.set(Math.max(r.w, r.h), 1);
+    const toe = new THREE.MeshBasicMaterial({map: t});
+    for (const [w, d, x, z] of [[r.w, 0.04, (x0 + x1)/2, z0 + 0.1], [r.w, 0.04, (x0 + x1)/2, z1 - 0.1], [0.04, r.h, x0 + 0.1, (z0 + z1)/2], [0.04, r.h, x1 - 0.1, (z0 + z1)/2]]){
+      const b = new THREE.Mesh(BOX, toe); b.scale.set(w, 0.22, d); b.position.set(x, deckY + 0.2, z); g.add(b);
+    }
+    return g;
+  }
+  const hazardTexB = stripeTex((g, w, h) => { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); g.fillStyle = '#ffcc00';
+    for (let k = -h; k < w; k += 16){ g.beginPath(); g.moveTo(k, h); g.lineTo(k + 8, h); g.lineTo(k + 8 + h, 0); g.lineTo(k + h, 0); g.closePath(); g.fill(); } }, 32, 32);
 
   // ---- something in the air, for each theme; it ignores the fog so it reads from anywhere ----
   const decor = new THREE.Group(); scene.add(decor);
@@ -2584,7 +2645,7 @@ function makeR3(){
     return new THREE.Points(g, new THREE.PointsMaterial({size, map: dotTex, color: colors ? 0xffffff : col(color), vertexColors: !!colors, fog: false, transparent: true, opacity: 0.9, depthWrite: false, alphaTest: 0.02}));
   }
   function buildDecor(T){
-    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES) o.geometry.dispose(); if (o.material){ if (o.material.map && o.material.map !== dotTex) o.material.map.dispose(); o.material.dispose(); } });
+    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); if (o.material){ if (o.material === steel || o.material === planks) return; if (o.material.map && o.material.map !== dotTex && o.material.map !== glowTex) o.material.map.dispose(); o.material.dispose(); } });
     decor.clear();
     const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2, R = h + 6;
     const rnd = mulberry(G.seed ^ 0x5eed), inArena = (a, i) => { a[i] = cx + (rnd()*2 - 1)*R; a[i+2] = cz + (rnd()*2 - 1)*R; };
@@ -2636,21 +2697,22 @@ function makeR3(){
         g.save(); g.translate(128, 128); g.rotate(-0.35); g.strokeStyle = 'rgba(255,233,77,.95)'; g.lineWidth = 10; g.beginPath(); g.ellipse(0, 0, 120, 30, 0, 0, Math.PI); g.stroke(); g.restore();
       }), 60, 16, 70);
     } else if (T.decor === 'discoball'){
-      // a big mirror ball over the middle, throwing colored beams that sweep spots across the floor
-      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 2), new THREE.MeshPhongMaterial({color: 0xf2f2fa, emissive: 0x3a2040, flatShading: true, shininess: 140, specular: 0xffffff, fog: false}));
-      ball.position.set(cx, 13, cz); decor.add(ball); DECOR.ball = ball;
-      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 40, 4), new THREE.MeshBasicMaterial({color: 0xaaaaaa, fog: false})); wire.position.set(cx, 13 + 20, cz); decor.add(wire);
-      DECOR.spots = [];
-      const cols = ['#ff4fd8', '#5ff0ff', '#ffe94d', '#7dff5a', '#ff6b3d', '#8a7bff'];
-      for (let i = 0; i < 12; i++){
-        const c = col(cols[i % cols.length]);
-        const spot = new THREE.Mesh(new THREE.CircleGeometry(1.5, 24), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false}));
-        spot.rotation.x = -Math.PI/2; decor.add(spot);
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 1.3, 1, 16, 1, true), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false}));
-        decor.add(beam);
-        DECOR.spots.push({spot, beam, r: 4 + rnd()*(h - 6), a: rnd()*Math.PI*2, sp: (rnd() < .5 ? -1 : 1)*(0.15 + rnd()*0.25)});
+      // a big mirror ball out in the sky, slowly turning, scattering glittery specks of light across the floor
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(6, 2), new THREE.MeshPhongMaterial({color: 0xf4f4fb, emissive: 0x6a3a6a, flatShading: true, shininess: 160, specular: 0xffffff, fog: false}));
+      ball.position.set(cx + h + 40, 9, cz); decor.add(ball); DECOR.ball = ball;
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: col('#ffb1e6'), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
+      halo.scale.set(34, 34, 1); halo.position.copy(ball.position); decor.add(halo);
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 60, 4), new THREE.MeshBasicMaterial({color: 0x888888, fog: false})); wire.position.set(cx + h + 40, 9 + 37, cz); decor.add(wire);
+      // three layers of specks, each twinkling on its own, all turning slowly around the middle
+      DECOR.glitter = [];
+      const tints = [['#ffffff', '#ffe0f4'], ['#ffd6a8', '#ffffff'], ['#c9f2ff', '#ffffff']];
+      for (let L = 0; L < 3; L++){
+        const g = new THREE.Group(); g.position.set(cx, 0, cz); decor.add(g);
+        const pts = points(420, (a, i) => { const r = Math.sqrt(rnd())*R, th = rnd()*Math.PI*2; a[i] = Math.cos(th)*r; a[i+1] = 0.04 + rnd()*0.02; a[i+2] = Math.sin(th)*r; }, null, 0.17, tints[L]);
+        pts.material.blending = THREE.AdditiveBlending;
+        pts.material.fog = true; pts.material.sizeAttenuation = true; g.add(pts);
+        DECOR.glitter.push({g, m: pts.material, ph: L*2.1});
       }
-      DECOR.c = [cx, cz];
     } else if (T.decor === 'clouds'){
       // chunky low-poly clouds drifting around the horizon
       const cm = new THREE.MeshPhongMaterial({color: 0xffffff, emissive: 0x8899aa, flatShading: true, shininess: 5, fog: false});
@@ -2661,6 +2723,20 @@ function makeR3(){
         cl.position.set(Math.cos(a)*dist, 14 + rnd()*12, Math.sin(a)*dist); cl.rotation.y = -a; DECOR.ring.add(cl);
       }
     } else if (T.decor === 'cranes'){
+      // scaffolding three decks high along two outside walls, built from a few long pieces (light enough for phones)
+      for (const side of [0, 1]){
+        const len = 2*R, n = Math.floor(len/4) + 1, poles = new THREE.InstancedMesh(POLE, steel, n*2), m4 = new THREE.Matrix4();
+        const at = (u, v, y) => side ? new THREE.Vector3(cx + h + 1.6 + v, y, cz - R + u) : new THREE.Vector3(cx - R + u, y, cz - h - 1.6 - v);
+        for (let k = 0; k < n; k++) for (const v of [0, 2.2]){ const p = at(k*4, v, 4.3); m4.compose(p, new THREE.Quaternion(), new THREE.Vector3(1, 8.6, 1)); poles.setMatrixAt(k*2 + (v ? 1 : 0), m4); }
+        decor.add(poles);
+        const long = (y, v, w, hh, d, mat) => { const b = new THREE.Mesh(BOX, mat); const p = at(len/2, v, y); b.position.copy(p); if (side) b.scale.set(d, hh, len); else b.scale.set(len, hh, d); decor.add(b); };
+        const t = hazardTexB.clone(); t.needsUpdate = true; t.repeat.set(len, 1); const toe = new THREE.MeshBasicMaterial({map: t});
+        for (const y of [2.2, 4.4, 6.6]){
+          long(y, 1.1, 0, 0.1, 2.3, planks);                                  // the deck
+          for (const v of [0, 2.2]) long(y + 1, v, 0, 0.1, 0.1, steel);       // guard rails
+          long(y + 0.2, 0, 0, 0.22, 0.04, toe);                               // striped toe board
+        }
+      }
       // two tower cranes just outside the arena, slowly swinging their arms, warning lights blinking
       const yel = new THREE.MeshBasicMaterial({color: 0xffc400}), dark = new THREE.MeshBasicMaterial({color: 0x333333}), lines = new THREE.LineBasicMaterial({color: 0x7a5a00});
       DECOR.jibs = []; DECOR.lights = [];
@@ -2725,16 +2801,8 @@ function makeR3(){
     if (k === 'lasers') DECOR.items.forEach((b, i) => { b.rotation.y = b.userData.base + Math.sin(clock*0.7 + i*1.7)*0.6; b.material.opacity = 0.25 + 0.55*beat; });
     else if (k === 'beams') DECOR.items.forEach((b, i) => { b.material.opacity = 0.12 + 0.3*beat*((i % 2) ? 1 : 0.6); });
     else if (k === 'discoball'){
-      DECOR.ball.rotation.y += dt*0.45;
-      const [cx, cz] = DECOR.c, bp = DECOR.ball.position;
-      for (const s of DECOR.spots){
-        s.a += s.sp*dt;
-        const x = cx + Math.cos(s.a)*s.r, z = cz + Math.sin(s.a)*s.r;
-        s.spot.position.set(x, 0.03, z); s.spot.material.opacity = 0.35 + 0.35*beat;
-        const dir = new THREE.Vector3(x - bp.x, 0 - bp.y, z - bp.z), len = dir.length();
-        s.beam.position.set((x + bp.x)/2, bp.y/2, (z + bp.z)/2); s.beam.scale.set(1, len, 1);
-        s.beam.quaternion.setFromUnitVectors(UP, dir.normalize().negate());
-      }
+      DECOR.ball.rotation.y += dt*0.35;
+      DECOR.glitter.forEach((L, i) => { L.g.rotation.y += dt*0.12; L.m.opacity = 0.35 + 0.45*Math.abs(Math.sin(clock*(2.2 + i*0.7) + L.ph)) + 0.25*beat; });
     }
     else if (k === 'clouds') DECOR.ring.rotation.y += dt*0.01;
     else if (k === 'cranes'){
