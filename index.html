@@ -339,6 +339,11 @@ body.here #pauseBtn svg{width:26px;height:26px}
 }
 /* party and tag team */
 .mp{position:fixed;inset:0;pointer-events:none}
+.mp-note{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:10px 12px 10px 16px;background:#000;border:1.5px solid var(--line);max-width:calc(100vw - 32px);box-sizing:border-box;pointer-events:auto}
+.mp-note b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem;white-space:nowrap}
+.mp-note span{font-size:.72rem;line-height:1.4;color:var(--muted)}
+.mp-note .btn{font-size:.85rem;padding:12px 14px;white-space:nowrap}
+body.watching #stage{display:none}
 .mp-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%)}
 @media (max-width:700px){.mp-top{top:calc(env(safe-area-inset-top,0px) + 70px);left:auto;right:16px;transform:none}.mp-top .team{max-width:60vw;white-space:normal;justify-content:flex-end}}
 /* playing on this phone: the map moves to the right-hand corner so the jump label stays readable */
@@ -435,6 +440,8 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   <div class="mp-top" id="mpTop"></div>
   <ol class="mp-board" id="mpBoard"></ol>
   <div id="mpTags"></div>
+  <div class="mp-note" id="mpWatch" hidden><b>Watching</b><span>You're not in this game. To play, add yourself on the menu before the next round.</span></div>
+  <div class="mp-note" id="mpOut" hidden><b>You're out</b><span>The computer snakes are still going.</span><button class="btn" id="skipBtn">Skip to results</button></div>
 </div>
 <div class="hud">
   <div id="hudMain">
@@ -1122,7 +1129,7 @@ function loadWorld(cfg){
   applyLook(S);
   // more snakes, more room: the arena's area grows with the number of players (two play on the regular size)
   const roomy = Math.sqrt(Math.max(1, n/2));
-  const half = Math.round((party ? S.base : Math.max(15, S.half + D.room))*roomy);
+  const half = Math.round((party ? S.base : S.half + Math.max(0, D.room))*roomy);   // harder never means a smaller field
   buildArena(half);
   const lvl = party ? 2 : cfg.idx, sp = K.speed || 1, base = (D.speed + lvl*0.25)*sp;
   G = {
@@ -1509,8 +1516,6 @@ function update(dt){
     if (isCPU(p.i)) aiThink(p, dt);
     G.turn += (steerTarget(p.i) - G.turn)*(1 - Math.exp(-dt*12));
     G.turnCue -= dt;
-    // starting a turn still plays the next note of the melody, like the original
-    if (Math.abs(G.turn) > 0.35 && (Math.abs(G.prevTurn) <= 0.35 || Math.sign(G.turn) !== Math.sign(G.prevTurn)) && G.turnCue <= 0){ sfxTurn(); buzz(6); G.turnCue = 0.3; }
     G.prevTurn = G.turn;
     // the computer opponent can be set to move slower than you
     const sp = G.speed*(isCPU(p.i) ? aiSkill().speed : 1);
@@ -1576,9 +1581,9 @@ function posOf(p){
 //   greed  chance it goes for the best gem rather than one of the next few
 const isCPU = i => !!(PL[i] && PL[i].kind === 'cpu');
 const AI_SKILL = {
-  easy:   {speed: 0.8,  look: 1.6, think: 0.35, wobble: 1.2,  steer: 0.6,  jump: 0.5,  greed: 0.45},
-  normal: {speed: 0.9,  look: 2.4, think: 0.2,  wobble: 0.6,  steer: 0.8,  jump: 0.8,  greed: 0.75},
-  hard:   {speed: 1,    look: 3.6, think: 0.08, wobble: 0.12, steer: 1,    jump: 0.97, greed: 1}
+  easy:   {speed: 0.8,  look: 2.2, think: 0.16, wobble: 0.5,  steer: 0.75, jump: 0.9,  greed: 0.45},
+  normal: {speed: 0.9,  look: 2.8, think: 0.11, wobble: 0.3,  steer: 0.9,  jump: 0.96, greed: 0.75},
+  hard:   {speed: 0.92, look: 3.6, think: 0.06, wobble: 0.12, steer: 1,    jump: 0.99, greed: 1}
 };
 const aiSkill = () => AI_SKILL[RUN.diff] || AI_SKILL.normal;
 function aiNear(x, y, fn){
@@ -1587,7 +1592,7 @@ function aiNear(x, y, fn){
   return false;
 }
 function aiBlocked(x, y, self){
-  const m = 0.45, hit = o => x > o.x - m && x < o.x + o.w + m && y > o.y - m && y < o.y + o.h + m;
+  const m = 0.45 + G.speed*0.04, hit = o => x > o.x - m && x < o.x + o.w + m && y > o.y - m && y < o.y + o.h + m;
   if (x < ARENA.x0 + m || x > ARENA.x1 - m || y < ARENA.y0 + m || y > ARENA.y1 - m) return true;
   if (G.walls.some(hit)) return true;
   if (aiNear(x, y, c => c.obs.some(o => o.tall && hit(o)))) return true;
@@ -1601,13 +1606,28 @@ function aiBlocked(x, y, self){
       if (!a.air && (q !== self || acc > 1.4) && distSeg(x, y, a.x, a.y, bx, by) < 0.5) return true;
       acc += L; bx = a.x; by = a.y;
     }
-    if (q !== self && Math.hypot(x - hx, y - hy) < 0.8) return true;
+    if (q !== self){
+      if (Math.hypot(x - hx, y - hy) < 0.8) return true;
+      // where its head is about to be
+      for (let d = 0.6; d <= 1.8; d += 0.6) if (Math.hypot(x - (hx + Math.cos(q.th)*d), y - (hy + Math.sin(q.th)*d)) < 0.6) return true;
+    }
   }
   return false;
 }
+// a hurdle is fine to cross, but not to run along: if there's still hurdle a jump's length past this point, it's a dead end
+const onHurdle = (x, y) => aiNear(x, y, c => c.obs.some(o => !o.tall && circleRect(x, y, 0.2, o)));
+function aiHurdleBlocks(x, y, a){
+  if (!onHurdle(x, y)) return false;
+  const J = G.D.jump*G.K.jump*aiSkill().speed*0.75;
+  return onHurdle(x + Math.cos(a)*J, y + Math.sin(a)*J) || aiBlocked(x + Math.cos(a)*J, y + Math.sin(a)*J, null);
+}
 function aiThink(p, dt){
-  if ((p.aiT = (p.aiT || 0) - dt) > 0) return;
   const sk = aiSkill();
+  aiJump(p, sk);
+  // something right in front: think again now rather than waiting
+  const near = 0.8 + G.speed*0.2;
+  if (aiBlocked(G.x + Math.cos(G.th)*near, G.y + Math.sin(G.th)*near, p)) p.aiT = 0;
+  if ((p.aiT = (p.aiT || 0) - dt) > 0) return;
   p.aiT = sk.think*(0.7 + Math.random()*0.6);
   // stick with the gem it's chasing; when that's gone, rank gems by distance (cheaper if they're ahead)
   if (!p.aiGem || p.aiGem.taken){
@@ -1623,16 +1643,19 @@ function aiThink(p, dt){
     p.aiGem = ranked.length ? ranked[pickI].g : null;
   }
   const tgt = p.aiGem ? Math.atan2(p.aiGem.y - G.y, p.aiGem.x - G.x) : G.th;
-  const L = sk.look + G.speed*0.25;
+  const L = sk.look + G.speed*0.45;   // faster means looking further ahead
   let pick = G.th, top = -Infinity;
   for (let k = -4; k <= 4; k++){
     const a = G.th + k*0.32;
     let free = L;
-    for (let s = 0.5; s <= L; s += 0.4) if (aiBlocked(G.x + Math.cos(a)*s, G.y + Math.sin(a)*s, p)){ free = s; break; }
-    const score = free/L*4 - Math.abs(angDiff(a, tgt))*0.9 - Math.abs(k)*0.08 + (Math.random() - 0.5)*sk.wobble;
+    for (let s = 0.5; s <= L; s += 0.4){ const x = G.x + Math.cos(a)*s, y = G.y + Math.sin(a)*s; if (aiBlocked(x, y, p) || aiHurdleBlocks(x, y, a)){ free = s; break; } }
+    const score = free/L*4 - (free < 1.3 ? 3 : 0) - Math.abs(angDiff(a, tgt))*0.9 - Math.abs(k)*0.08 + (Math.random() - 0.5)*sk.wobble;
     if (score > top){ top = score; pick = a; }
   }
   p.aiSteer = clamp1(angDiff(pick, G.th)*2.2)*sk.steer;
+}
+// checked every frame: a hurdle (or a lowered gate) just ahead means jump
+function aiJump(p, sk){
   if (!G.air && G.t >= (p.aiNoJump || 0)){
     for (let s = 0.35; s <= 0.9 + G.speed*0.08; s += 0.2){
       const x = G.x + Math.cos(G.th)*s, y = G.y + Math.sin(G.th)*s;
@@ -1787,6 +1810,18 @@ function respawn(p){
   p.ep = (p.ep || 0) + 1;
   if (R3) R3.snap(p.i);
   phoneSend({t: 'buzz', p: [15, 40, 15]}, p.i);
+}
+// skip ahead: run the rest of the round as fast as the computer can, without drawing it, then show the results
+let SKIPPING = false;
+function skipToEnd(){
+  if (!localHumansOut()) return;
+  const b = $('skipBtn'); b.disabled = true; b.textContent = 'Simulating…';
+  setTimeout(() => {
+    SKIPPING = true;
+    try { for (let k = 0; k < 40000 && state === 'play'; k++) update(1/20); } finally { SKIPPING = false; }
+    G.particles.length = 0;
+    b.disabled = false; b.textContent = 'Skip to results';
+  }, 30);
 }
 function endDuel(){
   state = 'over'; G.done = true;
@@ -2233,7 +2268,7 @@ function heard(){
   return vs.includes(CUR.i);
 }
 const sfx = fn => {
-  if (!AC || muted || !heard()) return;
+  if (!AC || muted || SKIPPING || !heard()) return;
   const now = AC.currentTime;
   sfxRecent = sfxRecent.filter(t => now - t < 0.12);
   if (sfxRecent.length >= 3) return;
@@ -3376,8 +3411,9 @@ function makeR3(){
       GFX.forEach(o => { o.head.visible = o.headShow; o.shadow.visible = o.headShow; });
       const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2;
       spec.aspect = W3/H3; spec.updateProjectionMatrix();
-      const fit = h/Math.tan(spec.fov*Math.PI/360)*(W3 < H3 ? 1.9 : 1.15);
-      spec.position.set(cx, fit*0.85, cz + fit*0.62); spec.lookAt(cx, 0, cz + h*0.05);
+      // straight down over the whole field, like a big version of the map
+      const fit = (h + 1.5)/Math.tan(spec.fov*Math.PI/360)*Math.max(1, H3/W3);
+      spec.position.set(cx, fit, cz + 0.001); spec.lookAt(cx, 0, cz);
       const f0 = scene.fog.near, f1 = scene.fog.far; scene.fog.near = fit*3; scene.fog.far = fit*6;
       renderer.setScissorTest(false); renderer.setViewport(0, 0, W3, H3); renderer.render(scene, spec);
       scene.fog.near = f0; scene.fog.far = f1;
@@ -3540,6 +3576,8 @@ function linkGone(L){
   setPhoneUI();
 }
 function seatsChanged(){
+  // real players always take the first spots, computer snakes after them (only reshuffled between rounds)
+  if (state === 'menu') SEATS.sort((a, b) => (a.kind === 'cpu') - (b.kind === 'cpu'));
   renderSeats(); sendLobby(); setPhoneUI(); renderSheet();
   if (state === 'menu' && ROLE === 'host' && MODE !== 1) refreshMenu();
 }
@@ -3938,9 +3976,17 @@ function viewers(){
   if (CAN_TILT){ const i = PL.findIndex(p => p.kind === 'device'); return i >= 0 ? [i] : []; }
   return PL.map((p, i) => ['phone', 'keys', 'device'].includes(p.kind) || (p.kind === 'cpu' && CPU_VIEW) ? i : -1).filter(i => i >= 0);
 }
+// nobody of yours left in a party: everyone playing on this screen (or its phones) is out of lives
+function localHumansOut(){
+  const hum = PL.filter(p => p.kind !== 'cpu');
+  return MODE === 2 && ROLE === 'host' && state === 'play' && hum.length > 0 && hum.every(p => !p.alive && p.lives <= 0) && PL.some(p => p.kind === 'cpu' && (p.alive || p.lives > 0));
+}
 function updateHUD(){
   if (MODE !== 1){
     const left = Math.max(0, Math.ceil(G.left)), vs = viewers();
+    const watching = ROLE === 'host' && !vs.length && (state === 'play' || state === 'paused');
+    $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
+    $('mpOut').hidden = !localHumansOut();
     const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME]);
     if (key === lastHud) return;
     lastHud = key;
@@ -4375,6 +4421,7 @@ function resume(){
 // on a client, pausing asks the host, which pauses every screen
 const pauseAction = () => { if (ROLE === 'client') netSend({t: 'pause'}); else pause(); };
 $('startBtn').addEventListener('click', () => start(MODE === 2 ? course : stage));
+$('skipBtn').addEventListener('click', skipToEnd);
 $('sheetGo').addEventListener('click', () => { if (!readyToPlay()) return nudgeWaiting(); closeSheet(); $('startBtn').click(); });
 $('sheetMe').addEventListener('click', () => $('addLocal').click());
 $('sheetCpu').addEventListener('click', () => $('addCpu').click());
