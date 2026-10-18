@@ -1956,7 +1956,9 @@ function leadNote(f, t, peak, dcy){
 // Turning plays a soft note that waits for the next eighth note of the music, so it always lands in time.
 // The notes come from whatever chord is playing right then, walked through a short up-and-down phrase,
 // so a run of turns sounds like a little tune that fits the song.
-const TURN_PHRASE = [0, 2, 1, 3, 2, 4, 3, 1];
+// a 16-note phrase over the chord's tones (0 = root, 1 = third, 2 = fifth, 3 = root up an octave, 4 = third up):
+// a little four-note idea, the same idea again reaching higher, an answer that climbs to the top, then home
+const TURN_PHRASE = [0, 1, 2, 1,  0, 1, 3, 2,  1, 2, 3, 4,  3, 2, 1, 0];
 function turnNote(){
   const st = style(), bar = Math.floor(Math.max(0, stepI - 1)/16) % 4;
   let ch = st.chords ? st.chords[bar] : null;
