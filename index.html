@@ -352,7 +352,7 @@ button{touch-action:manipulation;font:inherit}
       </div>
     </div>
     <button class="btn" id="startBtn">Start level 1</button>
-    <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Drag sideways to turn, tap to jump</span></div>
+    <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Tilt or drag sideways to turn, tap to jump</span></div>
   </div>
 </div>
 
@@ -551,7 +551,10 @@ const VIEWS = {
 let view = VIEWS[store.get('view')] ? store.get('view') : 'eye';
 let MODE = +store.get('players') === 2 ? 2 : 1;   // 1 = solo, 2 = versus
 let OPP = store.get('opp') === 'cpu' ? 'cpu' : 'friend';   // versus opponent: a friend or the computer
-let CTRL = store.get('ctrl') === 'keys' ? 'keys' : 'phones'; // how people play: phones, or the keyboard and mouse here
+// a phone or tablet running the game can also steer by tilting itself (and tap to jump)
+const CAN_TILT = typeof window.matchMedia === 'function' && matchMedia('(pointer:coarse)').matches && 'DeviceOrientationEvent' in window;
+// how people play: phones as controllers, the keyboard/touch here, or tilting this screen itself
+let CTRL = (() => { const c = store.get('ctrl'); return c === 'keys' ? 'keys' : c === 'device' && CAN_TILT ? 'device' : c === 'phones' ? 'phones' : CAN_TILT ? 'device' : 'phones'; })();
 let ARENA = null, WALLS = [];
 
 // ---- screen ----
@@ -1034,6 +1037,8 @@ const playerName = i => MODE === 2 && OPP === 'cpu' ? (i === 0 ? 'You' : 'Comput
 // ---- making sure everyone has a controller before play starts ----
 const humans = () => MODE === 2 && OPP === 'friend' ? 2 : 1;
 function missingPhones(){
+  // tilting this screen: player 1 is right here, so only a versus friend needs a phone
+  if (CTRL === 'device') return humans() === 2 && !phoneOn() ? [1] : [];
   if (CTRL !== 'phones') return [];
   const m = [];
   for (let i = 0; i < humans(); i++) if (!phoneOn(i)) m.push(i);
@@ -1831,10 +1836,17 @@ function phoneSend(msg, only){
 function setPhoneUI(note){
   const on = phoneOn(), both = phoneOn(0) && phoneOn(1);
   $('phoneChip').classList.toggle('on', on);
+  // tilting this screen solo needs no phone, so the code tag only shows if a friend's phone is wanted or one is connected
+  $('phoneChip').hidden = CTRL === 'device' && !on && !(MODE === 2 && OPP === 'friend');
   $('phoneChipTxt').textContent = both ? '2 phones connected' : on ? 'Phone connected' : PHONE.code ? 'Phone code ' + PHONE.code : 'No phone';
   $('phoneCode').textContent = PHONE.code || '····';
   if (note) { $('phoneDesc').textContent = note; return; }
-  if (CTRL === 'keys' && !on) { $('phoneDesc').innerHTML = 'Playing on the keyboard. A phone can still join with this code.'; return; }
+  if (CTRL === 'keys' && !on) { $('phoneDesc').innerHTML = CAN_TILT ? 'Drag sideways to steer, tap to jump. A phone can still join with this code.' : 'Playing on the keyboard. A phone can still join with this code.'; return; }
+  if (CTRL === 'device'){
+    const tip = '<b>Tilt this screen to steer</b>, like a steering wheel. Tap anywhere to jump.';
+    if (MODE === 2 && OPP === 'friend') { $('phoneDesc').innerHTML = on ? `${tip} Player 2's phone is connected.` : `${tip} Player 2: scan this code with your phone.`; return; }
+    $('phoneDesc').innerHTML = tip + ' Hold it how you like to play, then press Start.'; return;
+  }
   if (MODE === 2 && OPP === 'cpu' && on) { $('phoneDesc').innerHTML = '<b>Phone connected.</b> You against the computer.'; return; }
   if (MODE === 2 && both) { $('phoneDesc').innerHTML = '<b>Both phones connected.</b> Ready to race.'; return; }
   if (MODE === 2 && OPP === 'friend' && on) { $('phoneDesc').innerHTML = `<b>Player ${phoneOn(0) ? 1 : 2} is connected.</b> Player ${phoneOn(0) ? 2 : 1}: scan the same code.`; return; }
@@ -1899,11 +1911,61 @@ function goAction(){
   else if (state === 'clear') nextStage();
   else if (state === 'paused') resume();
 }
+// ---- tilt this screen to steer ----
+// Works however the device is held: upright in portrait, sideways in landscape, or lying back in a lap.
+// At the start of each run it notes which way is "down" across the screen; tipping the right edge down
+// steers right, the left edge left, like a steering wheel. Same feel as the phone controller: a few
+// degrees around level do nothing, and the controller's "tilt for a full turn" setting is shared.
+const TILT = {on: false, asked: false, denied: false, cal: true, ux: 0, uy: -1, rel: 0, seen: 0};
+const TILT_DEAD = 5;
+const tiltFull = () => +store.get('ctl-fullturn') || 30;
+function enableTilt(){
+  if (TILT.on || TILT.asked || !CAN_TILT) return;
+  TILT.asked = true;
+  // iPhones and iPads only share motion after a tap, and the request has to start inside that tap
+  const ask = typeof DeviceOrientationEvent.requestPermission === 'function' ? DeviceOrientationEvent.requestPermission() : Promise.resolve('granted');
+  ask.then(r => {
+    if (r !== 'granted') throw 0;
+    addEventListener('deviceorientation', onTilt); TILT.on = true; TILT.cal = true;
+  }).catch(() => { TILT.denied = true; TILT.asked = false; setPhoneUI('Motion access was blocked, so drag sideways to steer and tap to jump. To tilt, allow motion in Safari settings and reload.'); });
+}
+function onTilt(e){
+  if (e.beta == null || e.gamma == null || CTRL !== 'device') return;
+  const b = e.beta*Math.PI/180, g = e.gamma*Math.PI/180;
+  // which way gravity points, in the device's own axes (x right, y up the screen in portrait)
+  const dx = Math.sin(g)*Math.cos(b), dy = -Math.sin(b);
+  if (TILT.cal){
+    const n = Math.hypot(dx, dy);
+    if (n > 0.3){ TILT.ux = dx/n; TILT.uy = dy/n; }      // held up: "down the screen" is where gravity leans
+    else {                                                // lying flat: go by how the screen is turned
+      const o = typeof window.orientation === 'number' ? window.orientation : (innerWidth > innerHeight ? 90 : 0);
+      [TILT.ux, TILT.uy] = o === 90 ? [-1, 0] : o === -90 ? [1, 0] : o === 180 ? [0, 1] : [0, -1];
+    }
+    TILT.cal = false; TILT.rel = 0;
+  }
+  // the screen's "right", and how far gravity leans toward it
+  const rx = -TILT.uy, ry = TILT.ux;
+  let deg = Math.asin(Math.max(-1, Math.min(1, dx*rx + dy*ry)))*180/Math.PI;
+  if (store.get('ctl-flip') === '1') deg = -deg;
+  TILT.rel += (deg - TILT.rel)*0.5;
+  const a = Math.abs(TILT.rel), full = tiltFull();
+  const v = a < TILT_DEAD ? 0 : Math.sign(TILT.rel)*Math.pow(Math.min(1, (a - TILT_DEAD)/(full - TILT_DEAD)), 1.7);
+  STEERS[0].phone = v; STEERS[0].phoneAt = performance.now(); TILT.seen = performance.now();
+}
+// a tilt can turn the screen sideways; settle on the new "down" when it does
+addEventListener('orientationchange', () => { TILT.cal = true; });
+// ask for motion on the first button press (Start, Resume and the like) while tilt is the control
+addEventListener('click', e => { if (CTRL === 'device' && e.target.closest && e.target.closest('button')) enableTilt(); }, true);
+
 function onPhone(m, slot){
   if (!m || typeof m !== 'object') return;
-  const pi = MODE === 2 ? slot : 0;   // in solo either phone drives the one snake
+  let pi = MODE === 2 ? slot : 0;   // in solo either phone drives the one snake
+  // tilting this screen: this screen is player 1, and a friend's phone (whichever seat it took) is player 2
+  if (CTRL === 'device'){
+    if (m.t === 'steer' || m.t === 'jump'){ if (humans() !== 2) return; pi = 1; }
+  }
   // the Controls choice decides who drives: on Keyboard, a connected phone doesn't steer anyone
-  if (CTRL !== 'phones' && (m.t === 'steer' || m.t === 'jump')) return;
+  else if (CTRL !== 'phones' && (m.t === 'steer' || m.t === 'jump')) return;
   if (m.t === 'steer'){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); }
   else if (m.t === 'jump') jumpFor(pi);
   else if (m.t === 'go') goAction();
@@ -2008,9 +2070,15 @@ function setMode(m){
 buildSeg('oppPick', 'opp', [{value: 'friend', html: '<b>Friend</b><small>2 phones</small>'}, {value: 'cpu', html: '<b>Computer</b><small>Solo vs AI</small>'}], v => {
   OPP = v; store.set('opp', v); setPhoneUI(); applyModeUI(); refreshMenu();
 });
-buildSeg('ctrlPick', 'ctrl', [{value: 'phones', html: '<b>Phones</b><small>Tilt + jump</small>'}, {value: 'keys', html: '<b>Keyboard</b><small>On this screen</small>'}], v => {
-  CTRL = v; store.set('ctrl', v); setPhoneUI(); refreshMenu();
+buildSeg('ctrlPick', 'ctrl', CAN_TILT
+  ? [{value: 'device', html: '<b>Tilt</b><small>This screen</small>'}, {value: 'phones', html: '<b>Phones</b><small>Tilt + jump</small>'}, {value: 'keys', html: '<b>Touch</b><small>Drag + tap</small>'}]
+  : [{value: 'phones', html: '<b>Phones</b><small>Tilt + jump</small>'}, {value: 'keys', html: '<b>Keyboard</b><small>On this screen</small>'}], v => {
+  CTRL = v; store.set('ctrl', v);
+  if (v === 'device') enableTilt();
+  if (v !== 'device') STEERS[0].phone = 0;
+  setPhoneUI(); refreshMenu();
 });
+$('ctrlPick').style.setProperty('--n', CAN_TILT ? 3 : 2);
 buildSeg('stagePick', 'stage', STAGES.map((S, i) => ({value: i, html: `<b class="num">${i + 1}</b>${LOCK}`})), v => {
   stage = +v; store.set('stage', stage); refreshMenu();
 });
@@ -2205,6 +2273,7 @@ function showClear(){
 }
 function begin(){
   state = 'play';
+  TILT.cal = true;   // however the screen is held right now counts as straight ahead
   hideOverlays(); $('pauseBtn').hidden = false;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   startMusic(); keepAwake(true);
