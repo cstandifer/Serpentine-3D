@@ -376,7 +376,11 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .seats .n{display:grid;gap:2px;min-width:0}
 .seats .n b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seats .n small{font-size:.62rem;color:var(--muted)}
-.seats .snakeSel{font:inherit;font-size:.72rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:6px 8px;cursor:pointer;max-width:120px}
+.snakeBtns{display:flex;gap:4px}
+.snb{width:32px;height:32px;padding:4px;background:#000;border:1px solid var(--rule-soft);cursor:pointer;display:grid;place-items:center}
+.snb.on{border-color:var(--cream);box-shadow:inset 0 0 0 1px var(--cream)}
+.snb svg,.cpuIc svg{width:22px;height:22px}
+.cpuIc{padding:0 4px}
 .csnake{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:.72rem;color:var(--muted)}
 .csnake .snakeSel{font:inherit;font-size:.8rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:8px 10px}
 .seats .x{width:30px;height:30px;border:1px solid var(--rule);background:#000;color:var(--cream);font-size:1rem;cursor:pointer;padding:0}
@@ -1688,6 +1692,14 @@ function aiJump(p, sk){
     }
   }
 }
+// a player who's out for good watches a teammate who's still in (a real player first, then a computer)
+function watchFor(i){
+  const p = PL[i];
+  if (MODE === 1 || !p || p.alive || p.lives > 0) return i;
+  const live = q => q && (q.alive || q.lives > 0);
+  const j = PL.findIndex(q => live(q) && q.kind !== 'cpu'), k = PL.findIndex(live);
+  return j >= 0 ? j : k >= 0 ? k : i;
+}
 // what to call each player on screen
 const playerName = i => { const p = PL[i]; if (!p) return ''; return p.name || (p.kind === 'cpu' ? 'CPU ' + (i + 1) : ROLE === 'client' && i === ME ? 'You' : 'P' + (i + 1)); };
 
@@ -2043,8 +2055,26 @@ function riser(t, dur, peak){
   s.connect(f).connect(g).connect(musicBus); s.start(t); s.stop(t + dur + 0.05);
 }
 const clank = (t, p) => { note('square', 1480, t, p*0.25, 0.07, 6000); note('square', 2217, t, p*0.18, 0.05, 7000); noise(t, 'bandpass', 5200, p, 0.05, musicBus); };   // a hammer on steel
+// a held note: swells in, holds for the whole length, then fades (not a pluck). Optional detuned voices,
+// a lowpass for warmth and a vibrato that comes in slowly
+function sustain(f, t, dur, peak, o = {}){
+  const a = o.a ?? 0.05, r = o.r ?? 0.3, g = AC.createGain(), lp = AC.createBiquadFilter(), end = t + dur + r;
+  lp.type = 'lowpass'; lp.frequency.value = o.filt || 1800; lp.Q.value = o.q || 0.7;
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, t + Math.max(a, dur));
+  g.gain.exponentialRampToValueAtTime(0.0001, end);
+  (o.types || ['sawtooth', 'sawtooth']).forEach((ty, k) => {
+    const osc = AC.createOscillator(); osc.type = ty; osc.frequency.value = f*(1 + (k === 0 ? 0 : (k % 2 ? 1 : -1)*(o.det ?? 0.005)));
+    if (o.vib){ const v = AC.createOscillator(), vg = AC.createGain(); v.frequency.value = 5; vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f*o.vib, t + Math.min(dur, 0.7)); v.connect(vg).connect(osc.frequency); v.start(t); v.stop(end + 0.05); }
+    osc.connect(lp); osc.start(t); osc.stop(end + 0.05);
+  });
+  lp.connect(g).connect(o.dest || musicBus);
+}
+// melodies wait out the intro: the beat gets about eight bars to itself first (a style can set its own intro, in steps)
+let MEL_ON = true;
 // a melody written as one {step: note} map per bar; each note lasts until the next one
-function hook(H, s, bar, sd, fn){
+function hook(H, s, bar, sd, fn){ if (MEL_ON) riff(H, s, bar, sd, fn); }
+// the same, for bass lines and other parts that play from the very start
+function riff(H, s, bar, sd, fn){
   const m = H[bar]; if (!m || m[s] === undefined) return;
   const nx = Object.keys(m).map(Number).filter(k => k > s).sort((a, b) => a - b)[0] ?? 16;
   fn(m[s], (nx - s)*sd);
@@ -2094,15 +2124,16 @@ const STYLES = {
       }
       if (s % 2 === 0){ note('sawtooth', mf(ch[0] - 24), t, 0.09, sd*1.8, 520); note('sawtooth', mf(ch[0] - 24)*1.007, t, 0.07, sd*1.8, 520); }
       if (s === 0) ch.forEach(m => { note('sawtooth', mf(m), t, 0.012, sd*16, 1300); note('sawtooth', mf(m)*1.005, t, 0.01, sd*16, 1300); pad(mf(m + 12), t, sd*16, 0.012); });
-      if (sec === 'voice' || sec === 'glow') hook(this.tune, s, bar, sd, (m, d) => voice(mf(m), t, d*0.95, 'o', 'a', 0.16, musicBus));
+      if (sec === 'voice' || sec === 'glow') hook(this.tune, s, bar, sd, (m, d) => sustain(mf(m + 12), t, d*0.95, 0.03, {types: ['sawtooth', 'triangle', 'sawtooth'], filt: 1300, a: 0.09, r: 0.45, vib: 0.006}));
       if (sec !== 'drive') hook(this.bells, s, bar, sd, m => { note('sine', mf(m), t, 0.04, 0.7); note('sine', mf(m)*2, t, 0.01, 0.3); });
     }},
   // level 3, the toy world: a bouncy 8-bit platformer tune in the spirit of the classics (an original melody).
   // Staccato square lead, oom-pah triangle bass, chip drums, a shuffle in the step
-  chiptune: {name: 'Platformer', vol: 3.8, bpm: 150, lead: 'square',
+  chiptune: {name: 'Platformer', vol: 2.2, bpm: 132, lead: 'triangle',
     melody: [72,74,76,77,79,81,83,84],
     chords: [[60,64,67],[53,57,60],[60,64,67],[55,59,62,65]],   // C, F, C, G7
-    form: ['run', 'run', 'under', 'run'],
+    form: ['under', 'run', 'run', 'under', 'run', 'run'],
+    intro: 64,
     tune: [{0:72, 2:76, 3:79, 6:76, 8:72, 12:67}, {0:72, 2:77, 3:81, 6:77, 8:72, 12:69}, {0:72, 2:76, 3:79, 6:76, 8:72, 12:67}, {0:71, 2:74, 3:77, 6:74, 8:79, 12:72}],
     under: [{0:48, 3:55, 6:60, 8:58, 11:55}, {0:53, 3:57, 6:60, 8:63, 11:60}, {0:48, 3:55, 6:60, 8:58, 11:55}, {0:55, 3:59, 6:62, 8:65, 10:62, 12:59}],
     step(s, bar, i, t, sd){
@@ -2112,9 +2143,9 @@ const STYLES = {
       if (s === 0 || s === 8) chipKick(t);
       if (s === 4 || s === 12) noise(t, 'highpass', 3000, 0.07, 0.05, musicBus);
       if (s % 2 === 0) noise(t + sw, 'highpass', 8000, 0.014, 0.02, musicBus);
-      if (sec === 'run') hook(this.tune, s, bar, sd, (m, d) => note('square', mf(m), t + (s % 4 === 2 ? sw : 0), 0.035, Math.min(d, sd*1.3)*0.8, 3600));
+      if (sec === 'run') hook(this.tune, s, bar, sd, (m, d) => sustain(mf(m), t + (s % 4 === 2 ? sw : 0), d*0.85, 0.03, {types: ['square', 'triangle'], filt: 2200, a: 0.015, r: 0.12, det: 0}));
       if (sec === 'under'){
-        hook(this.under, s, bar, sd, (m, d) => note('square', mf(m), t, 0.04, Math.min(d, sd*1.5)*0.7, 1800));
+        riff(this.under, s, bar, sd, (m, d) => sustain(mf(m), t, d*0.8, 0.035, {types: ['triangle', 'square'], filt: 1400, a: 0.01, r: 0.1, det: 0}));
         if (s === 14 && bar % 2) for (let k = 0; k < 3; k++) note('square', mf(84 + k*7), t + k*sd/3, 0.02, 0.06, 5000);   // a little coin sparkle
       }
     }},
@@ -2166,13 +2197,13 @@ const STYLES = {
       if (s === 4 || s === 12){ noise(t, 'bandpass', 1300, 0.1, 0.08, musicBus); noise(t + 0.01, 'bandpass', 2400, 0.07, 0.06, musicBus); }
       if (s === 6 || s === 14){ note('square', 540, t, 0.016, 0.12, 2500); note('square', 800, t, 0.012, 0.12, 2500); }   // cowbell
       hat(t, s % 4 === 2 ? 0.016 : 0.007, 0.02, 9500);
-      hook(this.bass, s, 0, sd, (o, d) => { const f = mf(ch[0] - 24 + o); note('sawtooth', f, t, 0.07, d*0.8, 560); note('sine', f, t, 0.12, d*0.8); });
+      riff(this.bass, s, 0, sd, (o, d) => { const f = mf(ch[0] - 24 + o); note('sawtooth', f, t, 0.07, d*0.8, 560); note('sine', f, t, 0.12, d*0.8); });
       if (s === 2 || s === 10) ch.forEach(m => { note('triangle', mf(m), t, 0.025, sd*3); note('sawtooth', mf(m), t, 0.008, sd*3, 1600); });
-      if (sec === 'steel') hook(this.steelT, s, bar, sd, m => { note('sine', mf(m), t, 0.06, 0.3); note('sine', mf(m)*2.76, t, 0.02, 0.08); });
+      if (sec === 'steel') hook(this.steelT, s, bar, sd, (m, d) => { sustain(mf(m), t, d*0.8, 0.035, {types: ['sine', 'triangle'], filt: 2600, a: 0.01, r: 0.35, det: 0}); note('sine', mf(m)*2.76, t, 0.012, 0.08); });
       if (sec === 'vox' && s === 0) ch.slice(1, 3).forEach(m => voice(mf(m + 12), t, sd*14, 'a', 'o', 0.035, musicBus, true));
     }},
   // level 5, the mirror ball: disco leaning toward the Bee Gees. A slower strut, chopped guitar, strings and a falsetto hook
-  disco: {name: 'Disco', bpm: 106, lead: 'square',
+  disco: {name: 'Disco', bpm: 106, lead: 'square', intro: 64,
     melody: [72,74,76,79,76,74,72,69,72,76,79,81],
     chords: [[57,60,64,67],[50,53,57,60],[52,55,59,62],[57,60,64,67]],   // Am7, Dm7, Em7, Am7
     form: ['groove', 'falsetto', 'falsetto', 'strings'],
@@ -2208,35 +2239,39 @@ const STYLES = {
       if (s % 2 === 0) hat(t, 0.02, 0.03, 9000);
       if (this.line[s] || s % 2 === 0) note('square', mf(this.roots[bar] + this.line[s]), t, 0.06, sd*0.7, 1300);
     }},
-  // level 7, the reef: dreamy French synth pop in the spirit of Kid Francescoli. Plucks echoing through the water,
-  // warm pads, soft drums and a wordless voice
-  dub: {name: 'Dream pop', vol: 1.5, bpm: 100, lead: 'triangle',
+  // level 7, the reef: French electronic in the spirit of Kid Francescoli. A steady soft four-on-the-floor,
+  // one even arpeggio, warm pumping pads, a round bass and a smooth held lead
+  dub: {name: 'French electronic', vol: 0.75, bpm: 108, lead: 'triangle',
     melody: [69,72,74,77,79,81,79,77,74,72],
-    chords: [[50,53,57,60,64],[46,50,53,57],[53,57,60,64],[48,52,55,59]],   // Dm9, Bbmaj7, Fmaj7, Cmaj7
-    form: ['float', 'glide', 'sing', 'sing2', 'glide', 'sing'],
-    arp: [0, 2, 4, 2, 1, 3, 4, 3],
+    chords: [[50,53,57,60],[46,50,53,57],[53,57,60,64],[48,52,55,59]],   // Dm7, Bbmaj7, Fmaj7, Cmaj7
+    form: ['arp', 'groove', 'lead', 'lead', 'groove', 'lead'],
+    arp: [0, 1, 2, 3, 2, 1, 2, 3],
     tune: [{0:74, 6:77, 8:76, 12:74}, {0:72, 8:70}, {0:72, 6:76, 8:74, 12:72}, {0:71, 8:72}],
     tune2: [{0:77, 6:81, 8:79, 12:77}, {0:76, 8:74}, {0:76, 6:79, 8:77, 12:76}, {0:74, 8:76}],
     step(s, bar, i, t, sd){
-      const ch = this.chords[bar], sec = sectionOf(this, i), E = echoBus();
-      if (s === 0) E.d.delayTime.setValueAtTime(sd*3, t);
-      if (s === 0) ch.forEach(m => { pad(mf(m), t, sd*16, 0.026); pad(mf(m)*1.005, t, sd*16, 0.012); });
-      if (s % 2 === 0) pluck(mf(ch[this.arp[(s >> 1) % 8] % ch.length] + 12), t, 0.05, E.in);
-      if (s === 0 || s === 6 || s === 10) note('triangle', mf(ch[0] - 12), t, 0.16, sd*(s === 0 ? 5 : 3), 900);
-      if (sec !== 'float'){
-        if (s === 0 || s === 8 || (s === 11 && bar % 2)) kick(t, 0.55);
-        if (s === 4 || s === 12){ noise(t, 'bandpass', 2400, 0.08, 0.06, musicBus); noise(t, 'highpass', 4000, 0.03, 0.12, musicBus); }
-        if (s % 2 === 1 && sec !== 'glide') hat(t, 0.012, 0.03, 9000);
+      const ch = this.chords[bar], sec = sectionOf(this, i), P = pumpBus();
+      if (s === 0 && bar === 0){ P.lp.frequency.cancelScheduledValues(t); P.lp.frequency.setValueAtTime(sec === 'arp' ? 1400 : 6000, t); }
+      // the arpeggio: even eighths, the same shape on every chord, softly held
+      if (s % 2 === 0) sustain(mf(ch[this.arp[(s >> 1) % 8]] + 12), t, sd*1.6, 0.022, {types: ['sawtooth', 'triangle'], filt: 1500, a: 0.008, r: 0.12, dest: P.in});
+      if (s === 0) ch.forEach(m => sustain(mf(m), t, sd*15, 0.012, {types: ['sawtooth', 'sawtooth'], filt: 1100, a: 0.4, r: 0.6, dest: P.in}));
+      if (s === 0 || s === 8) sustain(mf(ch[0] - 24), t, sd*7, 0.11, {types: ['triangle', 'sine'], filt: 500, a: 0.01, r: 0.1, det: 0});
+      if (sec !== 'arp'){
+        if (s % 4 === 0){ kick(t, 0.6); duck(t, sd); }
+        if (s === 4 || s === 12) noise(t, 'bandpass', 2000, 0.06, 0.08, musicBus);
+        if (s % 4 === 2) hat(t, 0.02, 0.05, 8500);
       }
-      if (sec === 'sing' || sec === 'sing2') hook(sec === 'sing2' ? this.tune2 : this.tune, s, bar, sd, (m, d) => voice(mf(m), t, d*0.95, 'u', s % 8 ? 'o' : 'a', 0.07, musicBus, true));
+      if (sec === 'lead') hook((i >> 6) % 4 === 3 ? this.tune2 : this.tune, s, bar, sd, (m, d) => sustain(mf(m), t, d*0.92, 0.03, {types: ['sawtooth', 'triangle', 'sawtooth'], filt: 1900, a: 0.06, r: 0.4, vib: 0.005}));
     }},
   // level 9, sunrise above the clouds: morning sounds in the spirit of Mounika. Mostly texture: wind, birds, soft guitar,
   // warm pads and chimes, with hardly any melody. It fills in as the sun comes up
   trance: {name: 'Morning', vol: 1.7, bpm: 82, lead: 'triangle',
     melody: [65,69,72,74,76,79],
     chords: [[53,57,60,64,67],[52,55,59,62],[50,53,57,60,64],[48,52,55,59]],   // Fmaj9, Em7, Dm9, Cmaj7
-    form: ['a'],
+    form: ['a', 'b'],
     strum: [0, 3, 6, 10, 13],
+    // two slow notes a bar, stepping down through the chords, then an answer that rises and settles
+    tune: [{0:72, 8:69}, {0:71, 8:67}, {0:69, 8:65}, {0:67, 4:65, 8:64}],
+    tune2: [{0:72, 4:74, 8:76}, {0:74, 8:71}, {0:72, 4:69, 8:65}, {0:67, 8:64}],
     step(s, bar, i, t, sd){
       const ch = this.chords[bar], p = levelProgress(), sw = s % 2 === 1 ? sd*0.25 : 0;
       if (s === 0){ ch.forEach(m => { pad(mf(m), t, sd*16, 0.018 + 0.01*p); pad(mf(m)*1.004, t, sd*16, 0.01); }); if (bar % 2 === 0) wind(t, sd*32, 0.02); }
@@ -2249,14 +2284,15 @@ const STYLES = {
         if (p > 0.5 && s % 2 === 1) hat(t + sw, 0.006, 0.03, 9000);
       }
       // birds, more of them as it gets lighter; chimes once the sun is well up
-      if (((i*37) % 23) < 1 + Math.floor(p*3)){ const f = 2600 + ((i*53) % 9)*180; toneTo(musicBus, 'sine', f, t + sd*0.3, 0.016, 0.07, 0, f*1.35); toneTo(musicBus, 'sine', f*1.1, t + sd*0.55, 0.012, 0.05, 0, f*0.9); }
-      if (p > 0.55 && s === 12 && bar % 2 === 1) [0, 1].forEach(k => note('sine', mf(ch[1 + k] + 24), t + k*sd*2, 0.014, 1.1));
-      if (p > 0.75 && bar % 2 === 0 && s === 8) voice(mf(ch[2] + 12), t, sd*12, 'u', 'o', 0.03, musicBus, true);
+      // a bird calls at the end of every other bar (two once the sun is up)
+      if ((bar === 1 && s === 14) || (p > 0.5 && bar === 3 && s === 6)){ const f = 3000; toneTo(musicBus, 'sine', f, t, 0.014, 0.07, 0, f*1.35); toneTo(musicBus, 'sine', f*1.12, t + sd*0.4, 0.011, 0.06, 0, f*0.95); }
+      // the melody: a soft, held flute-like voice
+      hook(sectionOf(this, i) === 'b' ? this.tune2 : this.tune, s, bar, sd, (m, d) => sustain(mf(m), t, d*0.9, 0.035, {types: ['sine', 'triangle'], filt: 2400, a: 0.12, r: 0.5, vib: 0.006, det: 0.002}));
       if (((i*7919) % 13) === 0) noise(t + sd*0.4, 'highpass', 3000, 0.008, 0.01, musicBus);
     }},
   // level 10, the rainbow road: an original tune in the spirit of a kart racer's rainbow course. Bright major-key funk,
   // a sparkling bell arpeggio, slap bass, a soaring lead and twinkly runs up the scale
-  breakbeat: {name: 'Rainbow', vol: 1.1, bpm: 138, lead: 'triangle',
+  breakbeat: {name: 'Rainbow', vol: 1.1, bpm: 138, lead: 'triangle', intro: 0,
     melody: [72,76,79,81,84,86,84,81,79,76],
     chords: [[60,64,67,71],[57,60,64,67],[50,53,57,60],[55,59,62,65]],   // Cmaj7, Am7, Dm7, G7
     form: ['sparkle', 'lead', 'lead', 'float', 'lead2', 'lead'],
@@ -2306,7 +2342,7 @@ const STYLES = {
       if (sec !== 'filtered' && kickOn) hat(t, s % 4 === 2 ? 0.05 : 0.014, s % 4 === 2 ? 0.1 : 0.025, 9000);
       // chopped chords on the offbeats, and a funky bass, both pumping
       if (s % 4 === 2 || s === 7 || s === 15) ch.forEach(m => { toneTo(P.in, 'sawtooth', mf(m), t, 0.014, sd*1.1, 3200); toneTo(P.in, 'square', mf(m + 12), t, 0.006, sd*0.8, 3200); });
-      hook(this.bass, s, 0, sd, (o, d) => toneTo(P.in, 'sawtooth', mf(ch[0] + o + 12), t, 0.13, d*0.85, 900));
+      riff(this.bass, s, 0, sd, (o, d) => toneTo(P.in, 'sawtooth', mf(ch[0] + o + 12), t, 0.13, d*0.85, 900));
       if (sec === 'space'){ if (s === 0) ch.forEach(m => pad(mf(m + 12), t, sd*16, 0.022)); if (s % 2 === 0) toneTo(P.in, 'sine', mf(ch[(s >> 1) % 5] + 24), t, 0.03, 0.1); }
       if (sec === 'rise' && bar === 3 && s % 2 === 0) snare(t, 0.06 + s*0.006, 2000 + s*80, 0.06);
       if (sec === 'robot' || sec === 'space') hook(this.tune, s, bar, sd, (v, d) => voice(mf(v[0]), t, d*0.9, v[1], v[2], 0.22, P.in));
@@ -2324,6 +2360,7 @@ function schedule(){
   while (nextStep < AC.currentTime + 0.12){
     const i = stepI++, s = i % 16;
     if (s % 4 === 0) beatTimes.push(nextStep);
+    MEL_ON = i >= (st.intro ?? 128);
     try { st.step(s, Math.floor(i/16) % 4, i, nextStep, sd); } catch(_) {}
     nextStep += sd;
   }
@@ -3512,7 +3549,8 @@ function makeR3(){
     }
     renderer.setScissorTest(vs.length > 1);
     if (vs.length > 1){ renderer.setScissor(0, 0, W3, H3); renderer.setClearColor(0x000000, 1); renderer.clear(); }
-    vs.forEach((i, k) => {
+    vs.forEach((i0, k) => {
+      const i = watchFor(i0);
       // you never see your own head in eye view, but you do see everyone else's
       GFX.forEach((o, j) => { o.head.visible = o.headShow && !(view === 'eye' && j === i); o.shadow.visible = o.headShow; });
       const r = rects[k], cam = GFX[i].camera, y = H3 - r.y - r.h;
@@ -3545,7 +3583,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-18d';
+const CTRL_BUILD = '2026-10-18e';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -3697,13 +3735,16 @@ function renderSeats(){
     li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1) + (st.gone ? ' (dropped)' : '');
     li.querySelector('small').textContent = seatKindText(st, i) + (st.kind === 'cpu' ? ' · ' + SNAKES[seatSnake(st)].name : '');
     if (st.kind !== 'cpu'){
-      // everyone playing picks their own snake
-      const sel = document.createElement('select'); sel.className = 'snakeSel'; sel.setAttribute('aria-label', `Player ${i + 1}'s snake`);
-      for (const k in SNAKES){ const o = document.createElement('option'); o.value = k; o.textContent = SNAKES[k].name; sel.appendChild(o); }
-      sel.value = seatSnake(st);
-      sel.addEventListener('change', () => { st.snake = sel.value; seatsChanged(); });
-      li.appendChild(sel);
-    }
+      // everyone playing picks their own snake: one icon button per snake
+      const row = document.createElement('div'); row.className = 'snakeBtns'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', `Player ${i + 1}'s snake`);
+      for (const k in SNAKES){
+        const b = document.createElement('button'); b.className = 'snb' + (seatSnake(st) === k ? ' on' : ''); b.innerHTML = snakeIcon(k);
+        b.title = SNAKES[k].name; b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', seatSnake(st) === k); b.setAttribute('aria-label', SNAKES[k].name);
+        b.addEventListener('click', () => { st.snake = k; seatsChanged(); });
+        row.appendChild(b);
+      }
+      li.appendChild(row);
+    } else { const ic = document.createElement('span'); ic.className = 'snakeBtns cpuIc'; ic.innerHTML = snakeIcon(seatSnake(st)); ic.title = SNAKES[seatSnake(st)].name; li.appendChild(ic); }
     if (['cpu', 'keys', 'device'].includes(st.kind) || st.gone){
       const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remove'); x.textContent = '×';
       x.addEventListener('click', () => { if (state !== 'menu') return; SEATS.splice(SEATS.indexOf(st), 1); seatsChanged(); });
@@ -3850,6 +3891,11 @@ function onPhone(L, m){
     else { const i = seatOf(L); if (i >= 0){ SEATS[i].snake = m.k; seatsChanged(); } }
     syncPhone(true);
   }
+  else if (m.t === 'cpu' && state === 'menu' && MODE !== 1 && seatOf(L) === 0){
+    if (m.d > 0) addLocalSeat('cpu');
+    else { const j = SEATS.map(x => x.kind).lastIndexOf('cpu'); if (j >= 0){ SEATS.splice(j, 1); seatsChanged(); } }
+    syncPhone(true);
+  }
   else if (m.t === 'level' && state === 'menu' && (MODE === 1 || seatOf(L) === 0)){
     const i = +m.i;
     if (MODE === 2){ if (COURSES[i]){ course = i; store.set('course', i); refreshMenu(); } }
@@ -3891,7 +3937,8 @@ function syncPhone(force){
     // before a game: everyone picks a snake on their phone; player 1 (or solo's phone) also picks the level and starts it
     const si = seatOf(L), lead = MODE === 1 || si === 0;
     if (state === 'menu'){
-      msg.pick = {snakes: Object.keys(SNAKES).map(k => ({k, name: SNAKES[k].name, open: snakeOpen(k), why: snakeOpen(k) ? '' : unlockText(k)})),
+      msg.pick = {snakes: Object.keys(SNAKES).map(k => ({k, name: SNAKES[k].name, icon: snakeIconRaw(k), open: snakeOpen(k), why: snakeOpen(k) ? '' : unlockText(k)})),
+        cpus: lead && MODE !== 1 ? {n: SEATS.filter(x => x.kind === 'cpu').length, room: SEATS.length < seatRange()[1]} : null,
         snake: MODE === 1 ? playSnake() : seatSnake(SEATS[si]), lead, kind: MODE === 2 ? 'Course' : 'Level', level: MODE === 2 ? course : stage,
         levels: !lead ? null : MODE === 2 ? COURSES.map((S, i) => ({i, name: S.name, sub: STYLES[S.music].name}))
           : STAGES.map((S, i) => ({i, name: S.name, sub: 'Level ' + (i + 1), locked: i >= unlocked}))};
@@ -4132,7 +4179,7 @@ function updateHUD(){
     const rects = gridRects(vs.length, innerWidth, innerHeight);
     $('mpTags').innerHTML = vs.map((i, k) => {
       const p = PL[i], r = rects[k];
-      const msg = state !== 'play' || p.alive ? '' : canRespawn(p) ? 'Respawning…' : 'Out';
+      const w = watchFor(i), msg = state !== 'play' || p.alive ? '' : canRespawn(p) ? 'Respawning…' : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
       // the tag sits on the outer side of its view, clear of the map in the middle
       const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
       return (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
@@ -4164,6 +4211,8 @@ function snakeIcon(k){
   if (k === 'comet') return `<svg class="sn" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="7" height="5" style="${side}"/><rect x="2" y="10" width="20" height="10" rx="5" style="${side}"/><rect x="2" y="7" width="20" height="10" rx="5" style="${top}"/><rect x="15" y="9.5" width="2" height="2" style="${eye}"/><rect x="15" y="13" width="2" height="2" style="${eye}"/></svg>`;
   return `<svg class="sn" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="13" style="${side}"/><rect x="4" y="4" width="16" height="14" style="${top}"/><rect x="13" y="7.5" width="2.5" height="2.5" style="${eye}"/><rect x="13" y="12" width="2.5" height="2.5" style="${eye}"/></svg>`;
 }
+// the same icon with its colors filled in, for places that can't read this page's color tokens (the phones)
+const snakeIconRaw = k => snakeIcon(k).replace(/var\(--([a-z-]+)\)/g, (_, n) => tok(n));
 function buildSeg(boxId, name, items, onPick){
   const box = $(boxId);
   box.innerHTML = '';

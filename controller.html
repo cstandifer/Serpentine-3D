@@ -59,6 +59,11 @@ header{display:flex;justify-content:space-between;align-items:center;gap:12px;pa
 .chip.on small{color:#fff}
 .chip:disabled{opacity:.35;cursor:not-allowed}
 .why{font-size:.66rem;color:var(--muted);min-height:1em}
+.chip.sn{grid-template-columns:24px 1fr;align-items:center;column-gap:10px}
+.chip.sn svg{width:24px;height:24px;grid-row:span 2}
+.stepper{display:grid;grid-template-columns:56px 1fr 56px;align-items:center;gap:8px;text-align:center}
+.stepper b{font-family:var(--wide);font-weight:900;font-size:1.4rem}
+.stepper .chip{font-size:1.3rem;text-align:center;place-items:center}
 .waitlead{font-size:.8rem;padding:10px 12px;border:1.5px dashed var(--rule);color:var(--cream)}
 .eyebrow{font-size:.7rem;color:var(--muted)}
 .title{font-size:2rem;line-height:.9;margin:6px 0 0;color:var(--line)}
@@ -240,6 +245,10 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       <div class="eyebrow">Your snake</div>
       <div class="chips" id="snakeChips"></div>
       <div class="why" id="snakeWhy"></div>
+      <div id="cpuBox" hidden>
+        <div class="eyebrow">Computer snakes</div>
+        <div class="stepper"><button class="chip" id="cpuLess" aria-label="One fewer computer snake">−</button><b id="cpuN">0</b><button class="chip" id="cpuMore" aria-label="One more computer snake">+</button></div>
+      </div>
       <div id="levelBox" hidden>
         <div class="eyebrow" id="levelLabel">Level</div>
         <div class="chips lv" id="levelChips"></div>
@@ -272,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-18d</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-18e</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -423,15 +432,20 @@ function renderPick(P, wait){
   lastPick = key;
   card.hidden = !P;
   if (!P) return;
-  const chips = (box, items, onPick) => { box.innerHTML = ''; for (const it of items){ const b = document.createElement('button'); b.className = 'chip' + (it.on ? ' on' : ''); b.disabled = !!it.off;
-    b.innerHTML = '<b></b><small></small>'; b.querySelector('b').textContent = it.name; b.querySelector('small').textContent = it.sub || ''; b.addEventListener('click', () => { onPick(it); buzz(10); }); box.appendChild(b); } };
-  chips($('snakeChips'), P.snakes.map(x => ({name: x.name, sub: x.open ? '' : 'Locked', on: x.k === P.snake, off: !x.open, k: x.k})), it => send({t: 'snake', k: it.k}));
+  const chips = (box, items, onPick) => { box.innerHTML = ''; for (const it of items){ const b = document.createElement('button'); b.className = 'chip' + (it.on ? ' on' : '') + (it.icon ? ' sn' : ''); b.disabled = !!it.off;
+    b.innerHTML = (it.icon || '') + '<b></b><small></small>'; b.querySelector('b').textContent = it.name; b.querySelector('small').textContent = it.sub || ''; b.addEventListener('click', () => { onPick(it); buzz(10); }); box.appendChild(b); } };
+  chips($('snakeChips'), P.snakes.map(x => ({name: x.name, sub: x.open ? '' : 'Locked', on: x.k === P.snake, off: !x.open, k: x.k, icon: x.icon})), it => send({t: 'snake', k: it.k}));
+  $('cpuBox').hidden = !P.cpus;
+  if (P.cpus){ $('cpuN').textContent = P.cpus.n; $('cpuLess').disabled = !P.cpus.n; $('cpuMore').disabled = !P.cpus.room; }
   const locked = P.snakes.filter(x => !x.open);
   $('snakeWhy').textContent = locked.map(x => `${x.name}: ${x.why.toLowerCase()}`).join(' ');
   $('levelBox').hidden = !P.levels;
   if (P.levels){ $('levelLabel').textContent = P.kind; chips($('levelChips'), P.levels.map(x => ({name: x.name, sub: x.sub + (x.locked ? ' · locked' : ''), on: x.i === P.level, off: x.locked, i: x.i})), it => send({t: 'level', i: it.i})); }
   $('waitLead').hidden = !wait; $('waitLead').textContent = wait || '';
 }
+
+$('cpuLess').addEventListener('click', () => { send({t: 'cpu', d: -1}); buzz(10); });
+$('cpuMore').addEventListener('click', () => { send({t: 'cpu', d: 1}); buzz(10); });
 
 // ---- steering: an analog wheel. How far you tip sets how hard the snake turns. ----
 // A few degrees around center do nothing (so a steady hand goes straight), and SET.tilt is the
