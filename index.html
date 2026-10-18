@@ -456,11 +456,6 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
         <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span>You get <b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clear levels to unlock new snakes.</span></li>
       </ul>
     </details>
-    <details class="how" id="boardBox">
-      <summary>Leaderboard</summary>
-      <div class="board-head"><span class="eyebrow" id="menuBoardLabel" style="margin-top:12px">Normal</span></div>
-      <div id="menuBoard"></div>
-    </details>
     <div class="pick">
       <div class="eyebrow" id="modeLabel">Players</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="modeLabel" id="modePick"></div>
@@ -526,6 +521,11 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       </div>
       </div>
     </div>
+    <details class="how" id="boardBox">
+      <summary>Leaderboard</summary>
+      <div class="board-head"><span class="eyebrow" id="menuBoardLabel" style="margin-top:12px">Normal</span></div>
+      <div id="menuBoard"></div>
+    </details>
     <div class="startbar">
     <button class="btn" id="startBtn">Start level 1</button>
     <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Tilt or drag sideways to turn, tap to jump</span></div>
@@ -4045,7 +4045,7 @@ renderSeats();
 const joinHash = /^#join=([A-Za-z0-9]{4})$/.exec(location.hash);
 if (joinHash) joinGame(joinHash[1]); else startPhoneLink();
 $('how').open = !store.get('played');
-$('boardBox').open = Object.values(boards).some(b => b.length);
+$('boardBox').open = false;   // the leaderboard starts folded; it's a tap away
 requestAnimationFrame(frame);
 })();
 </script>
