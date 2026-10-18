@@ -295,6 +295,39 @@ body.here #pauseBtn svg{width:26px;height:26px}
   .bigqr .qr img,.bigqr .qr canvas{width:100%!important;height:100%!important}
   .bigqr .code{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:2.4rem;line-height:1;letter-spacing:.06em;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
 }
+/* the Add players sheet: on computers, a Start press that can't start yet slides this up from the bottom */
+.sheetScrim{position:fixed;inset:0;z-index:24;background:rgba(0,0,0,.55);opacity:0;transition:opacity .25s}
+.sheetScrim.open{opacity:1}
+.sheet{position:fixed;left:50%;bottom:0;z-index:25;box-sizing:border-box;width:min(980px,calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto;
+  transform:translate(-50%,105%);transition:transform .32s cubic-bezier(.2,.9,.3,1);background:#000;border:1.5px solid transparent;border-bottom:0;border-image:var(--holo) 1;
+  padding:22px 26px 24px;display:grid;gap:18px}
+.sheet.open{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.sheet,.sheetScrim{transition:none}}
+.sheet .top{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.sheet h2{margin:0;font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:1.5rem;letter-spacing:.02em}
+.sheet .status{font-size:.8rem;color:var(--lime);margin-top:8px}
+.sheet .status.ok{color:var(--cream)}
+.sheet .close{background:transparent;border:1.5px solid var(--rule-soft);color:var(--cream);font-size:.75rem;padding:8px 12px;cursor:pointer}
+.slots{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px}
+.slot{min-height:58px;box-sizing:border-box;border:1.5px dashed var(--rule-soft);display:grid;align-content:center;justify-items:center;gap:4px;padding:8px 4px;text-align:center;font-size:.66rem;color:var(--muted)}
+.slot.need{border-color:var(--lime);color:var(--lime)}
+.slot.full{border-style:solid;border-color:var(--sw);color:var(--cream);animation:slotIn .35s ease-out}
+.slot.full b{font-size:.74rem}
+.slot i{width:18px;height:6px;background:var(--sw)}
+@keyframes slotIn{0%{transform:scale(.85);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.slot.full{animation:none}}
+.sways{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px}
+.sway{border:1.5px solid var(--rule-soft);padding:16px;display:grid;gap:10px;align-content:start;justify-items:center;text-align:center}
+.sway b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem}
+.sway span{font-size:.72rem;line-height:1.5;color:var(--muted)}
+.sway .qr{width:170px;height:170px;box-sizing:border-box;padding:8px}
+.sway .qr img,.sway .qr canvas{width:100%!important;height:100%!important}
+.sway .code{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:2.6rem;line-height:1;letter-spacing:.06em;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent;padding:18px 0 6px}
+.sway .btn-ghost{width:100%;box-sizing:border-box}
+.sway .btn-ghost:disabled{opacity:.35;cursor:not-allowed}
+.sway .n{font-family:var(--wide);font-weight:900;font-size:1.4rem;line-height:1;color:var(--muted)}
+#sheetGo{justify-self:end;min-width:280px}
+#sheetGo.waiting{opacity:.5}
 /* when the big QR panel is showing beside the menu, the menu doesn't repeat the QR or the code */
 @media (min-width:1000px) and (hover:hover){
   #menu:has(.bigqr:not([hidden])) #phoneBox, #menu:has(.bigqr:not([hidden])) .way:not(.way-add){display:none}
@@ -427,6 +460,20 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   </div>
 </div>
 
+<div class="sheetScrim" id="sheetScrim" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="top">
+    <div><h2 id="sheetTitle">Add players</h2><div class="status" id="sheetStatus"></div></div>
+    <button class="close" id="sheetClose">Close (Esc)</button>
+  </div>
+  <div class="slots" id="sheetSlots"></div>
+  <div class="sways">
+    <div class="sway"><span class="n">1</span><b>Scan with a phone</b><div class="qr off" id="qr4" aria-hidden="true"></div><span>Play on your own phone, or use it as a controller on this screen.</span></div>
+    <div class="sway"><span class="n">2</span><b>Laptop or tablet</b><div class="code" id="sheetCode">····</div><span id="sheetCodeHow"></span></div>
+    <div class="sway"><span class="n">3</span><b>Right here</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span>Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
+  </div>
+  <button class="btn" id="sheetGo">Start</button>
+</section>
 <div class="overlay" id="menu">
   <aside class="bigqr" id="bigQr" hidden>
     <div class="eyebrow" id="bqEyebrow">Play with your phone</div>
@@ -1613,8 +1660,54 @@ function waitingText(){
   }
   return missingPhones().length ? 'Waiting for a phone' + (LINK.code ? ` (code ${LINK.code})` : '') : '';
 }
+// ---- the Add players sheet (computers): who's in, the open spots, and the three ways to join ----
+const sheetFits = () => matchMedia('(min-width:760px) and (hover:hover)').matches && ROLE === 'host';
+let sheetSeen = 0;
+function renderSheet(){
+  if ($('sheet').hidden) return;
+  const [lo, hi] = seatRange(), n = SEATS.length, K = SNAKES[snake], box = $('sheetSlots');
+  box.style.setProperty('--n', hi);
+  box.innerHTML = '';
+  for (let i = 0; i < hi; i++){
+    const st = SEATS[i], d = document.createElement('div');
+    if (st){
+      d.className = 'slot full' + (i < sheetSeen ? ' seen' : ''); d.style.setProperty('--sw', colorFor(K, i)[0]);
+      if (i < sheetSeen) d.style.animation = 'none';
+      d.innerHTML = '<i></i><b></b><span></span>';
+      d.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1);
+      d.querySelector('span').textContent = {phone: 'Phone controller', screen: 'Own screen', device: 'This screen', cpu: 'Computer', keys: 'Keyboard'}[st.kind] || '';
+    } else { d.className = 'slot' + (i < lo ? ' need' : ''); d.textContent = i < lo ? 'Needed' : 'Open'; }
+    box.appendChild(d);
+  }
+  sheetSeen = n;
+  const ok = n >= lo && n <= hi, mode = MODE === 3 ? 'Tag team' : 'Party';
+  $('sheetStatus').classList.toggle('ok', ok);
+  $('sheetStatus').textContent = ok ? `${n} in. ${n < hi ? `Up to ${hi - n} more can join, or start now.` : 'The game is full.'}`
+    : n > hi ? `${mode} takes ${lo} to ${hi}. Remove ${n - hi} on the menu.` : `${mode} needs ${lo - n} more player${lo - n === 1 ? '' : 's'}. Use any of the three ways below.`;
+  $('sheetGo').textContent = ok ? `Start with ${n} players` : `Waiting for ${lo - n > 0 ? lo - n + ' more' : 'fewer players'}`;
+  $('sheetGo').classList.toggle('waiting', !ok);
+  $('sheetMe').textContent = $('addLocal').textContent; $('sheetMe').disabled = $('addLocal').disabled;
+  $('sheetCpu').disabled = $('addCpu').disabled;
+}
+function openSheet(){
+  const sh = $('sheet'), sc = $('sheetScrim');
+  sheetSeen = SEATS.length; sh.hidden = sc.hidden = false; renderSheet();
+  requestAnimationFrame(() => requestAnimationFrame(() => { sh.classList.add('open'); sc.classList.add('open'); }));
+  (SEATS.length ? $('sheetGo') : $('sheetMe')).focus({preventScroll: true});
+}
+function closeSheet(){
+  const sh = $('sheet'), sc = $('sheetScrim'); if (sh.hidden) return;
+  sh.classList.remove('open'); sc.classList.remove('open');
+  setTimeout(() => { if (!sh.classList.contains('open')){ sh.hidden = sc.hidden = true; } }, REDUCED ? 0 : 330);
+  $('startBtn').focus({preventScroll: true});
+}
 function nudgeWaiting(){
-  // on the menu, a Start press that can't start yet shows you the Add players step
+  // on a computer, a Start press that can't start yet slides up the Add players sheet
+  if (!$('menu').hidden && MODE !== 1 && sheetFits()){
+    if (!$('sheet').hidden){ const s = $('sheetStatus'); s.classList.remove('flash'); void s.offsetWidth; s.animate([{opacity: 1}, {opacity: 0.3}, {opacity: 1}], {duration: 400, iterations: 2}); return; }
+    return openSheet();
+  }
+  // elsewhere, on the menu, it scrolls to the Add players step
   if (!$('menu').hidden && MODE !== 1){
     const lb = $('lobbyBox'); lb.scrollIntoView({behavior: REDUCED ? 'auto' : 'smooth', block: 'start'});
     lb.classList.remove('flash'); void lb.offsetWidth; lb.classList.add('flash'); return;
@@ -3194,7 +3287,7 @@ function setPhoneUI(note){
   chip.hidden = ROLE === 'client' || MODE !== 1 || CTRL !== 'phones';
   chip.classList.toggle('on', on);
   $('phoneChipTxt').textContent = on ? 'Phone connected' : LINK.code ? 'Phone code ' + LINK.code : 'No phone';
-  $('phoneCode').textContent = $('inviteCode').textContent = $('bqCode').textContent = LINK.code || '····';
+  $('phoneCode').textContent = $('inviteCode').textContent = $('bqCode').textContent = $('sheetCode').textContent = LINK.code || '····';
   // the big QR beside the menu: shown on computers whenever a phone is part of the plan
   const wantQr = ROLE === 'host' && !CAN_TILT && location.protocol !== 'file:' && (MODE !== 1 || CTRL === 'phones');
   $('bigQr').hidden = !wantQr;
@@ -3209,9 +3302,10 @@ function setPhoneUI(note){
     : on ? '<b>Phone connected.</b> Tilt to steer, jump to jump.'
     : `Scan with your phone, or open <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a>.`;
   $('inviteDesc').innerHTML = local ? 'Open this game from its web address so friends can join.' : how;
+  $('sheetCodeHow').innerHTML = local ? 'Open this game from its web address so friends can join.' : `Open <b>${siteName()}</b>, press <b>Join a game on this screen</b> and type this code.`;
 }
 function drawQR(){
-  for (const box of [$('qr'), $('qr2'), $('qr3')]){
+  for (const box of [$('qr'), $('qr2'), $('qr3'), $('qr4')]){
     box.innerHTML = '';
     const ok = typeof window.QRCode === 'function' && LINK.code && location.protocol !== 'file:';
     box.classList.toggle('off', !ok);
@@ -3293,7 +3387,7 @@ function linkGone(L){
   setPhoneUI();
 }
 function seatsChanged(){
-  renderSeats(); sendLobby(); setPhoneUI();
+  renderSeats(); sendLobby(); setPhoneUI(); renderSheet();
   if (state === 'menu' && ROLE === 'host' && MODE !== 1) refreshMenu();
 }
 function addLocalSeat(kind){
@@ -3901,7 +3995,7 @@ function refreshMenu(){
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
-function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true; }
+function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
   res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
@@ -4128,6 +4222,12 @@ function resume(){
 // on a client, pausing asks the host, which pauses every screen
 const pauseAction = () => { if (ROLE === 'client') netSend({t: 'pause'}); else pause(); };
 $('startBtn').addEventListener('click', () => start(MODE === 2 ? course : stage));
+$('sheetGo').addEventListener('click', () => { if (!readyToPlay()) return nudgeWaiting(); closeSheet(); $('startBtn').click(); });
+$('sheetMe').addEventListener('click', () => $('addLocal').click());
+$('sheetCpu').addEventListener('click', () => $('addCpu').click());
+$('sheetClose').addEventListener('click', closeSheet);
+$('sheetScrim').addEventListener('click', closeSheet);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeSheet(); } }, true);
 $('againBtn').addEventListener('click', () => start(0));
 $('retryBtn').addEventListener('click', retryLevel);
 $('setupBtn').addEventListener('click', toMenu);
