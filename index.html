@@ -912,7 +912,7 @@ const STAGES = [
    walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
            block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
-  {name: 'Daybreak', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
+  {name: 'Event Horizon', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#2c3038', '#3c414b', '#262a31']), gates: 1.7, movers: 0.7,
    walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
   {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2, ramps: 1,
    walls: gauntlet()}
@@ -970,25 +970,16 @@ const THEMES = {
               hurdle: ['#b98f8a', '#7d5f63'], pillar: ['#9a8494', '#5f4e5e'], coral: ['#e86f8f', '#f09a5a', '#b07ad9', '#d8c79a', '#e8d070', '#f2a6c2'],
               star: ['#e2552b', '#ee7a2f', '#c93f5a'], rock: '#8c7f86', wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
               pillarShape: 'bommie', hurdleShape: 'reef', decor: 'reef'},
-  // above the clouds before dawn: a glass platform over a sea of cloud, and the sun comes up as you collect gems
-  // a hot-air balloon launch deck floating above the clouds at sunrise: a plank deck, moored balloons to steer around,
-  // rows of sandbags to jump, and loose balloons drifting across
-  trance:    {sky: ['#22306e', '#d0729c'], fog: '#e8907e', fogNear: 14, fogFar: 60, floor: '#93643f', grid: ['#ffb070', '#ffd6a8', '#ffb8d9'], wash: '#ffb070',
-              deck: ['#9a6a48', '#8e6042', '#a5734e', '#86593c', '#9f6f4a', '#946545'], seam: '#3a2416',
-              hurdle: ['#c9a874', '#8a6a3e'], pillar: ['#b98a52', '#6e4a28'], wall: ['#6e4a32', '#3f2a1c'], edge: '#ffd9a8', gem: '#ff2e63',
-              balloons: [['#ff5a5f', '#ffd166', '#ffffff'], ['#3a86ff', '#ffffff', '#ffd166'], ['#ff8fab', '#fff1e6', '#ff5a5f'], ['#06a77d', '#ffd166', '#ffffff'],
-                         ['#8338ec', '#ffbe0b', '#ffffff'], ['#ff7b00', '#2b2d42', '#ffd166'], ['#ef476f', '#118ab2', '#ffffff']],
-              pillarShape: 'balloon', hurdleShape: 'rail', decor: 'dawn'},
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
               hurdle: ['#ffffff', '#c9c4ff'], pillar: ['#ffffff', '#9a8cff'], wall: ['#1a0f3a', '#07031c'], edge: '#ffffff', gem: '#ffd23f', gemShape: 'coin',
               pillarShape: 'crystal', hurdleShape: 'lightbar', decor: 'space', rainbow: true}
 };
-// Night Market: deep space, quiet and grown-up rather than cartoony. A black void, a black hole with a thin gold
+// Deep space (level 9 and the Night Market course): quiet and grown-up rather than cartoony. A black void, a black hole with a thin gold
 // accretion disk on one horizon, a ring station turning slowly, a pale far-off planet; brushed-metal modules and
 // conduits with small amber lights; the floor keeps its scattered glints, here like starlight on polished black.
-THEMES.robot = {sky: ['#000000', '#05060a'], fog: '#05060a', fogNear: 18, fogFar: 75, floor: '#07080b', grid: ['#262a31', '#30353d', '#22252b'], wash: '#8a96a8',
+THEMES.trance = THEMES.robot = {sky: ['#000000', '#05060a'], fog: '#05060a', fogNear: 18, fogFar: 75, floor: '#07080b', grid: ['#262a31', '#30353d', '#22252b'], wash: '#8a96a8',
   hurdle: ['#7d838c', '#40444b'], pillar: ['#8a9099', '#4a4f57'], wall: ['#16181c', '#0a0b0d'], edge: '#c9b48a', gem: '#ffe9b8',
   pillarShape: 'module', hurdleShape: 'conduit', decor: 'void'};
 THEMES.swing = THEMES.electro;   // Pinball keeps the light-cycle city look with its own song
@@ -2931,7 +2922,7 @@ function makeR3(){
   // ---- per-snake graphics: body, jump dots, head, shadow, glow, magnet ring and its own camera ----
   const MAX_BODY = 1500, MAX_DOTS = 400, MAX_PARTS = 400;
   const bodyMats = [gray(0.45), gray(0.45), gray(1), gray(0.3), gray(0.65), gray(0.65)].map(c => new THREE.MeshBasicMaterial({color: c}));
-  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1), SAND_GEO = new THREE.SphereGeometry(1, 16, 10), BUNDLE_CYL = new THREE.CylinderGeometry(1, 1, 1, 16);
+  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1);
   const parts = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_PARTS);
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
@@ -3032,7 +3023,7 @@ function makeR3(){
 
   // level: floor, walls and obstacles are fixed once a level loads, so build them once
   function build(){
-    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== ENV_GEO && o.geometry !== SAND_GEO && o.geometry !== BUNDLE_CYL) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
+    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
     level.clear();
     for (const [g, o] of gemObjs) dropGem(g, o);
     const T = C.theme || THEMES.breakbeat;
@@ -3057,22 +3048,6 @@ function makeR3(){
       fg.fillStyle = T.stripes ? T.stripes[Math.floor(Math.max(Math.abs(x + 0.5 - w/2), Math.abs(y + 0.5 - h/2))/2) % T.stripes.length]
         : T.floor2 && (x + y) % 2 ? T.floor2 : T.floor;
       fg.fillRect(x*px + 1.5, y*px + 1.5, px - 3, px - 3);
-    }
-    if (T.deck){
-      // a plank deck: boards two to a cell, staggered lengths, a little grain and a nail at each end
-      const rr = mulberry(91), ph = px/2;
-      fg.fillStyle = T.seam; fg.fillRect(0, 0, fc.width, fc.height);
-      for (let row = 0; row < h*2; row++){
-        let x = -Math.floor(rr()*3)*px;
-        while (x < w*px){
-          const len = (2 + Math.floor(rr()*4))*px, y0 = row*ph;
-          fg.fillStyle = T.deck[Math.floor(rr()*T.deck.length)]; fg.fillRect(x + 1, y0 + 1, len - 2, ph - 2);
-          fg.strokeStyle = 'rgba(60,30,10,.2)'; fg.lineWidth = 1;
-          for (let k = 0; k < 2; k++){ const yy = y0 + 3 + rr()*(ph - 6); fg.beginPath(); fg.moveTo(x + 2, yy); fg.bezierCurveTo(x + len*0.3, yy + rr()*2 - 1, x + len*0.7, yy + rr()*2 - 1, x + len - 2, yy); fg.stroke(); }
-          fg.fillStyle = 'rgba(40,20,10,.55)'; fg.fillRect(x + 4, y0 + ph/2 - 1, 2, 2); fg.fillRect(x + len - 6, y0 + ph/2 - 1, 2, 2);
-          x += len;
-        }
-      }
     }
     const tex = new THREE.CanvasTexture(fc);
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -3099,8 +3074,7 @@ function makeR3(){
       if (o.leg) continue;   // drawn with its scaffold below
       if (o.mover){ const b = shapes.pillar(o); level.add(b); DYN.push({o, b, base: true}); continue; }
       if (o.gate){
-        const map = T.deck ? crateTex() : null;   // on the balloon deck, the rising gates are cargo crates
-        const top = new THREE.MeshBasicMaterial({map}), side = new THREE.MeshBasicMaterial({map}), sideZ = new THREE.MeshBasicMaterial({map});
+        const top = new THREE.MeshBasicMaterial(), side = new THREE.MeshBasicMaterial(), sideZ = new THREE.MeshBasicMaterial();
         const b = new THREE.Mesh(BOX, [side, side, top, side, sideZ, sideZ]); b.scale.set(o.w, LOW_H, o.h); level.add(b);
         DYN.push({o, b, top, side, sideZ}); continue;
       }
@@ -3121,62 +3095,6 @@ function makeR3(){
   function stripeTex(draw, w, h){
     const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
-  }
-  // ---- hot-air balloons: a striped envelope (a lathe of the classic teardrop), with or without its basket ----
-  const BALLOON_TEX = new Map();
-  function balloonTex(pal){
-    const key = pal.join();
-    if (BALLOON_TEX.has(key)) return BALLOON_TEX.get(key);
-    const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
-    for (let k = 0; k < 12; k++){ g.fillStyle = pal[k % 2]; g.fillRect(k*512/12, 0, 512/12 + 1, 256); }   // the gores, alternating
-    g.fillStyle = pal[2]; g.fillRect(0, 92, 512, 22);                                                  // a band round the widest part
-    g.fillStyle = pal[0]; g.fillRect(0, 0, 512, 18);                                                   // the crown
-    g.fillStyle = 'rgba(0,0,0,.18)'; for (let k = 0; k < 12; k++) g.fillRect(k*512/12, 0, 2, 256);      // seams between gores
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-    BALLOON_TEX.set(key, t); return t;
-  }
-  const ENV_GEO = new THREE.LatheGeometry([[0.22, 0], [0.3, 0.12], [0.5, 0.4], [0.76, 0.78], [0.94, 1.18], [1, 1.52], [0.95, 1.84], [0.8, 2.1], [0.56, 2.3], [0.28, 2.42], [0, 2.46]].map(([x, y]) => new THREE.Vector2(x, y)), 28);
-  function envelope(R, pal, fog = true){
-    const m = new THREE.Mesh(ENV_GEO, new THREE.MeshPhongMaterial({map: balloonTex(pal), emissive: 0xffffff, emissiveMap: balloonTex(pal), emissiveIntensity: 0.28, shininess: 25, specular: 0x333333, fog}));
-    m.scale.setScalar(R); return m;
-  }
-  let WICKER = null;
-  let CRATE = null;
-  function crateTex(){
-    if (CRATE) return CRATE;
-    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
-    g.fillStyle = '#e8d2ae'; g.fillRect(0, 0, 128, 128);
-    g.fillStyle = 'rgba(90,55,25,.55)'; for (let k = 1; k < 4; k++) g.fillRect(0, k*32 - 1, 128, 2);   // board seams
-    g.strokeStyle = '#7a5530'; g.lineWidth = 12; g.strokeRect(6, 6, 116, 116);                        // the frame
-    g.beginPath(); g.moveTo(10, 118); g.lineTo(118, 10); g.stroke();                                    // and a brace
-    g.fillStyle = '#3a2416'; for (const [x, y] of [[8, 8], [114, 8], [8, 114], [114, 114]]) g.fillRect(x, y, 6, 6);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (CRATE = t);
-  }
-  function wickerMat(){
-    if (WICKER) return WICKER;
-    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-    g.fillStyle = '#7a5129'; g.fillRect(0, 0, 64, 64);
-    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++){ g.fillStyle = (x + y) % 2 ? '#c49556' : '#a87a42'; g.fillRect(x*8 + 0.5, y*8 + 1, 7, 6); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1.5);
-    return (WICKER = new THREE.MeshPhongMaterial({map: t, emissive: 0x3a2410, emissiveIntensity: 0.4, shininess: 8, specular: 0x111111}));
-  }
-  // a whole balloon standing on the deck: the basket fills the footprint (that's what you hit), ropes and a burner
-  // up to an envelope floating high overhead
-  function balloon(w, d, pal, seed){
-    const g = new THREE.Group(), BH = 0.85, m = Math.min(w, d), R = 0.8 + m*0.4, top = BH + 1.55;
-    const basket = new THREE.Mesh(BOX, wickerMat()); basket.scale.set(w*0.94, BH, d*0.94); basket.position.y = BH/2; g.add(basket);
-    const rim = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({color: col('#4a2c16')})); rim.scale.set(w*0.98, 0.08, d*0.98); rim.position.y = BH; g.add(rim);
-    const rope = [];
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) rope.push(sx*w*0.44, BH, sz*d*0.44, sx*R*0.2, top, sz*R*0.2);
-    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rope, 3));
-    g.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({color: 0x3a2a1c})));
-    const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.18, 10), new THREE.MeshPhongMaterial({color: 0x555a60, shininess: 80, specular: 0xffffff}));
-    burner.position.y = top - 0.25; g.add(burner);
-    const flame = glowSprite('#ffb347', 0.8); flame.scale.set(0.7, 0.9, 1); flame.position.y = top - 0.05; g.add(flame);
-    const sway = new THREE.Group(); sway.position.y = top; g.add(sway);
-    const env = envelope(R, pal); env.rotation.y = seed; sway.add(env);
-    g.userData.flame = flame; g.userData.sway = sway; g.userData.ph = seed;
-    return g;
   }
   function shapeKit(T){
     const top = c => new THREE.MeshBasicMaterial({color: col(c)});
@@ -3308,31 +3226,6 @@ function makeR3(){
           ball.scale.set(w, m*1.1, d); ball.position.y = H*0.72; g.add(ball); g.userData.spin = ball;
           return g;
         }
-        case 'balloon': {
-          const seed = Math.abs(Math.round(o.x*13 + o.y*7));
-          return balloon(w, d, T.balloons[seed % T.balloons.length], seed);
-        }
-        case 'crystal': {
-          const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), shiny(P[0], {transparent: true, opacity: 0.88, emissive: col(P[1]), emissiveIntensity: 0.45}));
-          c.scale.set(w*1.05, H*1.15, d*1.05); return stood(c, H*0.58);
-        }
-        case 'toyblocks': {
-          // two or three chunky toy blocks stacked a little askew
-          const g = new THREE.Group(), B = T.blocks, n = 2 + ((Math.abs(Math.round(o.x*7 + o.y*3))) % 2), hh = H/n;
-          for (let k = 0; k < n; k++){
-            const b = new THREE.Mesh(BOX, shiny(B[(Math.abs(Math.round(o.x + o.y*5)) + k) % B.length], {shininess: 40, specular: 0x444444, emissiveIntensity: 0.2}));
-            b.scale.set(w*(0.98 - k*0.06), hh*0.96, d*(0.98 - k*0.06)); b.position.y = hh*k + hh/2; b.rotation.y = (k % 2 ? 1 : -1)*0.12; g.add(b);
-          }
-          return g;
-        }
-        case 'cone': {
-          // a traffic cone: orange with white bands on a square black base
-          const g = new THREE.Group(), r = m*0.55;
-          const base = new THREE.Mesh(BOX, top('#1a1a1a')); base.scale.set(w, 0.12, d); base.position.y = 0.06; g.add(base);
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(r, H - 0.12, 20), shiny(P[0], {shininess: 25, specular: 0x222222, emissiveIntensity: 0.3})); cone.position.y = 0.12 + (H - 0.12)/2; g.add(cone);
-          for (const f of [0.38, 0.62]){ const band = new THREE.Mesh(new THREE.CylinderGeometry(r*(1 - f)*1.02 + 0.01, r*(1 - f + 0.08)*1.02, 0.12, 20, 1, true), top('#ffffff')); band.position.y = 0.12 + (H - 0.12)*f; g.add(band); }
-          return g;
-        }
         case 'module': {
           // a brushed-metal module: a gunmetal block with a dark cap, panel seams, and a thin amber light band near the top
           const g = new THREE.Group();
@@ -3386,17 +3279,6 @@ function makeR3(){
           const base = T.hurdleShape === 'brick' ? brick : hazard, t = base.clone(); t.needsUpdate = true; t.repeat.set(long*(T.hurdleShape === 'brick' ? 1 : 1.5), 1);
           const m = new THREE.MeshBasicMaterial({map: t}), side = new THREE.MeshBasicMaterial({map: t, color: 0xb0b0b0});
           const b = new THREE.Mesh(BOX, [side, side, m, side, side, side]); b.scale.set(w, H, d); return stood(b, H/2);
-        }
-        case 'rail': {
-          // a painted mooring rail: a white rail with red bands on short posts, like a dock barrier
-          const g = new THREE.Group(), wide = Math.min(w, d);
-          const t = stripeTex((c, W2, H2) => { c.fillStyle = '#f4f1ea'; c.fillRect(0, 0, W2, H2); c.fillStyle = '#e63946'; c.fillRect(0, 0, W2/2, H2); }, 32, 8); t.repeat.set(long*2, 1);
-          const railMat = new THREE.MeshPhongMaterial({map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, shininess: 60, specular: 0x444444});
-          const rail = new THREE.Mesh(BOX, railMat); rail.scale.set(alongX ? long : wide*0.45, H*0.4, alongX ? wide*0.45 : long); rail.position.y = H*0.75; g.add(rail);
-          const post = new THREE.MeshPhongMaterial({color: 0xf4f1ea, emissive: 0x777777, shininess: 40});
-          const np = Math.max(2, Math.round(long/0.7) + 1);
-          for (let k = 0; k < np; k++){ const f = k/(np - 1) - 0.5, p2 = new THREE.Mesh(BOX, post); p2.scale.set(0.09, H*0.6, 0.09); p2.position.set(alongX ? f*(long - 0.1) : 0, H*0.3, alongX ? 0 : f*(long - 0.1)); g.add(p2); }
-          return g;
         }
         case 'log': {
           // a felled log: bark on the sides, pale rings on the ends
@@ -3513,7 +3395,7 @@ function makeR3(){
     return new THREE.Points(g, new THREE.PointsMaterial({size, map: dotTex, color: colors ? 0xffffff : col(color), vertexColors: !!colors, fog: false, transparent: true, opacity: 0.9, depthWrite: false, alphaTest: 0.02}));
   }
   function buildDecor(T){
-    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== PLANE_GEO && o.geometry !== ENV_GEO && o.geometry !== SAND_GEO) o.geometry.dispose(); if (o.material) for (const m of [].concat(o.material)){ if (m === steel || m === planks) continue; if (m.map && m.map !== dotTex && m.map !== glowTex) m.map.dispose(); m.dispose(); } });
+    decor.traverse(o => { if (o.geometry && o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== PLANE_GEO) o.geometry.dispose(); if (o.material) for (const m of [].concat(o.material)){ if (m === steel || m === planks) continue; if (m.map && m.map !== dotTex && m.map !== glowTex) m.map.dispose(); m.dispose(); } });
     decor.clear();
     const cx = (ARENA.x0 + ARENA.x1)/2, cz = (ARENA.y0 + ARENA.y1)/2, h = (ARENA.x1 - ARENA.x0)/2, R = h + 6;
     const rnd = mulberry(G.seed ^ 0x5eed), inArena = (a, i) => { a[i] = cx + (rnd()*2 - 1)*R; a[i+2] = cz + (rnd()*2 - 1)*R; };
@@ -3591,57 +3473,6 @@ function makeR3(){
         spot.rotation.x = -Math.PI/2; decor.add(beam, spot);
         DECOR.heads.push({x, z, beam, spot, ph: k*0.9, r: 3 + (k % 3)*2});
       }
-    } else if (T.decor === 'dawn'){
-      // the sea of clouds all around and below the platform
-      const puff = discTex(g => { for (const [x, y, r] of [[128, 150, 90], [70, 160, 60], [186, 160, 62], [100, 118, 58], [160, 112, 64]]){
-        const gr = g.createRadialGradient(x, y, r*0.2, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); } });
-      // flat layers of cloud lying below the platform (they don't turn to face you), plus low puffs far off on the horizon,
-      // all drifting together as one slow-turning sea
-      const cloudMat = new THREE.MeshBasicMaterial({map: puff, color: col('#c48aa8'), fog: false, depthWrite: false, transparent: true, side: THREE.DoubleSide});
-      const farMat = new THREE.SpriteMaterial({map: puff, color: col('#c48aa8'), fog: false, depthWrite: false, transparent: true});
-      const sea = new THREE.Group(); sea.position.set(cx, 0, cz); decor.add(sea);
-      for (let i = 0; i < 120; i++){
-        const a = rnd()*Math.PI*2, dist = R*0.6 + Math.pow(rnd(), 0.8)*R*3.6, sz = 14 + rnd()*20;
-        const c = new THREE.Mesh(PLANE_GEO, cloudMat); c.rotation.set(-Math.PI/2, 0, rnd()*Math.PI*2); c.scale.set(sz*1.5, sz, 1);
-        c.position.set(Math.cos(a)*dist, -1.6 - (i % 3)*1.1 - rnd()*0.4, Math.sin(a)*dist); sea.add(c);
-      }
-      for (let i = 0; i < 18; i++){
-        const a = (i/18)*Math.PI*2 + rnd()*0.2, dist = R*3.4 + rnd()*R, sz = 26 + rnd()*16;
-        const sp = new THREE.Sprite(farMat); sp.scale.set(sz*1.8, sz*0.6, 1); sp.position.set(Math.cos(a)*dist, -3 + sz*0.12, Math.sin(a)*dist); sea.add(sp);
-      }
-      DECOR.sea = sea; DECOR.cloudMats = [cloudMat, farMat];
-      // stars that fade as the sky brightens
-      DECOR.stars = points(500, (a, i) => { a[i] = cx + (rnd()*2 - 1)*R*3; a[i+1] = 14 + rnd()*50; a[i+2] = cz + (rnd()*2 - 1)*R*3; }, '#ffffff', 1.8);
-      decor.add(DECOR.stars);
-      // the sun, its halo and a fan of god rays, all rising together out of the clouds
-      const sun = new THREE.Group(); sun.position.set(cx, -3, cz - h - 80); decor.add(sun);
-      const disc = new THREE.Sprite(new THREE.SpriteMaterial({map: discTex(g => { const gr = g.createRadialGradient(128, 128, 20, 128, 128, 120);
-        gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.55, '#ffe2a8'); gr.addColorStop(0.75, 'rgba(255,170,150,.6)'); gr.addColorStop(1, 'rgba(255,140,160,0)');
-        g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), fog: false, depthWrite: false, transparent: true}));
-      disc.scale.set(30, 30, 1); sun.add(disc);
-      const halo = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: col('#ff9ac0'), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}));
-      halo.scale.set(110, 110, 1); sun.add(halo);
-      const rayTex = discTex(g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.15, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = gr; g.beginPath(); g.moveTo(118, 0); g.lineTo(138, 0); g.lineTo(256, 256); g.lineTo(0, 256); g.closePath(); g.fill(); });
-      const fan = new THREE.Group(); sun.add(fan); DECOR.rays = [];
-      for (let i = 0; i < 12; i++){
-        const m = new THREE.MeshBasicMaterial({map: rayTex, color: col(i % 2 ? '#ffd6a8' : '#ffb8d9'), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false});
-        const ray = new THREE.Mesh(PLANE_GEO, m); ray.scale.set(14, 130, 1); ray.position.y = -65;
-        const arm = new THREE.Group(); arm.rotation.z = Math.PI + (i/12)*Math.PI*2; arm.add(ray); fan.add(arm); DECOR.rays.push({m, ph: i*1.3});
-      }
-      // other balloons out over the clouds, rising slowly through the sunrise and climbing back out of the cloud sea
-      DECOR.far = [];
-      const pals = T.balloons || [['#ff5a5f', '#ffd166', '#ffffff']];
-      for (let i = 0; i < 16; i++){
-        const a = (i/16)*Math.PI*2 + rnd()*0.3, dist = R + 16 + rnd()*40, sz = 1.6 + rnd()*1.6;
-        const b = new THREE.Group(); b.add(envelope(sz, pals[i % pals.length], false));
-        const bk = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({color: col('#5a3a1e'), fog: false})); bk.scale.set(sz*0.3, sz*0.25, sz*0.3); bk.position.y = -sz*0.55; b.add(bk);
-        b.position.set(cx + Math.cos(a)*dist, -8 + rnd()*36, cz + Math.sin(a)*dist); b.rotation.y = rnd()*6; decor.add(b);
-        DECOR.far.push({b, sp: 0.25 + rnd()*0.35, ph: rnd()*6});
-      }
-      DECOR.sun = {g: sun, fan, halo, h, p: 0, drawn: -1, sky: document.createElement('canvas')};
-      DECOR.sun.sky.width = 2; DECOR.sun.sky.height = 256;
     } else if (T.decor === 'void'){
       // stars: sparse, small and white, all the way round
       decor.add(points(1100, (a, i) => { const th = rnd()*Math.PI*2, ph = Math.acos(rnd()*2 - 1), rr = R*2.6 + rnd()*60;
@@ -3807,17 +3638,12 @@ function makeR3(){
       decor.add(bubbles); DECOR.bubbles = {pts: bubbles, info};
     }
     // mirror-ball pillars catch the light as they turn
-    DECOR.spinners = []; DECOR.moored = []; level.traverse(o => { if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); if (o.userData && o.userData.sway) DECOR.moored.push(o.userData); });
+    DECOR.spinners = []; level.traverse(o => { if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); });
   }
   function tickDecor(clock, dt, beat){
     if (!DECOR) return;
     const k = DECOR.kind;
     for (const s of DECOR.spinners) s.rotation.y += dt*0.8;
-    for (const u of DECOR.moored || []){
-      u.sway.rotation.x = 0.04*Math.sin(clock*0.6 + u.ph); u.sway.rotation.z = 0.04*Math.sin(clock*0.5 + u.ph*1.7);
-      const f = 0.75 + 0.25*Math.sin(clock*13 + u.ph*5)*Math.sin(clock*7.3 + u.ph);
-      u.flame.material.opacity = 0.55 + 0.35*f; u.flame.scale.set(0.6 + 0.15*f, 0.75 + 0.3*f, 1);
-    }
     if (k === 'rave'){
       DECOR.lasers.forEach((L, i) => {
         L.b.rotation.y = L.a + Math.sin(clock*0.9 + i*0.15)*0.35;
@@ -3864,35 +3690,6 @@ function makeR3(){
     else if (k === 'void'){
       DECOR.wheel.rotation.z += dt*0.05;
       DECOR.glitter.forEach((L, i) => { L.g.rotation.y += dt*0.05; L.m.opacity = 0.3 + 0.4*Math.abs(Math.sin(clock*(1.4 + i*0.5) + L.ph)) + 0.2*beat; });
-    }
-    else if (k === 'dawn'){
-      // how far the sun is up: the furthest anyone has got toward the level's goal, eased
-      let got = G.gems || 0; for (const p of PL) if (p && p.gems > got) got = p.gems;
-      const S = DECOR.sun, target = Math.min(1, got/(G.S.goal || 1));
-      S.p += (target - S.p)*Math.min(1, dt*0.8);
-      const p = S.p, e = p*p*(3 - 2*p);
-      // the sun is already cresting the clouds when the level starts, and climbs well up the sky by the goal
-      const up = 0.3 + 0.7*e;
-      S.g.position.y = -3 + e*26;
-      S.fan.rotation.z += dt*0.03;
-      S.halo.material.opacity = 0.45 + 0.35*e + 0.1*beat;
-      for (const r of DECOR.rays) r.m.opacity = up*(0.06 + 0.05*Math.sin(clock*0.5 + r.ph)) + up*0.05*beat;
-      DECOR.sea.rotation.y += dt*0.006;
-      for (const m of DECOR.cloudMats) m.color.lerpColors(col('#c48aa8'), col('#fff4f2'), e);
-      DECOR.stars.material.opacity = 0.45*Math.max(0, 1 - e*2.5);
-      for (const d of DECOR.far){ const p = d.b.position; p.y += dt*d.sp; if (p.y > 30) p.y = -9; d.b.rotation.y += dt*0.05; }
-      // the sky and fog warm from night to sunrise (redrawn in small steps, not every frame)
-      const step = Math.round(e*40);
-      if (step !== S.drawn){
-        S.drawn = step; const f = step/40, L = (a, b) => '#' + new THREE.Color().lerpColors(col(a), col(b), f).getHexString();
-        const g = S.sky.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
-        gr.addColorStop(0, L('#22306e', '#5d9cf0')); gr.addColorStop(0.62, L('#d0729c', '#ffc7da')); gr.addColorStop(1, L('#ffa070', '#fff0c8'));
-        g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
-        if (scene.background && scene.background.isTexture && scene.background !== S.tex) scene.background.dispose();
-        if (!S.tex){ S.tex = new THREE.CanvasTexture(S.sky); S.tex.colorSpace = THREE.SRGBColorSpace; }
-        S.tex.needsUpdate = true; scene.background = S.tex;
-        scene.fog.color.set(L('#e8907e', '#ffe4cc'));
-      }
     }
     else if (k === 'cranes'){
       for (const j of DECOR.jibs) j.top.rotation.y += j.sp*dt;
