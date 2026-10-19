@@ -912,13 +912,20 @@ const STAGES = [
    walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
            block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
-  // the library: bookcase walls make a long hall (where you start) with rooms off it through doorways,
-  // and fewer loose obstacles so the rooms stay readable
-  {name: 'Event Horizon', goal: 30, half: 23, music: 'robot', library: 1, clutter: 0.45, ...lv('#ffffff', 300, ['#2c3038', '#3c414b', '#262a31']), gates: 1.1, movers: 0.4,
-   walls: [block(-18, 7, 10, 1), block(-4, 7, 10, 1), block(10, 7, 8, 1),          // the hall's north side, two doorways
-           block(-18, -8, 8, 1), block(-6, -8, 10, 1), block(8, -8, 10, 1),        // its south side, two doorways
-           block(-2, 11, 1, 7), block(12, 8, 1, 6),                                 // rooms to the north
-           block(2, -18, 1, 6), block(-12, -15, 1, 7)]},                            // rooms to the south
+  // the library: a hall down the middle (where you start) with rooms off both sides. Bookcases close the rooms in,
+  // some rooms open into more rooms, and each has only a doorway or two, so getting around takes some finding.
+  // The bookcases run right to the arena's edge (trimmed to each difficulty's size), so the rooms are closed
+  {name: 'Event Horizon', goal: 30, half: 23, music: 'robot', library: 1, clutter: 0.6, ...lv('#ffffff', 300, ['#2c3038', '#3c414b', '#262a31']), gates: 1.3, movers: 0.5,
+   walls: [// the hall's north side: three doorways
+           block(-25, 7, 10, 1), block(-12, 7, 9, 1), block(0, 7, 10, 1), block(13, 7, 12, 1),
+           // north rooms: two dividers with doorways, and a back row of rooms behind
+           block(-7, 8, 1, 4), block(-7, 15, 1, 10), block(5, 8, 1, 3), block(5, 14, 1, 11),
+           block(-25, 13, 14, 1), block(9, 13, 16, 1),
+           // the hall's south side: three doorways
+           block(-25, -8, 12, 1), block(-10, -8, 10, 1), block(3, -8, 9, 1), block(15, -8, 10, 1),
+           // south rooms
+           block(-4, -25, 1, 11), block(-4, -12, 1, 4), block(8, -25, 1, 10), block(8, -12, 1, 4),
+           block(-25, -14, 15, 1), block(12, -14, 13, 1)]},
   {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2, ramps: 1,
    walls: gauntlet()}
 ];
@@ -3114,23 +3121,53 @@ function makeR3(){
     }
     const t = BOOKS.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(len/1.6)), 1); return t;
   }
+  // A bookcase in the library maze, built like the ones in the sky: open shelving (planks and uprights) with real
+  // books on both sides, a few shelf spaces empty so you can see through, a warm glow between the two rows of books,
+  // and planes of the shelves bleeding out across the floor and over the top. It collides exactly like the wall it replaces.
+  const BOOK_COLS = ['#6b3a22', '#8a5a2b', '#a8794a', '#4a3020', '#c9a46a', '#7a2e22', '#d8c49a', '#5a4a38'].map(c => col(c));
   function bookcase(o){
     const g = new THREE.Group(), alongX = o.w >= o.h, L = alongX ? o.w : o.h, T2 = alongX ? o.h : o.w, H = 1.7;
     g.position.set(o.x + o.w/2, 0, o.y + o.h/2); if (!alongX) g.rotation.y = Math.PI/2;
-    const face = new THREE.MeshBasicMaterial({map: bookTex(L)}), wood = new THREE.MeshBasicMaterial({color: col('#3a2414')}), end = new THREE.MeshBasicMaterial({color: col('#4a2c16')});
-    const b = new THREE.Mesh(BOX, [end, end, wood, wood, face, face]); b.scale.set(L, H, T2); b.position.y = H/2; g.add(b);
-    // a warm glow along the top edge, like light spilling over the shelves
-    const glow = glowSprite('#ffb347', 0.14); glow.scale.set(L*1.1, 1.2, 1); glow.position.y = H + 0.1; g.add(glow);
-    // planes of the shelves bleeding out into the room: flat, up at the top shelves (above the snakes), reaching
-    // out from both faces and fading away
-    const rr = mulberry(Math.abs(Math.round(o.x*31 + o.y*17)) + 1), n = Math.max(1, Math.round(L*0.3));
-    for (let k = 0; k < n; k++){
-      const side = k % 2 ? 1 : -1, len = 3 + rr()*5, wid = 1 + rr()*Math.min(2.6, L*0.55);
+    const rr = mulberry(Math.abs(Math.round(o.x*31 + o.y*17)) + 1), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
+    const n = Math.max(1, Math.round(L/1.1)), cw = L/n, rows = 3, rh = (H - 0.08)/rows;
+    // the frame: a plank under each shelf and on top, and an upright between each bay
+    const frames = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), rows + 1 + n + 1);
+    let fi = 0; const wood = new THREE.Color('#4a2c16'), dark = new THREE.Color('#3a2212');
+    for (let j = 0; j <= rows; j++){ frames.setMatrixAt(fi, m4.compose(v.set(0, 0.04 + j*rh, 0), q, sc.set(L, 0.07, T2))); frames.setColorAt(fi++, wood); }
+    for (let i = 0; i <= n; i++){ frames.setMatrixAt(fi, m4.compose(v.set(-L/2 + i*cw + (i === 0 ? 0.035 : i === n ? -0.035 : 0), H/2, 0), q, sc.set(0.07, H, T2))); frames.setColorAt(fi++, dark); }
+    g.add(frames);
+    // books on both faces; a few shelf spaces left empty
+    const books = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), n*rows*2*14);
+    const glow = new THREE.InstancedMesh(PLANE_GEO, new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide}), n*rows);
+    let bi = 0, gi = 0; const lean = new THREE.Quaternion();
+    for (let i = 0; i < n; i++) for (let j = 0; j < rows; j++){
+      const cx = -L/2 + (i + 0.5)*cw, y0 = 0.04 + j*rh + 0.035;
+      if (rr() < 0.4){ glow.setMatrixAt(gi, m4.compose(v.set(cx, y0 + rh*0.42, 0), q, sc.set(cw*0.85, rh*0.75, 1))); glow.setColorAt(gi++, new THREE.Color(1, 0.62 + rr()*0.15, 0.3)); }
+      for (const side of [-1, 1]){
+        if (rr() < 0.14) continue;   // an empty shelf space: you can see through to the other side
+        let bx = cx - cw/2 + 0.06;
+        while (bx < cx + cw/2 - 0.1 && bi < books.count){
+          const w = 0.07 + rr()*0.07, hgt = rh*(0.55 + rr()*0.35);
+          if (rr() < 0.1){ bx += w + 0.03; continue; }   // a small gap, where the glow behind shows through
+          lean.setFromAxisAngle(v.set(0, 0, 1), rr() < 0.07 ? -0.2 : 0);
+          books.setMatrixAt(bi, m4.compose(v.set(bx + w/2, y0 + hgt/2, side*(T2/2 - 0.21)), lean, sc.set(w, hgt, 0.36)));
+          books.setColorAt(bi++, BOOK_COLS[Math.floor(rr()*BOOK_COLS.length)].clone().multiplyScalar(0.75 + rr()*0.45));
+          bx += w + 0.012;
+        }
+      }
+    }
+    books.count = bi; glow.count = gi; g.add(glow, books);
+    // planes of the shelves bleeding out into the room: low ones spreading across the floor from the bottom shelf,
+    // and a few up at the top shelf, reaching out from both faces and fading away
+    const planes = Math.max(2, Math.round(L*0.45));
+    for (let k = 0; k < planes; k++){
+      const side = k % 2 ? 1 : -1, low = k % 3 !== 2, len = (low ? 3.5 : 3) + rr()*(low ? 5 : 4), wid = 1 + rr()*Math.min(2.6, L*0.55);
       const m = streakMat(k + Math.round(o.x), 0.5), pl = new THREE.Mesh(PLANE_GEO, m);
-      pl.rotation.x = side*Math.PI/2; pl.rotation.y = (rr() - 0.5)*0.25;
+      pl.rotation.x = side*Math.PI/2; pl.rotation.y = (rr() - 0.5)*0.2;
       pl.scale.set(wid, len, 1);
-      pl.position.set((rr() - 0.5)*(L - wid), 1.15 + rr()*0.5, side*(T2/2 + len/2));
-      pl.userData.shaft = {m, ph: rr()*6, base: 0.6 + rr()*0.25, sp: 0.03 + rr()*0.05}; g.add(pl);
+      pl.position.set((rr() - 0.5)*(L - wid), low ? 0.015 + k*0.002 : H - 0.05 + rr()*0.1, side*(T2/2 + len/2));
+      pl.renderOrder = 1;
+      pl.userData.shaft = {m, ph: rr()*6, base: low ? 0.42 + rr()*0.2 : 0.55 + rr()*0.2, sp: 0.03 + rr()*0.05}; g.add(pl);
     }
     return g;
   }
