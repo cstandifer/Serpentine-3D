@@ -912,8 +912,13 @@ const STAGES = [
    walls: [block(-10, -22, 1, 19), block(-10, 4, 1, 18), block(12, -22, 1, 19), block(12, 4, 1, 18),
            block(-22, -10, 5, 1), block(-13, -10, 12, 1), block(3, -10, 13, 1), block(20, -10, 2, 1),
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
-  {name: 'Event Horizon', goal: 30, half: 23, music: 'robot', library: 1, ...lv('#ffffff', 300, ['#2c3038', '#3c414b', '#262a31']), gates: 1.7, movers: 0.7,
-   walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
+  // the library: bookcase walls make a long hall (where you start) with rooms off it through doorways,
+  // and fewer loose obstacles so the rooms stay readable
+  {name: 'Event Horizon', goal: 30, half: 23, music: 'robot', library: 1, clutter: 0.45, ...lv('#ffffff', 300, ['#2c3038', '#3c414b', '#262a31']), gates: 1.1, movers: 0.4,
+   walls: [block(-18, 7, 10, 1), block(-4, 7, 10, 1), block(10, 7, 8, 1),          // the hall's north side, two doorways
+           block(-18, -8, 8, 1), block(-6, -8, 10, 1), block(8, -8, 10, 1),        // its south side, two doorways
+           block(-2, 11, 1, 7), block(12, 8, 1, 6),                                 // rooms to the north
+           block(2, -18, 1, 6), block(-12, -15, 1, 7)]},                            // rooms to the south
   {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2, ramps: 1,
    walls: gauntlet()}
 ];
@@ -1246,13 +1251,14 @@ function ensureChunk(cx, cy){
   const d = Math.min(1, Math.hypot(ox + CH/2, oy + CH/2) / (ARENA.x1*1.25));
   const placed = [];
   const fits = (r, pad) => {
-    if (G.runway && r.x < 14 && r.x + r.w > -4 && r.y < 4 && r.y + r.h > -3) return false; // starting runway
+    if (G.runway && r.x < 14 && r.x + r.w > -10 && r.y < 4 && r.y + r.h > -3) return false; // starting runway, from behind the spawn point
     if (r.x < ARENA.x0 + 1 || r.y < ARENA.y0 + 1 || r.x + r.w > ARENA.x1 - 1 || r.y + r.h > ARENA.y1 - 1) return false; // lane along the walls
     for (const w of G.walls) if (overlaps(r, w, pad)) return false;
     for (const p of placed) if (overlaps(r, p, pad)) return false;
     placed.push(r); return true;
   };
-  const nHurdle = Math.round((1 + rnd()*(1.6 + 2.4*d))*G.D.hurdles);
+  const clutter = G.S.clutter || 1;   // a level can ask for fewer loose obstacles
+  const nHurdle = Math.round((1 + rnd()*(1.6 + 2.4*d))*G.D.hurdles*clutter);
   for (let i = 0; i < nHurdle; i++) for (let a = 0; a < 6; a++){
     const L = 2 + Math.floor(rnd()*3), vert = rnd() < .5;
     const gx = 1 + Math.floor(rnd()*(CH - 2 - (vert ? 1 : L) + 1));
@@ -1261,7 +1267,7 @@ function ensureChunk(cx, cy){
                    : {x: ox+gx, y: oy+gy+0.2, w: L, h: 0.6, tall: false};
     if (fits(r, 1.6)) { c.obs.push(shapeObs(r)); break; }
   }
-  const nPillar = Math.floor(rnd()*(0.8 + 2.4*d)*G.D.pillars);
+  const nPillar = Math.floor(rnd()*(0.8 + 2.4*d)*G.D.pillars*clutter);
   // the mirror ball level's pillars are big disco balls, so each takes a square two cells across
   const balls = themeOf(G.S).pillarShape === 'discoball', ms = balls ? 1.3 : 0.8;
   for (let i = 0; i < nPillar; i++) for (let a = 0; a < 6; a++){
@@ -2982,7 +2988,7 @@ function makeR3(){
 
   // level: floor, walls and obstacles are fixed once a level loads, so build them once
   function build(){
-    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks || (GLASS && (m === GLASS.side || m === GLASS.top))) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
+    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && !(SHAFT && o.geometry === SHAFT.geo)) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks || (GLASS && (m === GLASS.side || m === GLASS.top))) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
     level.clear();
     for (const [g, o] of gemObjs) dropGem(g, o);
     const T = C.theme || THEMES.breakbeat;
@@ -3027,16 +3033,18 @@ function makeR3(){
     mats.wall = boxMats(T.wall[0], T.wall[1]); edgeMat.color = col(T.edge); wallEdges = edgeMat;
     const wallOf = T.wallShape ? o => level.add(seeWall(o, T.wallShape, edgeMat)) : o => addBox(o, WALL_H, mats.wall, true);
     for (const o of WALLS) wallOf(o);
-    for (const o of G.walls) wallOf(o);
+    for (const o of G.walls) G.S.library ? level.add(bookcase(o)) : wallOf(o);
     const shapes = shapeKit(T);
     DYN = [];
     for (const c of G.chunks.values()) for (const o of c.obs){
       if (o.leg) continue;   // drawn with its scaffold below
       if (o.mover){ const b = shapes.pillar(o); level.add(b); DYN.push({o, b, base: true}); continue; }
       if (o.gate){
-        const top = new THREE.MeshBasicMaterial(), side = new THREE.MeshBasicMaterial(), sideZ = new THREE.MeshBasicMaterial();
+        // (in the library the gates are bookcases that rise out of the floor and sink back)
+        const bk = G.S.library ? bookTex(Math.max(o.w, o.h)) : null;
+        const top = new THREE.MeshBasicMaterial(), side = new THREE.MeshBasicMaterial({map: bk}), sideZ = new THREE.MeshBasicMaterial({map: bk});
         const b = new THREE.Mesh(BOX, [side, side, top, side, sideZ, sideZ]); b.scale.set(o.w, LOW_H, o.h); level.add(b);
-        DYN.push({o, b, top, side, sideZ}); continue;
+        DYN.push({o, b, top, side, sideZ, books: !!bk}); continue;
       }
       const b = o.tall ? shapes.pillar(o) : shapes.hurdle(o);
       b.position.set(o.x + o.w/2, 0, o.y + o.h/2); level.add(b);
@@ -3058,6 +3066,58 @@ function makeR3(){
   }
   // ---- see-through walls for the space levels: a solid-looking block of smoked glass ----
   let GLASS = null;
+  // bookcases for the library level: shelves of book spines on both long faces, dark wood on the ends and top.
+  // Taller than ordinary walls so they read as furniture; they collide exactly like the walls they replace.
+  let BOOKS = null, SHAFT = null;
+  function bookTex(len){
+    if (!BOOKS){
+      const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d'), rr = mulberry(31);
+      const cols = ['#6b3a22', '#7e5228', '#94693e', '#4a3020', '#a8854f', '#7a2e22', '#a8936c', '#5a4a38'];   // no pale spines, so the lit gaps stand out
+      g.fillStyle = '#2a170c'; g.fillRect(0, 0, 256, 128); const glows = [];
+      for (let row = 0; row < 3; row++){
+        const y1 = row*42 + 40; let x = 4;
+        while (x < 252){ const w = 6 + rr()*9, hgt = 22 + rr()*14;
+          if (rr() < 0.13){   // a gap in the books, glowing with the light behind the shelf
+            const gw = w + 3; g.fillStyle = '#fff7e2'; g.fillRect(x, y1 - 36, gw, 36);
+            glows.push([x + gw/2, y1 - 18]); x += gw; continue; }
+          g.fillStyle = cols[Math.floor(rr()*cols.length)]; g.fillRect(x, y1 - hgt, w - 1, hgt);
+          g.fillStyle = 'rgba(255,220,150,.25)'; g.fillRect(x + 1, y1 - hgt + 4, w - 3, 2); x += w; }
+        g.fillStyle = '#5c3a20'; g.fillRect(0, y1, 256, 4);
+      }
+      // the light from each gap spills warmly onto the spines around it
+      g.globalCompositeOperation = 'lighter';
+      for (const [gx, gy] of glows){ const rg = g.createRadialGradient(gx, gy, 2, gx, gy, 26); rg.addColorStop(0, 'rgba(255,190,110,.55)'); rg.addColorStop(1, 'rgba(255,150,60,0)'); g.fillStyle = rg; g.fillRect(gx - 26, gy - 26, 52, 52); }
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#4a2c16'; g.fillRect(0, 0, 4, 128); g.fillRect(252, 0, 4, 128);
+      BOOKS = new THREE.CanvasTexture(c); BOOKS.colorSpace = THREE.SRGBColorSpace; BOOKS.wrapS = THREE.RepeatWrapping;
+    }
+    const t = BOOKS.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(len/1.6)), 1); return t;
+  }
+  function bookcase(o){
+    const g = new THREE.Group(), alongX = o.w >= o.h, L = alongX ? o.w : o.h, T2 = alongX ? o.h : o.w, H = 1.7;
+    g.position.set(o.x + o.w/2, 0, o.y + o.h/2); if (!alongX) g.rotation.y = Math.PI/2;
+    const face = new THREE.MeshBasicMaterial({map: bookTex(L)}), wood = new THREE.MeshBasicMaterial({color: col('#3a2414')}), end = new THREE.MeshBasicMaterial({color: col('#4a2c16')});
+    const b = new THREE.Mesh(BOX, [end, end, wood, wood, face, face]); b.scale.set(L, H, T2); b.position.y = H/2; g.add(b);
+    // a warm glow along the top edge, like light spilling over the shelves
+    const glow = glowSprite('#ffb347', 0.14); glow.scale.set(L*1.1, 1.2, 1); glow.position.y = H + 0.1; g.add(glow);
+    // narrow streams of light slipping out between the books on both sides, rising gently away from the shelf
+    if (!SHAFT){
+      const c = document.createElement('canvas'); c.width = 4; c.height = 128; const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); x.fillStyle = gr; x.fillRect(0, 0, 4, 128);
+      const t = new THREE.CanvasTexture(c);
+      SHAFT = {tex: t, geo: new THREE.CylinderGeometry(0.28, 0.035, 1, 8, 1, true)};
+    }
+    const rr = mulberry(Math.abs(Math.round(o.x*31 + o.y*17)) + 1), n = Math.max(2, Math.round(L*0.7));
+    for (let k = 0; k < n; k++){
+      const side = k % 2 ? 1 : -1, len = 3 + rr()*4;
+      const m = new THREE.MeshBasicMaterial({map: SHAFT.tex, color: col(rr() < 0.5 ? '#ffc27a' : '#ffe2b0'), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide});
+      const b2 = new THREE.Mesh(SHAFT.geo, m), dir = new THREE.Vector3((rr() - 0.5)*0.6, 0.25 + rr()*0.35, side).normalize();
+      b2.scale.set(1, len, 1); b2.quaternion.setFromUnitVectors(UP, dir.clone().negate());
+      const start = new THREE.Vector3((rr() - 0.5)*(L - 0.6), 0.35 + rr()*(H - 0.6), side*T2/2);
+      b2.position.copy(start).addScaledVector(dir, len/2); b2.userData.shaft = {m, ph: rr()*6, base: 0.12 + rr()*0.12}; g.add(b2);
+    }
+    return g;
+  }
   function seeWall(o, style, edgeMat){
     const g = new THREE.Group(), alongX = o.w >= o.h, L = alongX ? o.w : o.h, T2 = alongX ? o.h : o.w;
     g.position.set(o.x + o.w/2, 0, o.y + o.h/2); if (!alongX) g.rotation.y = Math.PI/2;
@@ -3635,12 +3695,13 @@ function makeR3(){
       decor.add(bubbles); DECOR.bubbles = {pts: bubbles, info};
     }
     // mirror-ball pillars catch the light as they turn
-    DECOR.spinners = []; level.traverse(o => { if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); });
+    DECOR.spinners = []; DECOR.wallShafts = []; level.traverse(o => { if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); if (o.userData && o.userData.shaft) DECOR.wallShafts.push(o.userData.shaft); });
   }
   function tickDecor(clock, dt, beat){
     if (!DECOR) return;
     const k = DECOR.kind;
     for (const s of DECOR.spinners) s.rotation.y += dt*0.8;
+    for (const sh of DECOR.wallShafts || []) sh.m.opacity = sh.base*(0.75 + 0.3*Math.sin(clock*0.6 + sh.ph)) + 0.05*beat;
     if (k === 'rave'){
       DECOR.lasers.forEach((L, i) => {
         L.b.rotation.y = L.a + Math.sin(clock*0.9 + i*0.15)*0.35;
@@ -3713,6 +3774,7 @@ function makeR3(){
       d.b.position.set(o.x + o.w/2, d.base ? 0 : hc/2, o.y + o.h/2);
       if (o.gate){
         d.b.scale.y = hc;
+        if (d.books){ d.top.color.set('#3a2414'); continue; }   // bookcase gates keep their own colors
         const u = (hc - LOW_H)/(TALL_H - LOW_H);
         d.top.color.copy(cLow).lerp(cTall, u); d.side.color.copy(cLowS).lerp(cTallS, u); d.sideZ.color.copy(d.side.color).lerp(d.top.color, 0.35);
       }
