@@ -2370,7 +2370,19 @@ function schedule(){
 // A level whose music has an MP3 here plays it on a loop instead of the synth. bpm and offset (seconds to the first
 // downbeat) keep the visuals pulsing on the beat; key (a MIDI root) and minor set the notes of the gem chime.
 // A level without a file keeps its synth music, so files can arrive one at a time.
-const TRACKS = {};   // music key -> {src, bpm, offset, key, minor, vol, credit}
+// music key -> {src, bpm, offset, key, minor, vol, credit}. All from Pixabay (Pixabay Content License, no attribution required).
+// Levels 6 (electro) and 10 (breakbeat) and the Pinball course keep their synth music.
+const TRACKS = {
+  lofi: {src: 'music/01-lofi-vlog-hip-hop.mp3', bpm: 95.0, offset: 1.947, key: 57, minor: true, vol: 0.98, credit: 'Lofi Vlog Hip Hop by TimCat (Pixabay)'},
+  synthwave: {src: 'music/02-static-heart.mp3', bpm: 95.0, offset: 0.684, key: 55, minor: true, vol: 1.09, credit: 'Static Heart by AleXZavesa (Pixabay)'},
+  chiptune: {src: 'music/03-retro-gaming.mp3', bpm: 116.01, offset: 0.669, key: 53, minor: false, vol: 0.82, credit: 'Retro Gaming by moodmode (Pixabay)'},
+  techno: {src: 'music/04-schmeegl-club.mp3', bpm: 120.01, offset: 1.832, key: 55, minor: true, vol: 0.85, credit: 'Schmeegl Club by Gnate-Saint (Pixabay)'},
+  disco: {src: 'music/05-hard-cyberpunk.mp3', bpm: 124.0, offset: 1.36, key: 54, minor: true, vol: 1.1, credit: 'Hard Cyberpunk by Kulakovka (Pixabay)'},
+  dub: {src: 'music/07-la-nuit.mp3', bpm: 125.24, offset: 1.27, key: 50, minor: false, vol: 0.82, credit: 'La nuit by Jean_Motell (Pixabay)'},
+  dnb: {src: 'music/08-upbeat-electronic-beat.mp3', bpm: 130.01, offset: 1.219, key: 53, minor: false, vol: 0.92, credit: 'Upbeat Electronic Beat by Tunetank (Pixabay)'},
+  trance: {src: 'music/09-lo-fi-jazz.mp3', bpm: 85.94, offset: 0.754, key: 55, minor: false, vol: 0.98, credit: 'Lo-Fi Jazz by ZephiraMusic (Pixabay)'},
+  robot: {src: 'music/night-market-interstellar.mp3', bpm: 99.98, offset: 0.084, key: 52, minor: true, vol: 0.96, credit: 'Interstellar by QuentinGaming (Pixabay)'},
+};
 const trackBufs = new Map();   // src -> promise of a decoded buffer (or null if it couldn't load)
 let trackSrc = null, trackGain = null, trackT0 = 0, trackFor = null, trackPos = 0;
 const trackOf = () => (G && G.S && TRACKS[G.S.music]) || null;
@@ -4421,7 +4433,7 @@ function showDuel(res, why){
   $('duelTitle').textContent = !w ? "It's a tie" : ROLE === 'client' && w.i === ME ? 'You win' : `${w.name} wins`;
   $('duelTitle').style.color = w ? w.color : '';
   $('resList').innerHTML = res.map((r, k) => `<li class="${ROLE === 'client' && r.i === ME ? 'me' : ''}"><span class="r">${k + 1}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${esc(r.name)}</span><small>${r.gems} ${r.gems === 1 ? 'gem' : 'gems'}</small><span class="sc">${r.score}</span></li>`).join('');
-  finishResults(MODE === 2 && G ? `Rematch on ${COURSES[G.idx].name}` : 'Rematch');
+  finishResults(MODE === 2 && G && COURSES[G.idx] ? `Rematch on ${COURSES[G.idx].name}` : 'Rematch');
   phoneSend({t: 'buzz', p: [30, 60, 30, 60, 90]});
 }
 function showTeamOver(team){
