@@ -945,11 +945,11 @@ const THEMES = {
   electro:   {sky: ['#000510', '#002152'], fog: '#000a1a', fogNear: 12, fogFar: 52, floor: '#000510', grid: ['#00e5ff', '#0066ff'],
               hurdle: ['#e8fbff', '#7fd9ff'], pillar: ['#00e5ff', '#0066ff'], wall: ['#000a1a', '#000510'], edge: '#00e5ff', gem: '#ff4fd8',
               pillarShape: 'tower', hurdleShape: 'lightbar', decor: 'skyline'},
-  // underwater: sandy floor, giant standing starfish, low coral reefs to jump, kelp, light rays and rising bubbles
-  dub:       {sky: ['#003a4a', '#00788a'], fog: '#00515e', fogNear: 5, fogFar: 30, floor: '#1c4f50', grid: ['#3fe0c8', '#2aa7a0'],
-              hurdle: ['#ff6f91', '#c2416a'], pillar: ['#ff7a3d', '#c2451a'], coral: ['#ff6f91', '#ff9a52', '#c86bff', '#3fe0c8', '#ffd23f'],
-              star: ['#ff7a3d', '#ff5e8a', '#ffb03d'], wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
-              pillarShape: 'starfish', hurdleShape: 'reef', decor: 'reef'},
+  // underwater: sandy floor, coral heads to steer around, low reef ridges to jump, drifting jellyfish, kelp, light rays and bubbles
+  dub:       {sky: ['#003a4a', '#00788a'], fog: '#00515e', fogNear: 5, fogFar: 30, floor: '#8a8466', grid: ['#9e9878', '#96906f'],   // sand, with faint ripple lines
+              hurdle: ['#b98f8a', '#7d5f63'], pillar: ['#9a8494', '#5f4e5e'], coral: ['#e86f8f', '#f09a5a', '#b07ad9', '#d8c79a', '#e8d070', '#f2a6c2'],
+              star: ['#e2552b', '#ee7a2f', '#c93f5a'], rock: '#8c7f86', wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
+              pillarShape: 'bommie', hurdleShape: 'reef', decor: 'reef'},
   // above the clouds before dawn: a glass platform over a sea of cloud, and the sun comes up as you collect gems
   trance:    {sky: ['#22306e', '#d0729c'], fog: '#e8907e', fogNear: 14, fogFar: 60, floor: '#2a1d48', grid: ['#ffffff', '#ffb8d9', '#b8d4ff'],
               hurdle: ['#ffffff', '#ffc2e0'], pillar: ['#ffffff', '#b9a6d6'], wall: ['#2a1a4a', '#140a2a'], edge: '#ffd6ea', gem: '#ff2e63',
@@ -1243,14 +1243,11 @@ function ensureChunk(cx, cy){
   const nPillar = Math.floor(rnd()*(0.8 + 2.4*d)*G.D.pillars);
   // the mirror ball level's pillars are big disco balls, so each takes a square two cells across
   const balls = themeOf(G.S).pillarShape === 'discoball', ms = balls ? 1.3 : 0.8;
-  // the reef's starfish stand upright: wide and thin, so each takes a long, narrow footprint along x or along y
-  const stars = themeOf(G.S).pillarShape === 'starfish';
   for (let i = 0; i < nPillar; i++) for (let a = 0; a < 6; a++){
     const big = rnd() < .3, horiz = rnd() < .5;
-    const sw = balls || (big && horiz) || (stars && horiz) ? 2 : 1, sh = balls || (big && !horiz) || (stars && !horiz) ? 2 : 1;
+    const sw = balls || (big && horiz) ? 2 : 1, sh = balls || (big && !horiz) ? 2 : 1;
     const gx = 1 + Math.floor(rnd()*(CH - 2 - sw + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - sh + 1));
-    const r = !stars ? {x: ox+gx+0.08, y: oy+gy+0.08, w: sw-0.16, h: sh-0.16, tall: true}
-      : horiz ? {x: ox+gx+0.2, y: oy+gy+0.3, w: 1.6, h: 0.4, tall: true} : {x: ox+gx+0.3, y: oy+gy+0.2, w: 0.4, h: 1.6, tall: true};
+    const r = {x: ox+gx+0.08, y: oy+gy+0.08, w: sw-0.16, h: sh-0.16, tall: true};
     if (fits(r, 1.2)) { c.obs.push(shapeObs(r)); break; }
   }
   // movers: a pillar sliding along a short track (the whole track is kept clear when placing it)
@@ -1435,7 +1432,7 @@ function scrape(nx, ny, px, py, cause){
 // Obstacles are hit by the shape you see. Round and rounded ones (round pillars, coral, crystals, mirror balls,
 // logs, rocks, rounded hurdles) use a capsule: a line down the middle of the footprint with a radius
 // (o.cap, as a fraction of the footprint's width). Everything else is its box.
-const CAP_PILLAR = {starfish: 0.5, discoball: 0.5, round: 0.5, octagon: 0.5, coral: 0.48, crystal: 0.34, mirror: 0.3};
+const CAP_PILLAR = {bommie: 0.5, discoball: 0.5, round: 0.5, octagon: 0.5, coral: 0.48, crystal: 0.34, mirror: 0.3};
 const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5, rock: 0.5};
 function shapeObs(o){
   const T = themeOf(G.S), c = o.tall ? CAP_PILLAR[T.pillarShape] : CAP_HURDLE[T.hurdleShape];
@@ -2991,6 +2988,57 @@ function makeR3(){
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
       return (mirrorM = new THREE.MeshPhongMaterial({map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.55, color: 0xffffff, shininess: 180, specular: 0xffffff, flatShading: true}));
     };
+    // ---- the reef's pieces: rock, brain coral, plate coral, staghorn, starfish and jellyfish, with textures drawn once ----
+    function reefKit(T){
+      const canvasTex = (sz, draw, rep) => { const c = document.createElement('canvas'); c.width = c.height = sz; draw(c.getContext('2d'), sz); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep, rep); return t; };
+      const rnd = mulberry(4242);
+      // rock: mottled grey-mauve with darker pits
+      const rockTex = canvasTex(128, (g, n) => { g.fillStyle = '#c8c0c4'; g.fillRect(0, 0, n, n); for (let k = 0; k < 900; k++){ const v = 120 + rnd()*110; g.fillStyle = `rgba(${v},${v - 10},${v - 4},${0.25 + rnd()*0.4})`; g.beginPath(); g.arc(rnd()*n, rnd()*n, 0.6 + rnd()*2.6, 0, 7); g.fill(); } }, 2);
+      // brain coral: a maze of winding grooves
+      const brainTex = canvasTex(256, (g, n) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, n, n); g.strokeStyle = 'rgba(70,40,40,.55)'; g.lineWidth = 3.2; g.lineCap = 'round';
+        for (let k = 0; k < 70; k++){ let x = rnd()*n, y = rnd()*n, a = rnd()*7; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 26; j++){ a += (rnd() - 0.5)*1.1; x += Math.cos(a)*5; y += Math.sin(a)*5; g.lineTo(x, y); } g.stroke(); } });
+      // starfish skin: rows of pale bumps over the base color
+      const starTex = canvasTex(128, (g, n) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, n, n); for (let k = 0; k < 420; k++){ const r = 1.2 + rnd()*2.2; g.fillStyle = rnd() < 0.5 ? 'rgba(255,240,220,.9)' : 'rgba(120,40,30,.35)'; g.beginPath(); g.arc(rnd()*n, rnd()*n, r, 0, 7); g.fill(); } });
+      const mat = (c, map, o = {}) => new THREE.MeshStandardMaterial({color: col(c), map, bumpMap: map, bumpScale: 0.03, roughness: 0.85, metalness: 0, emissive: col(c), emissiveIntensity: 0.08, ...o});
+      const rock = mat(T.rock, rockTex);
+      // a lumpy rock: an icosphere pushed in and out by a smooth bumpy field
+      const rockGeos = new Map();
+      const rockGeo = seed => {
+        const key = seed % 6; if (rockGeos.has(key)) return rockGeos.get(key);
+        const geo = new THREE.IcosahedronGeometry(0.5, 3), p = geo.attributes.position, v = new THREE.Vector3();
+        for (let i = 0; i < p.count; i++){ v.fromBufferAttribute(p, i); const n = v.clone().normalize();
+          const bump = 1 + 0.16*Math.sin(n.x*5 + key) * Math.cos(n.z*4.3 + key*2) + 0.08*Math.sin(n.y*9 + n.x*7 + key); v.multiplyScalar(bump); if (v.y < -0.2) v.y = -0.2 + (v.y + 0.2)*0.3; p.setXYZ(i, v.x, v.y, v.z); }
+        geo.computeVertexNormals(); rockGeos.set(key, geo); return geo;
+      };
+      const brainGeo = (() => { const g = new THREE.SphereGeometry(0.5, 24, 12, 0, Math.PI*2, 0, Math.PI/2); return g; })();
+      const brain = (c, r) => { const m = new THREE.Mesh(brainGeo, mat(c, brainTex, {bumpScale: 0.06, roughness: 0.75})); m.scale.set(r*2, r*1.3, r*2); return m; };
+      const plate = (c, r) => { const g = new THREE.Group(); for (let k = 0; k < 3; k++){ const d = new THREE.Mesh(new THREE.CylinderGeometry(r*(1 - k*0.22), r*(0.9 - k*0.22), 0.025, 18), mat(c, rockTex, {roughness: 0.7})); d.position.y = k*0.06; d.rotation.x = (k - 1)*0.12; g.add(d); } return g; };
+      const stag = (c, h, seed) => { const g = new THREE.Group(), m = mat(c, null, {roughness: 0.6}); const rr = mulberry(seed + 9);
+        for (let k = 0; k < 6; k++){ const len = h*(0.6 + rr()*0.5), b = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, len, 6), m); const a = rr()*Math.PI*2, tilt = 0.25 + rr()*0.5;
+          b.position.set(Math.cos(a)*0.06, len*0.45, Math.sin(a)*0.06); b.rotation.set(Math.sin(a)*tilt, 0, -Math.cos(a)*tilt); g.add(b); } return g; };
+      // a starfish: a thick central disc and five tapering, rounded arms, lying in its own x-z plane
+      const starGeo = (() => { const sh = new THREE.Shape();
+        for (let k = 0; k <= 60; k++){ const a = k/60*Math.PI*2 + Math.PI/2, arm = Math.pow(Math.abs(Math.cos(a*2.5 - Math.PI*1.25)), 3), r = 0.32 + 0.68*arm; const x = Math.cos(a)*r, y = Math.sin(a)*r; k ? sh.lineTo(x, y) : sh.moveTo(x, y); }
+        const g = new THREE.ExtrudeGeometry(sh, {depth: 0.08, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.08, bevelSegments: 4, curveSegments: 4}); g.center(); g.rotateX(-Math.PI/2); return g; })();
+      const star = (c, r) => { const m = new THREE.Mesh(starGeo, mat(c, starTex, {bumpScale: 0.05, roughness: 0.8})); m.scale.setScalar(r); return m; };
+      // a jellyfish: a glowing see-through bell and long trailing tentacles that reach the floor
+      const jelly = m => { const g = new THREE.Group(), r = m*0.48, body = new THREE.Group();
+        const bell = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 12, 0, Math.PI*2, 0, Math.PI*0.55), new THREE.MeshStandardMaterial({color: col('#f6b3e6'), emissive: col('#d86bd0'), emissiveIntensity: 0.6, transparent: true, opacity: 0.6, roughness: 0.3, side: THREE.DoubleSide, depthWrite: false}));
+        bell.position.y = TALL_H*0.75; body.add(bell);
+        const tm = new THREE.MeshBasicMaterial({color: col('#f7c6ee'), transparent: true, opacity: 0.55, depthWrite: false});
+        for (let k = 0; k < 10; k++){ const a = k/10*Math.PI*2, len = TALL_H*0.75 - 0.05 - (k % 3)*0.12, t = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.016, len, 4), tm);
+          t.position.set(Math.cos(a)*r*0.7, TALL_H*0.75 - len/2, Math.sin(a)*r*0.7); body.add(t); }
+        const glow = glowSprite('#ff9af0', 0.45); glow.scale.setScalar(r*3.2); glow.position.y = TALL_H*0.8; body.add(glow);
+        g.add(body); g.userData.spin = body; return g; };
+      // a sea fan: a lacy half-disc of fine branches
+      const fanTex = canvasTex(256, (g, n) => { g.clearRect(0, 0, n, n); g.strokeStyle = '#ffffff'; g.lineCap = 'round';
+        const branch = (x, y, a, len, wdt) => { if (len < 6) return; const x2 = x + Math.cos(a)*len, y2 = y + Math.sin(a)*len; g.lineWidth = wdt; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+          branch(x2, y2, a - 0.35 + rnd()*0.2, len*0.78, wdt*0.8); branch(x2, y2, a + 0.35 - rnd()*0.2, len*0.78, wdt*0.8); };
+        branch(n/2, n, -Math.PI/2, 60, 5); for (let k = 0; k < 140; k++){ g.lineWidth = 1; g.beginPath(); const x = rnd()*n, y = rnd()*n*0.9; g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5)*18, y + (rnd() - 0.5)*18); g.stroke(); } });
+      const fanGeo = new THREE.CircleGeometry(0.5, 20, 0, Math.PI);
+      const fan = (c, h) => { const m = new THREE.Mesh(fanGeo, new THREE.MeshStandardMaterial({color: col(c), map: fanTex, alphaTest: 0.35, transparent: true, side: THREE.DoubleSide, roughness: 0.8, emissive: col(c), emissiveIntensity: 0.15})); m.scale.set(h*1.6, h*2, 1); return m; };
+      return {rock, rockGeo, brain, plate, stag, star, jelly, fan};
+    }
     const shiny = (c, o = {}) => new THREE.MeshPhongMaterial({color: col(c), emissive: col(c), emissiveIntensity: 0.25, flatShading: true, shininess: 90, specular: 0xffffff, ...o});
     const P = T.pillar, Hh = T.hurdle, edges = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.9});
     const pMats = boxMats(P[0], P[1]), hMats = boxMats(Hh[0], Hh[1]);
@@ -3003,26 +3051,23 @@ function makeR3(){
       for (let k = -h; k < w; k += 16){ g.beginPath(); g.moveTo(k, h); g.lineTo(k + 8, h); g.lineTo(k + 8 + h, 0); g.lineTo(k + h, 0); g.closePath(); g.fill(); } }, 32, 32);
     const plinth = (g, w, d, c, hh = 0.16) => { const b = new THREE.Mesh(BOX, boxMats(c[0], c[1])); b.scale.set(w, hh, d); b.position.y = hh/2; g.add(b); return g; };
     const stood = (mesh, y) => { const g = new THREE.Group(); mesh.position.y = y; g.add(mesh); return g; };
-    // a puffy five-armed star, standing on two arms, facing along z; R is the reach of each arm
-    const starGeo = R => {
-      const sh = new THREE.Shape();
-      for (let k = 0; k < 10; k++){ const a = Math.PI/2 + k*Math.PI/5, r = k % 2 ? R*0.42 : R; k ? sh.lineTo(Math.cos(a)*r, Math.sin(a)*r) : sh.moveTo(Math.cos(a)*r, Math.sin(a)*r); }
-      const g = new THREE.ExtrudeGeometry(sh, {depth: R*0.16, bevelEnabled: true, bevelThickness: R*0.1, bevelSize: R*0.07, bevelSegments: 3, curveSegments: 1});
-      g.center(); return g;
-    };
+    const REEF = T.pillarShape === 'bommie' ? reefKit(T) : null;
     const pillar = o => {
       const H = TALL_H, w = o.w, d = o.h, m = Math.min(w, d);
       switch (T.pillarShape){
-        case 'starfish': {
-          // a giant starfish standing on two arms; a sliding one spins as it goes
-          const S2 = T.star, c = S2[Math.abs(Math.round(o.x*5 + o.y*3)) % S2.length], g = new THREE.Group();
-          const R = o.mover ? m*0.5 : Math.max(w, d)/1.9, mat = shiny(c, {shininess: 25, specular: 0x333333, emissiveIntensity: 0.3});
-          const star = new THREE.Mesh(starGeo(R), mat);
-          const inner = new THREE.Mesh(starGeo(R*0.55), shiny('#ffe2b8', {shininess: 10, emissiveIntensity: 0.35}));
-          inner.scale.z = 1.25;   // a paler star in the middle, bulging out on both faces
-          const body = new THREE.Group(); body.add(star, inner); body.position.y = R*0.81 + R*0.08;
-          if (!o.mover && d > w) body.rotation.y = Math.PI/2;
-          g.add(body); if (o.mover) g.userData.spin = body;
+        case 'bommie': {
+          // a coral head: a lumpy rock mound grown over with brain coral, plate coral and staghorn; sliding ones are jellyfish
+          if (o.mover) return REEF.jelly(m);
+          const g = new THREE.Group(), seed = Math.abs(Math.round(o.x*13 + o.y*7)), pick = k => T.coral[(seed + k) % T.coral.length];
+          const lumps = [[1, 0.55, 0.3], [0.82, 0.5, 0.72], [0.6, 0.38, 1.08]];
+          lumps.forEach(([sc, hh, y], k) => { const r = new THREE.Mesh(REEF.rockGeo(seed + k), REEF.rock); r.scale.set(w*sc, H*hh, d*sc); r.position.y = H*y*0.62; r.rotation.y = seed + k; g.add(r); });
+          const top = H*0.95;
+          const brain = REEF.brain(pick(0), Math.min(w, d)*0.38); brain.position.set(w*0.08, top, -d*0.05); g.add(brain);
+          const plate = REEF.plate(pick(1), Math.min(w, d)*0.34); plate.position.set(-w*0.32, H*0.55, d*0.2); plate.rotation.z = 0.35; g.add(plate);
+          const stag = REEF.stag(pick(2), H*0.42, seed); stag.position.set(-w*0.12, top - 0.05, d*0.18); g.add(stag);
+          const brain2 = REEF.brain(pick(3), Math.min(w, d)*0.26); brain2.position.set(-w*0.28, H*0.3, -d*0.3); brain2.rotation.z = 0.5; g.add(brain2);
+          const fan = REEF.fan(pick(4), H*0.36); fan.position.set(w*0.15, top - 0.02, -d*0.22); fan.rotation.y = seed; g.add(fan);
+          if (seed % 2 === 0){ const st = REEF.star(T.star[seed % T.star.length], 0.2); st.position.set(w*0.47, H*0.32, 0); st.rotation.set(0, 0, -Math.PI/2.3); st.rotation.y = 0; g.add(st); }
           return g;
         }
         case 'round': case 'octagon': {
@@ -3144,25 +3189,18 @@ function makeR3(){
           return g;
         }
         case 'reef': {
-          // a low coral reef along the hurdle: bumpy brain coral domes, clumps of tube coral and a little sea fan
-          const g = new THREE.Group(), Cc = T.coral, wide = Math.min(w, d), n = Math.max(2, Math.round(long/0.5));
-          const at = (f, y) => alongX ? [f*(w - wide*0.6), y, 0] : [0, y, f*(d - wide*0.6)];
+          // a low reef ridge: lumpy rock along the hurdle, crusted with brain and plate coral, the odd starfish on top
+          const g = new THREE.Group(), wide = Math.min(w, d), n = Math.max(2, Math.round(long/0.55)), seed = Math.abs(Math.round(o.x*11 + o.y*5));
+          const at = (f, y) => alongX ? [f*(w - wide*0.7), y, 0] : [0, y, f*(d - wide*0.7)];
           for (let k = 0; k < n; k++){
-            const f = n > 1 ? k/(n - 1) - 0.5 : 0, c = Cc[(k + Math.abs(Math.round(o.x*3 + o.y*7))) % Cc.length], kind = (k + Math.round(o.x)) % 3;
-            const mat = shiny(c, {shininess: 15, specular: 0x222222, emissiveIntensity: 0.3});
-            if (kind === 0){
-              const dome = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), mat);
-              dome.scale.set(wide*0.95, H*1.6, wide*0.95); dome.position.set(...at(f, H*0.3)); g.add(dome);
-            } else if (kind === 1){
-              for (const [dx, dz, hh] of [[-0.1, 0.05, 1.3], [0.08, -0.06, 1.0], [0.02, 0.12, 0.8]]){
-                const t = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.065, H*hh, 8), mat), p = at(f, H*hh/2);
-                t.position.set(p[0] + dx*wide*1.6, p[1], p[2] + dz*wide*1.6); g.add(t);
-              }
-            } else {
-              const fan = new THREE.Mesh(new THREE.CircleGeometry(0.5, 12, 0, Math.PI), new THREE.MeshPhongMaterial({color: col(c), emissive: col(c), emissiveIntensity: 0.3, side: THREE.DoubleSide, transparent: true, opacity: 0.9}));
-              fan.scale.set(wide*0.9, H*2, 1); fan.position.set(...at(f, 0)); fan.rotation.y = alongX ? 0 : Math.PI/2; g.add(fan);
-            }
+            const f = n > 1 ? k/(n - 1) - 0.5 : 0, len = long/n*1.25;
+            const r = new THREE.Mesh(REEF.rockGeo(seed + k), REEF.rock); r.scale.set(alongX ? len : wide, H*1.1, alongX ? wide : len);
+            r.position.set(...at(f, H*0.3)); r.rotation.y = (seed + k)*0.7; g.add(r);
+            const c = T.coral[(seed + k) % T.coral.length];
+            if (k % 2 === 0){ const br = REEF.brain(c, wide*0.32); br.position.set(...at(f, H*0.62)); g.add(br); }
+            else { const pl = REEF.plate(c, wide*0.3); pl.position.set(...at(f, H*0.72)); pl.rotation.x = 0.15; g.add(pl); }
           }
+          if (seed % 3 === 0){ const st = REEF.star(T.star[seed % T.star.length], 0.17); st.position.set(...at(0.1, H*0.95)); st.rotation.x = -Math.PI/2; st.rotation.z = seed; g.add(st); }
           return g;
         }
         case 'rock': {
