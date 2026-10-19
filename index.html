@@ -956,10 +956,9 @@ const THEMES = {
   trance:    {sky: ['#22306e', '#d0729c'], fog: '#e8907e', fogNear: 14, fogFar: 60, floor: '#93643f', grid: ['#ffb070', '#ffd6a8', '#ffb8d9'], wash: '#ffb070',
               deck: ['#9a6a48', '#8e6042', '#a5734e', '#86593c', '#9f6f4a', '#946545'], seam: '#3a2416',
               hurdle: ['#c9a874', '#8a6a3e'], pillar: ['#b98a52', '#6e4a28'], wall: ['#6e4a32', '#3f2a1c'], edge: '#ffd9a8', gem: '#ff2e63',
-              sand: ['#b8946a', '#a8845a', '#c2a074', '#9e7c54'],
               balloons: [['#ff5a5f', '#ffd166', '#ffffff'], ['#3a86ff', '#ffffff', '#ffd166'], ['#ff8fab', '#fff1e6', '#ff5a5f'], ['#06a77d', '#ffd166', '#ffffff'],
                          ['#8338ec', '#ffbe0b', '#ffffff'], ['#ff7b00', '#2b2d42', '#ffd166'], ['#ef476f', '#118ab2', '#ffffff']],
-              pillarShape: 'balloon', hurdleShape: 'bundle', decor: 'dawn'},
+              pillarShape: 'balloon', hurdleShape: 'rail', decor: 'dawn'},
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
@@ -1441,7 +1440,7 @@ function scrape(nx, ny, px, py, cause){
 // logs, rocks, rounded hurdles) use a capsule: a line down the middle of the footprint with a radius
 // (o.cap, as a fraction of the footprint's width). Everything else is its box.
 const CAP_PILLAR = {bommie: 0.5, discoball: 0.5, round: 0.5, octagon: 0.5, coral: 0.48, crystal: 0.34, mirror: 0.3};
-const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5, rock: 0.5, bundle: 0.5};
+const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5, rock: 0.5};
 function shapeObs(o){
   const T = themeOf(G.S), c = o.tall ? CAP_PILLAR[T.pillarShape] : CAP_HURDLE[T.hurdleShape];
   if (c) o.cap = c;
@@ -3128,15 +3127,6 @@ function makeR3(){
     g.fillStyle = '#3a2416'; for (const [x, y] of [[8, 8], [114, 8], [8, 114], [114, 114]]) g.fillRect(x, y, 6, 6);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (CRATE = t);
   }
-  let BURLAP = null;
-  function burlapTex(){
-    if (BURLAP) return BURLAP;
-    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), rr = mulberry(5);
-    g.fillStyle = '#ffffff'; g.fillRect(0, 0, 64, 64);
-    for (let y = 0; y < 64; y += 2) for (let x = 0; x < 64; x += 2){ const v = 200 + Math.floor(rr()*55); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, y, 2, 2); }
-    g.fillStyle = 'rgba(0,0,0,.12)'; for (let k = 0; k < 64; k += 4){ g.fillRect(k, 0, 1, 64); g.fillRect(0, k, 64, 1); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 2); return (BURLAP = t);
-  }
   function wickerMat(){
     if (WICKER) return WICKER;
     const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
@@ -3361,19 +3351,16 @@ function makeR3(){
           const m = new THREE.MeshBasicMaterial({map: t}), side = new THREE.MeshBasicMaterial({map: t, color: 0xb0b0b0});
           const b = new THREE.Mesh(BOX, [side, side, m, side, side, side]); b.scale.set(w, H, d); return stood(b, H/2);
         }
-        case 'bundle': {
-          // a spare balloon envelope rolled up on the deck: bright bands of its two colors, rounded ends, rope ties.
-          // Built round (radius = half the footprint's width) along its length, then squashed down to hurdle height.
-          const wide = Math.min(w, d), seed = Math.abs(Math.round(o.x*11 + o.y*5)), pal = T.balloons[seed % T.balloons.length];
-          const r = wide/2, core = Math.max(0.01, long - wide), n = Math.max(3, Math.round(core/0.3)), seg = core/n;
-          const mats = pal.slice(0, 2).map(c => new THREE.MeshPhongMaterial({color: col(c), emissive: col(c), emissiveIntensity: 0.3, shininess: 30, specular: 0x333333}));
-          const rope = new THREE.MeshBasicMaterial({color: col('#3a2416')});
-          const roll = new THREE.Group();
-          for (let k = 0; k < n; k++){ const c = new THREE.Mesh(BUNDLE_CYL, mats[k % 2]); c.scale.set(r, seg, r); c.position.y = -core/2 + seg*(k + 0.5); roll.add(c); }
-          for (const sg of [-1, 1]){ const e = new THREE.Mesh(SAND_GEO, mats[0]); e.scale.setScalar(r); e.position.y = sg*core/2; roll.add(e); }
-          for (const f of [-0.3, 0.3]){ const t = new THREE.Mesh(BUNDLE_CYL, rope); t.scale.set(r*1.05, 0.05, r*1.05); t.position.y = f*core; roll.add(t); }
-          if (alongX) roll.rotation.z = Math.PI/2; else roll.rotation.x = Math.PI/2;
-          const g = stood(roll, r); g.scale.y = H/(2*r); return g;
+        case 'rail': {
+          // a painted mooring rail: a white rail with red bands on short posts, like a dock barrier
+          const g = new THREE.Group(), wide = Math.min(w, d);
+          const t = stripeTex((c, W2, H2) => { c.fillStyle = '#f4f1ea'; c.fillRect(0, 0, W2, H2); c.fillStyle = '#e63946'; c.fillRect(0, 0, W2/2, H2); }, 32, 8); t.repeat.set(long*2, 1);
+          const railMat = new THREE.MeshPhongMaterial({map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, shininess: 60, specular: 0x444444});
+          const rail = new THREE.Mesh(BOX, railMat); rail.scale.set(alongX ? long : wide*0.45, H*0.4, alongX ? wide*0.45 : long); rail.position.y = H*0.75; g.add(rail);
+          const post = new THREE.MeshPhongMaterial({color: 0xf4f1ea, emissive: 0x777777, shininess: 40});
+          const np = Math.max(2, Math.round(long/0.7) + 1);
+          for (let k = 0; k < np; k++){ const f = k/(np - 1) - 0.5, p2 = new THREE.Mesh(BOX, post); p2.scale.set(0.09, H*0.6, 0.09); p2.position.set(alongX ? f*(long - 0.1) : 0, H*0.3, alongX ? 0 : f*(long - 0.1)); g.add(p2); }
+          return g;
         }
         case 'log': {
           // a felled log: bark on the sides, pale rings on the ends
