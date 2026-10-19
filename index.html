@@ -2461,19 +2461,21 @@ const TRACKS = {
 const musicName = k => TRACKS[k] ? TRACKS[k].credit.split(' by ')[0] : (STYLES[k] || {}).name || '';
 const trackBufs = new Map();   // src -> promise of a decoded buffer (or null if it couldn't load)
 let trackSrc = null, trackGain = null, trackT0 = 0, trackFor = null, trackPos = 0;
-// a track that can't load (offline, or the page opened straight from a file) falls back to the level's synth music
+// Only a page opened straight from a file (where tracks can't load at all) uses the synth music for levels that have a
+// track. Anywhere else a track that fails to load (a blip, or a refresh mid-deploy) is retried, never swapped for the synth.
 const trackBad = new Set(location.protocol === 'file:' ? Object.values(TRACKS).map(T => T.src) : []);
 const trackOf = () => { const T = G && G.S && TRACKS[G.S.music]; return T && !trackBad.has(T.src) ? T : null; };
 function loadTrack(T){
   if (!T || !AC || trackBad.has(T.src)) return Promise.resolve(null);
   if (!trackBufs.has(T.src)) trackBufs.set(T.src, fetch(T.src).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-    .then(b => new Promise((res, rej) => AC.decodeAudioData(b, res, rej))).catch(() => { trackBad.add(T.src); return null; }));
+    .then(b => new Promise((res, rej) => AC.decodeAudioData(b, res, rej))).catch(() => { trackBufs.delete(T.src); return null; }));   // forget the failure so the next try fetches again
   return trackBufs.get(T.src);
 }
-function playTrack(T){
+function playTrack(T, tries = 0){
   const g = G, from0 = trackFor === T.src ? trackPos : 0;   // the same song (a pause, a lost life) picks up where it stopped
   loadTrack(T).then(buf => {
-    if (!buf){ if (musicOn && G === g){ stepI = 0; nextStep = AC.currentTime + 0.05; } return; }   // falls back to the synth
+    // couldn't load: stay quiet and try again shortly (with longer waits), rather than switching to the synth
+    if (!buf){ if (musicOn && G === g && tries < 8) setTimeout(() => { if (musicOn && G === g && !trackSrc) playTrack(T, tries + 1); }, 1500*(tries + 1)); return; }
     if (!musicOn || G !== g || trackSrc) return;
     const src = AC.createBufferSource(), gain = AC.createGain(), at = AC.currentTime + 0.05, from = from0 % buf.duration;
     src.buffer = buf; src.loop = true;
