@@ -939,8 +939,20 @@ const COURSES = [
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
   {name: 'Pinball', base: 19, music: 'swing', movers: 1.4, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
    walls: h => { const st = Math.round(h/3), sz = Math.max(2, Math.round(st/3)), w = []; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (i || j) w.push(block(i*st - 1, j*st - 1, sz, sz)); return w; }},
-  {name: 'Night Market', base: 20, music: 'robot', gates: 1.2, ...lv('#ffffff', 290, ['#2c3038', '#3c414b', '#262a31']),
-   walls: h => { const y = Math.round(h*0.4), L = h - 7; return [block(-h + 4, -y, L, 1), block(3, -y, L, 1), block(-h + 4, y, L, 1), block(3, y, L, 1)]; }}
+  // the library, like level 9: a wide hall across the middle with bookcase rooms above and below it, scaled to the
+  // arena (which grows with the number of players)
+  {name: 'Night Market', base: 20, music: 'robot', gates: 1.2, library: 1, clutter: 0.6, ...lv('#ffffff', 290, ['#2c3038', '#3c414b', '#262a31']),
+   walls: h => {
+     const a = Math.round(h*0.38), d = Math.round(h*0.45), m = Math.round(h*0.5), w = [];
+     // the hall's north side, with a doorway into each north room; the two rooms split by a bookcase with its own doorway
+     w.push(block(-h, a, h - d, 1), block(-d + 3, a, 2*d - 6, 1), block(d, a, h - d, 1));
+     const up = h - a - 1, g1 = Math.max(2, Math.round(up*0.35)); w.push(block(0, a + 1, 1, g1), block(0, a + 4 + g1, 1, Math.max(1, up - g1 - 3)));
+     // the south side: one doorway in the middle; the side rooms open off the middle room through the dividers
+     w.push(block(-h, -a - 1, h - 2, 1), block(2, -a - 1, h - 2, 1));
+     const dn = h - a - 1, g2 = Math.max(2, Math.round(dn*0.4));
+     for (const x of [-m, m]) w.push(block(x, -h, 1, dn - g2 - 3), block(x, -a - 1 - g2, 1, g2));
+     return w;
+   }}
 ];
 
 // Every level (and party course) takes the look of its music: sky, fog, floor and grid colors, how the
