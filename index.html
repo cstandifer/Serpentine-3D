@@ -4148,9 +4148,12 @@ function takeOut(i){
 // the host's watchdog: a link that has gone quiet (a phone that left the controller page, a screen that closed,
 // often without the connection ever saying so) is let go; a player still gone after a while is taken out
 const LINK_QUIET_DROP_MS = 7000, GONE_OUT_MS = 10000;
+let watchLast = performance.now();
 setInterval(() => {
+  const now = performance.now(), stalled = now - watchLast > 2500; watchLast = now;
   if (ROLE !== 'host' || !LINK.links) return;
-  const now = performance.now();
+  // if this screen itself was stalled (busy, asleep, a background tab), the quiet was ours, not theirs: start over
+  if (stalled){ for (const L of LINK.links) L.seen = now; for (const st of SEATS) if (st.gone) st.goneAt = now; return; }
   for (const L of LINK.links.slice()) if (now - L.seen > LINK_QUIET_DROP_MS){
     LINK.links = LINK.links.filter(x => x !== L);
     try { L.conn.close(); } catch(_) {}
