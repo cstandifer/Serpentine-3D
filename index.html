@@ -3457,6 +3457,26 @@ function makeR3(){
           }
         }
         books.count = bi; q.identity(); lib.add(books);
+        // light pouring out of the lattice: some cells glow from behind their books, and long soft shafts of light
+        // stream out of the gaps toward the arena, widening and fading as they go
+        const back = new THREE.InstancedMesh(PLANE_GEO, new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}), cells.length);
+        let nb = 0;
+        for (const [x, y, z] of cells){ if (rr() > 0.45) continue; const d = Math.min(1, shade(z)/0.62*1.3);
+          back.setMatrixAt(nb, m4.compose(v.set(x, y + CH2/2, z + CD/2 + 0.05), q, sc.set(CW*0.95, CH2*0.95, 1))); back.setColorAt(nb++, new THREE.Color(1*d, 0.62*d, 0.28*d)); }
+        back.count = nb; lib.add(back);
+        const beamTex = discTex(g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,.55)'); gr.addColorStop(0.92, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,.4)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); });
+        const beamGeo = new THREE.CylinderGeometry(3.2, 0.7, 1, 16, 1, true);   // wide end out toward the arena, narrow at the shelves
+        DECOR.shafts = [];
+        const near = cells.filter(c => c[2] < 4 + 3*SZ && c[1] > -14);   // shafts come from the nearer rows, around eye level and above
+        for (let k = 0; k < 40; k++){
+          const [x, y, z] = near[Math.floor(rr()*near.length)], len = 45 + rr()*40;
+          const m = new THREE.MeshBasicMaterial({map: beamTex, color: col(k % 3 ? '#ffc27a' : '#ffe2b0'), transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false});
+          const b = new THREE.Mesh(beamGeo, m), dir = v.set((rr() - 0.5)*0.5, (rr() - 0.4)*0.35, -1).normalize().clone();
+          b.scale.set(0.6 + rr()*0.8, len, 0.6 + rr()*0.8);
+          b.quaternion.setFromUnitVectors(UP, dir.clone().negate());   // the cylinder's narrow (bottom) end sits at the shelf
+          b.position.set(x, y + CH2/2, z).addScaledVector(dir, len/2); lib.add(b);
+          DECOR.shafts.push({m, ph: rr()*6, base: 0.13 + rr()*0.14});
+        }
         // gold light glowing from inside the lattice
         for (let k = 0; k < 6; k++){ const gl = glowSprite('#ffb347', 0.16); gl.material.fog = false; gl.scale.setScalar(36 + k*6); gl.position.set((rr() - 0.5)*NX*SX*0.8, y0 + rr()*NY*SY, 10 + rr()*NZ*SZ*0.6); lib.add(gl); }
         // threads: long thin glowing strands through the shelves, horizontal and vertical, some shimmering on the beat
@@ -3647,6 +3667,7 @@ function makeR3(){
     else if (k === 'void'){
       DECOR.wheel.rotation.z += dt*0.05;
       if (DECOR.threads) DECOR.threads.opacity = 0.4 + 0.15*Math.sin(clock*0.8) + 0.25*beat;
+      if (DECOR.shafts) for (const sh of DECOR.shafts) sh.m.opacity = sh.base*(0.8 + 0.25*Math.sin(clock*0.4 + sh.ph)) + 0.03*beat;
       DECOR.glitter.forEach((L, i) => { L.g.rotation.y += dt*0.05; L.m.opacity = 0.3 + 0.4*Math.abs(Math.sin(clock*(1.4 + i*0.5) + L.ph)) + 0.2*beat; });
     }
     else if (k === 'cranes'){
