@@ -1188,6 +1188,7 @@ function loadWorld(cfg){
   // the field is finite, so build all of it up front and count its gems
   for (let cx = Math.floor(ARENA.x0/CH); cx <= Math.floor((ARENA.x1 - 1)/CH); cx++)
     for (let cy = Math.floor(ARENA.y0/CH); cy <= Math.floor((ARENA.y1 - 1)/CH); cy++) ensureChunk(cx, cy);
+  if (S.ramps) placeRamps();
   G.gemsLeft = 0;
   for (const c of G.chunks.values()) G.gemsLeft += c.gems.length;
   if (party){
@@ -1280,12 +1281,6 @@ function ensureChunk(cx, cy){
       }
       c.scaf.push(r); break;
     }
-  }
-  // ramps (the rainbow road): a glowing kicker on the road that launches a snake into a big jump. Not solid.
-  if (G.S.ramps && rnd() < 0.85*G.S.ramps) for (let a = 0; a < 24; a++){
-    const alongX = rnd() < .5, gx = 1 + Math.floor(rnd()*(CH - 4)), gy = 1 + Math.floor(rnd()*(CH - 4));
-    const r = alongX ? {x: ox+gx, y: oy+gy+0.3, w: 1.8, h: 1.1, alongX} : {x: ox+gx+0.3, y: oy+gy, w: 1.1, h: 1.8, alongX};
-    if (fits(r, 0.9)){ c.ramps.push(r); break; }
   }
   const nGem = 1 + (rnd() < .45 ? 1 : 0);
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
@@ -1488,7 +1483,7 @@ function collide(){
       else if (!o.tall && !G.air){ if (touchRect(o, 'hurdle')){ crashed = true; return false; } }
     }
     for (const g of c.gems)
-      if (!g.taken && state === 'play' && Math.hypot(g.x-G.x, g.y-G.y) < 0.62) eat(g);
+      if (!g.taken && state === 'play' && (!g.high || G.air) && Math.hypot(g.x-G.x, g.y-G.y) < 0.62) eat(g);
   });
   if (crashed || !stillAlive()) return;
   if (MODE === 2 && state === 'play' && CUR.alive && !G.air && CUR.grace <= 0) for (const q of PL){
@@ -1518,13 +1513,40 @@ function pullGems(dt){
     }
   });
 }
+// the rainbow road's ramps: four big ones, one in each quarter of the field, aimed toward the middle. Each has a clear
+// run-up and a clear landing, and launches you through a trail of three coins floating in the air (they only count mid-jump).
+// Built from the level's seed, so every screen in a game gets the same ones.
+function placeRamps(){
+  const rr = mulberry(G.seed ^ 0x52a3), cx = (ARENA.x0 + ARENA.x1)/2, cy = (ARENA.y0 + ARENA.y1)/2, half = (ARENA.x1 - ARENA.x0)/2;
+  const L = 3.2, Wd = 2.0, inside = r => r.x > ARENA.x0 + 1 && r.y > ARENA.y0 + 1 && r.x + r.w < ARENA.x1 - 1 && r.y + r.h < ARENA.y1 - 1;
+  const span = (x0, y0, x1, y1) => ({x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0)});
+  for (const [qx, qy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) for (let a = 0; a < 40; a++){
+    const px = cx + qx*half*(0.3 + rr()*0.4), py = cy + qy*half*(0.3 + rr()*0.4), alongX = rr() < 0.5;
+    const sx = alongX ? Math.sign(cx - px) : 0, sy = alongX ? 0 : Math.sign(cy - py);
+    const r = alongX ? {x: px - L/2, y: py - Wd/2, w: L, h: Wd, alongX, dx: sx, dy: 0} : {x: px - Wd/2, y: py - L/2, w: Wd, h: L, alongX, dx: 0, dy: sy};
+    // run-up behind the ramp, the ramp itself, and the flight and landing beyond it
+    const ex = px + sx*L/2, ey = py + sy*L/2, back = 3, fly = RAMP_FLY - L + 2.5, wide = Wd/2 + 0.6;
+    const lane = alongX ? span(px - sx*(L/2 + back), py - wide, ex + sx*fly, py + wide) : span(px - wide, py - sy*(L/2 + back), px + wide, ey + sy*fly);
+    if (!inside(lane) || G.walls.some(w => overlaps(lane, w, 0.3))) continue;
+    if (G.runway && overlaps(lane, {x: -4, y: -3, w: 18, h: 7}, 0)) continue;
+    if ([...G.chunks.values()].some(c => (c.ramps || []).some(q => overlaps(lane, q, 1)))) continue;
+    // clear the lane of everything solid
+    for (const c of G.chunks.values()) c.obs = c.obs.filter(o => o.leg || !overlaps(lane, o, 0.3));
+    G.movers = G.movers.filter(o => !overlaps(lane, o, 0.3)); G.gates = G.gates.filter(o => !overlaps(lane, o, 0.3));
+    ensureChunk(Math.floor(px/CH), Math.floor(py/CH)).ramps.push(r);
+    const fx = px - sx*L/2, fy = py - sy*L/2;   // the foot of the ramp, where the jump begins
+    for (const f of [0.4, 0.53, 0.66]) addThing('gems', {x: fx + sx*f*RAMP_FLY, y: fy + sy*f*RAMP_FLY, taken: false, high: 0.45 + 2.4*Math.sin(Math.PI*f)});
+    break;
+  }
+}
 function onRamp(x, y){
   const c = G.chunks.get(Math.floor(x/CH) + ',' + Math.floor(y/CH));
   return !!(c && c.ramps && c.ramps.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
 }
 // off a ramp: a jump about 70% longer and higher than a normal one
+const RAMP_FLY = 9;   // how far a ramp throws you, measured from the foot of the ramp
 function rampJump(){
-  G.air = true; G.airT = 0; G.airDur = 1.7*G.D.jump*G.K.jump/G.speed; G.airH = 1.6; G.jumpBuf = 0;
+  G.air = true; G.airT = 0; G.airDur = RAMP_FLY/G.speed; G.airH = 2; G.jumpBuf = 0;
   pushPoint(); sfx(t => { tone('sine', 300, t, 0.22, 0.3, sfxBus, 1100); tone('triangle', 900, t + 0.05, 0.06, 0.25, sfxBus, 1800); }); buzz([10, 20, 30]);
   burst(G.x, G.y, C.gem, 10, 3);
 }
@@ -1684,7 +1706,7 @@ function aiThink(p, dt){
   if (!p.aiGem || p.aiGem.taken){
     const ranked = [];
     for (const c of G.chunks.values()) for (const g of c.gems){
-      if (g.taken) continue;
+      if (g.taken || g.high) continue;
       const a = Math.atan2(g.y - G.y, g.x - G.x);
       ranked.push({g, d: Math.hypot(g.x - G.x, g.y - G.y)*(1.5 - 0.5*Math.cos(angDiff(a, G.th)))});
     }
@@ -2794,18 +2816,32 @@ function makeR3(){
   // the rainbow road's ramps: a glowing rounded kicker striped with rainbow bands and white edge stripes
   let RAMP = null;
   function rampMesh(r){
+    const L = r.alongX ? r.w : r.h, W = r.alongX ? r.h : r.w, H = 0.7, N = 16, prof = t => H*Math.pow(t, 1.7);
     if (!RAMP){
-      const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
-      ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'].forEach((col2, k) => { x.fillStyle = col2; x.fillRect(k*256/7, 0, 256/7 + 1, 64); });
-      x.fillStyle = 'rgba(255,255,255,.85)'; x.fillRect(0, 6, 256, 5); x.fillRect(0, 53, 256, 5);   // white edge stripes, the same from either side
+      // dark deck with glowing chevrons pointing at the lip (the top of the canvas is the lip), rainbow rails down each side
+      const c = document.createElement('canvas'); c.width = 256; c.height = 512; const x = c.getContext('2d');
+      const bg = x.createLinearGradient(0, 512, 0, 0); bg.addColorStop(0, '#1a0f3a'); bg.addColorStop(1, '#3a1d72'); x.fillStyle = bg; x.fillRect(0, 0, 256, 512);
+      ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'].forEach((col2, k) => { x.fillStyle = col2; x.fillRect(k*5, 0, 5, 512); x.fillRect(251 - k*5, 0, 5, 512); });
+      x.strokeStyle = '#ffffff'; x.lineWidth = 22; x.lineJoin = 'miter'; x.shadowColor = '#ffd23f'; x.shadowBlur = 18;
+      for (const y0 of [400, 270, 140]){ x.beginPath(); x.moveTo(62, y0 + 60); x.lineTo(128, y0); x.lineTo(194, y0 + 60); x.stroke(); }
+      x.shadowBlur = 0; x.fillStyle = '#ffffff'; x.fillRect(0, 0, 256, 14);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      RAMP = {geo: new THREE.CylinderGeometry(1, 1, 1, 28, 1, false, 0, Math.PI), mat: new THREE.MeshBasicMaterial({map: t})};
+      RAMP = {top: new THREE.MeshBasicMaterial({map: t, side: THREE.DoubleSide}), body: new THREE.MeshBasicMaterial({color: '#2b1658', side: THREE.DoubleSide}), lip: new THREE.MeshBasicMaterial({color: '#ffffff'})};
     }
-    // a half-cylinder lying on its side: rises and falls along the direction of travel
-    const m = new THREE.Mesh(RAMP.geo, RAMP.mat), g = new THREE.Group();
-    m.rotation.z = Math.PI/2; m.scale.set(0.3, r.alongX ? r.h : r.w, (r.alongX ? r.w : r.h)/2); m.rotation.y = r.alongX ? Math.PI/2 : 0;
-    g.add(m); g.position.set(r.x + r.w/2, 0, r.y + r.h/2);
-    const glow = glowSprite('#ffffff', 0.35); glow.scale.set(r.w*1.6, 0.6, 1); glow.position.y = 0.15; g.add(glow);
+    // built along +x (the way it launches you), y up, z across
+    const top = [], uv = [], idx = [];
+    for (let i = 0; i <= N; i++){ const t = i/N, X = -L/2 + t*L, Y = prof(t); top.push(X, Y, -W/2, X, Y, W/2); uv.push(0, t, 1, t); if (i) idx.push(2*i - 2, 2*i - 1, 2*i, 2*i - 1, 2*i + 1, 2*i); }
+    const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.Float32BufferAttribute(top, 3)); tg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); tg.setIndex(idx);
+    const body = [];
+    for (const z of [-W/2, W/2]) for (let i = 1; i <= N; i++){ const t0 = (i - 1)/N, t1 = i/N; body.push(-L/2 + t0*L, prof(t0), z, -L/2 + t1*L, prof(t1), z, -L/2 + t1*L, 0, z, -L/2 + t0*L, prof(t0), z, -L/2 + t1*L, 0, z, -L/2 + t0*L, 0, z); }
+    body.push(L/2, 0, -W/2, L/2, H, -W/2, L/2, H, W/2, L/2, 0, -W/2, L/2, H, W/2, L/2, 0, W/2);   // the back of the lip
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(body, 3));
+    const g = new THREE.Group(), inner = new THREE.Group();
+    inner.add(new THREE.Mesh(tg, RAMP.top), new THREE.Mesh(bg, RAMP.body));
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, W + 0.08), RAMP.lip); lip.position.set(L/2, H, 0); inner.add(lip);
+    inner.rotation.y = -Math.atan2(r.dy, r.dx); g.add(inner);
+    g.position.set(r.x + r.w/2, 0, r.y + r.h/2);
+    const glow = glowSprite('#ffffff', 0.35); glow.scale.set(Math.max(r.w, r.h)*1.4, 0.8, 1); glow.position.y = 0.2; g.add(glow);
     return g;
   }
   // the rainbow road's gems are spinning gold coins with a star on each face
@@ -2852,7 +2888,7 @@ function makeR3(){
         scene.add(o.gem, o.glow, o.beam); gemObjs.set(g, o);
       }
       const grow = Math.max(0.01, g.born === undefined ? 1 : Math.min(1, (G.t - g.born)*3));
-      const y = 0.55 + 0.1*Math.sin(t*3 + g.x);
+      const y = (g.high || 0.55) + 0.1*Math.sin(t*3 + g.x);   // the ramp coins float up where a jump carries you
       // gems bop to the beat
       o.gem.position.set(g.x, y, g.y); o.gem.rotation.y = t*1.6 + g.y; o.gem.scale.setScalar(grow*(1 + 0.1*BEAT));
       o.glow.position.set(g.x, y, g.y); o.glow.scale.setScalar(1.5*grow*(1 + 0.2*BEAT));
