@@ -1516,7 +1516,9 @@ function step(d, dt){
   if (G.air){
     G.airT += dt;
     if (G.airT >= G.airDur){
-      G.air = false; pushPoint(); sfxLand(); buzz(14); burst(G.x, G.y, C.ribbon, 6, 2);
+      G.air = false; pushPoint(); sfxLand(); buzz(14);
+      // the landing puff, except where this snake is seen through its own eyes (it would pop up right in front of the camera)
+      if (!(view === 'eye' && CUR && viewers().includes(CUR.i))) burst(G.x, G.y, C.ribbon, 6, 2);
       if (G.jumpBuf > 0) jump();
     }
   }
