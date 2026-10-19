@@ -402,6 +402,15 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .addrow .btn:disabled{opacity:.35;cursor:not-allowed}
 .code-in{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:2.4rem;letter-spacing:.14em;text-align:center;width:100%;padding:10px 8px 10px 16px;border:1.5px solid var(--cream);background:#000;color:var(--line);outline:none;-webkit-user-select:text;user-select:text}
 .code-in:focus{border-color:var(--lime)}
+/* the join bar on the menu: an obvious way into someone else's game */
+.joinbar{display:grid;gap:12px;padding:14px;border:1.5px solid transparent;border-image:var(--holo) 1;background:rgba(95,240,255,.05)}
+.jb-t{display:grid;gap:4px}
+.jb-t b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.95rem}
+.jb-t span{font-size:.74rem;color:var(--muted)}
+.jb-f{display:grid;grid-template-columns:1fr auto;gap:8px}
+.jb-in{font-size:1.5rem;padding:8px 8px 8px 14px}
+.jb-in::placeholder{color:#3a3650}
+.jb-f .btn{padding-left:22px;padding-right:22px}
 .code-in,.name-in{box-sizing:border-box;max-width:100%}
 .you{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:center}
 .res{list-style:none;margin:0;padding:0;display:grid;gap:0;border-top:1.5px solid var(--line)}
@@ -528,7 +537,14 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
         </svg>
       </div>
     </div>
-    <button class="btn btn-ghost" id="joinOpen">Join a game on this screen</button>
+    <!-- joining someone else's game: right under the title, with the code box right there -->
+    <div class="joinbar" id="joinBar">
+      <div class="jb-t"><b>Joining a friend's game?</b><span>Type the 4-letter code from their screen to play your own snake here.</span></div>
+      <div class="jb-f">
+        <input class="code-in jb-in" id="joinInline" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="Game code to join">
+        <button class="btn" id="joinInlineGo">Join</button>
+      </div>
+    </div>
     <details class="how" id="how">
       <summary>How to play</summary>
       <ul class="rules">
@@ -4056,16 +4072,16 @@ function setPhoneUI(note){
   $('bigQr').hidden = !wantQr;
   $('bqEyebrow').textContent = MODE === 1 ? (on ? 'Phone connected' : 'Play with your phone') : MODE === 2 ? 'Join the party' : 'Join the team';
   $('bqDesc').textContent = MODE === 1 ? (on ? 'Tilt to steer, jump for real. Press Start on your phone or here.' : "Point your phone's camera here. Your phone becomes the controller.")
-    : `Scan to play on your phone, or to steer on this screen. Laptops and tablets: open ${siteName()} and press Join a game.`;
+    : `Scan to play on your phone, or to steer on this screen. Laptops and tablets: open ${siteName()} and type this code under Joining a friend's game?`;
   const url = controllerURL(LINK.code);
   const local = location.protocol === 'file:';
-  const how = `Open <b>${siteName()}</b>, press <b>Join a game on this screen</b> and type this code.`;
+  const how = `Open <b>${siteName()}</b> and type this code under <b>Joining a friend's game?</b>`;
   if (note){ $('phoneDesc').textContent = note; $('inviteDesc').innerHTML = (local ? '' : how + '<br>') + `<i>${esc(note)}</i>`; return; }
   $('phoneDesc').innerHTML = local ? 'Open this game from its web address (like your Render site) so a phone can reach the controller page.'
     : on ? '<b>Phone connected.</b> Tilt to steer, jump to jump.'
     : `Scan with your phone, or open <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a>.`;
   $('inviteDesc').innerHTML = local ? 'Open this game from its web address so friends can join.' : how;
-  $('sheetCodeHow').innerHTML = local ? 'Open this game from its web address so friends can join.' : `Open <b>${siteName()}</b>, press <b>Join a game on this screen</b> and type this code.`;
+  $('sheetCodeHow').innerHTML = local ? 'Open this game from its web address so friends can join.' : `Open <b>${siteName()}</b> and type this code under <b>Joining a friend's game?</b>`;
 }
 function drawQR(){
   for (const box of [$('qr'), $('qr2'), $('qr3'), $('qr4')]){
@@ -5105,7 +5121,9 @@ $('nextBtn').addEventListener('click', nextStage);
 $('resumeBtn').addEventListener('click', resume);
 $('rematchBtn').addEventListener('click', () => start(MODE === 3 ? stage : G.idx));
 $('duelMenuBtn').addEventListener('click', toMenu);
-$('joinOpen').addEventListener('click', () => showJoin(''));
+$('joinInlineGo').addEventListener('click', () => { initAudio(); joinGame($('joinInline').value); });
+$('joinInline').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); $('joinInlineGo').click(); } });
+$('joinInline').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
 $('joinGo').addEventListener('click', () => { initAudio(); joinGame($('joinCode').value); });
 $('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('joinGo').click(); } });
 $('joinBack').addEventListener('click', () => { hideOverlays(); $('menu').hidden = false; });
