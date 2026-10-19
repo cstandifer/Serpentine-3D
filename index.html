@@ -894,7 +894,7 @@ const STAGES = [
            block(-22, 11, 5, 1), block(-13, 11, 12, 1), block(3, 11, 13, 1), block(20, 11, 2, 1)]},
   {name: 'Daybreak', goal: 30, half: 23, music: 'trance', ...lv('#ffffff', 300, ['#ff2e63', '#ff4fd8', '#ffffff', '#ff4fd8']), gates: 1.7, movers: 0.7,
    walls: [block(-9, -10, 2, 4), block(7, -10, 2, 4), block(-9, 7, 2, 4), block(7, 7, 2, 4)]},
-  {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2,
+  {name: 'Last Dance', goal: 34, half: 24, music: 'breakbeat', ...lv('#ffffff', 75, ['#7dff5a', '#ffe94d', '#ff4fd8', '#8a7bff', '#5ff0ff']), gates: 1.2, movers: 1.2, ramps: 1,
    walls: gauntlet()}
 ];
 
@@ -957,7 +957,7 @@ const THEMES = {
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
-              hurdle: ['#ffffff', '#c9c4ff'], pillar: ['#ffffff', '#9a8cff'], wall: ['#1a0f3a', '#07031c'], edge: '#ffffff', gem: '#ffffff',
+              hurdle: ['#ffffff', '#c9c4ff'], pillar: ['#ffffff', '#9a8cff'], wall: ['#1a0f3a', '#07031c'], edge: '#ffffff', gem: '#ffd23f', gemShape: 'coin',
               pillarShape: 'crystal', hurdleShape: 'lightbar', decor: 'space', rainbow: true}
 };
 THEMES.robot = THEMES.house;   // the robot house course keeps the house look
@@ -1101,7 +1101,7 @@ function newlyOpen(before){ return Object.keys(SNAKE_UNLOCK).filter(k => SNAKE_U
 // The movement, collision and drawing code all work on G, so load() copies one player's fields into G
 // (plus its colors) and save() copies them back. In solo there's just one player and it's always loaded.
 const DUEL_TIME = 60;
-const SNAKE_FIELDS = ['K','x','y','th','turn','prevTurn','turnCue','aim','sinceP','trail','air','airT','airDur','jumpBuf','tailLen','dist','gems','magCool','cam','flash','noteI','scrapeCue'];
+const SNAKE_FIELDS = ['K','x','y','th','turn','prevTurn','turnCue','aim','sinceP','trail','air','airT','airDur','airH','jumpBuf','tailLen','dist','gems','magCool','cam','flash','noteI','scrapeCue'];
 let PL = [], CUR = null;
 function lookFor(S, color, side){
   const c = rgb(color), base = rgb(themeOf(S).floor);
@@ -1126,7 +1126,7 @@ function colorFor(K, i){
 }
 function newPlayer(i, y, look){
   return {i, look, x: 0.5, y, th: 0, turn: 0, prevTurn: 0, turnCue: 0, aim: null, sinceP: 0,
-    trail: [{x: -6.5, y, air: false}], air: false, airT: 0, airDur: 1, jumpBuf: 0, tailLen: 7, dist: 0, gems: 0,
+    trail: [{x: -6.5, y, air: false}], air: false, airT: 0, airDur: 1, airH: 1, jumpBuf: 0, tailLen: 7, dist: 0, gems: 0,
     magCool: 0, cam: {x: 3.5, y}, flash: 0, noteI: 0, scrapeCue: 0, lives: LIVES, alive: true, respawnT: 0, grace: 0, cause: ''};
 }
 function load(p){
@@ -1218,7 +1218,7 @@ function ensureChunk(cx, cy){
   const k = cx + ',' + cy;
   let c = G.chunks.get(k);
   if (c) return c;
-  c = {obs: [], gems: [], scaf: []};
+  c = {obs: [], gems: [], scaf: [], ramps: []};
   G.chunks.set(k, c);
   const rnd = mulberry(hash(cx, cy, G.seed));
   const ox = cx*CH, oy = cy*CH;
@@ -1280,6 +1280,12 @@ function ensureChunk(cx, cy){
       }
       c.scaf.push(r); break;
     }
+  }
+  // ramps (the rainbow road): a glowing kicker on the road that launches a snake into a big jump. Not solid.
+  if (G.S.ramps && rnd() < 0.85*G.S.ramps) for (let a = 0; a < 24; a++){
+    const alongX = rnd() < .5, gx = 1 + Math.floor(rnd()*(CH - 4)), gy = 1 + Math.floor(rnd()*(CH - 4));
+    const r = alongX ? {x: ox+gx, y: oy+gy+0.3, w: 1.8, h: 1.1, alongX} : {x: ox+gx+0.3, y: oy+gy, w: 1.1, h: 1.8, alongX};
+    if (fits(r, 0.9)){ c.ramps.push(r); break; }
   }
   const nGem = 1 + (rnd() < .45 ? 1 : 0);
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
@@ -1512,6 +1518,16 @@ function pullGems(dt){
     }
   });
 }
+function onRamp(x, y){
+  const c = G.chunks.get(Math.floor(x/CH) + ',' + Math.floor(y/CH));
+  return !!(c && c.ramps && c.ramps.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
+}
+// off a ramp: a jump about 70% longer and higher than a normal one
+function rampJump(){
+  G.air = true; G.airT = 0; G.airDur = 1.7*G.D.jump*G.K.jump/G.speed; G.airH = 1.6; G.jumpBuf = 0;
+  pushPoint(); sfx(t => { tone('sine', 300, t, 0.22, 0.3, sfxBus, 1100); tone('triangle', 900, t + 0.05, 0.06, 0.25, sfxBus, 1800); }); buzz([10, 20, 30]);
+  burst(G.x, G.y, C.gem, 10, 3);
+}
 function step(d, dt){
   // turn rate scales with speed so the tightest curve keeps the same radius as you speed up
   G.th += Math.min(TURN_MAX, G.speed/(TURN_R*(G.K.turnR || 1)))*G.turn*dt;
@@ -1519,10 +1535,11 @@ function step(d, dt){
   G.sinceP += d;
   if (G.sinceP >= PT_GAP && Math.abs(G.turn) > 0.01) pushPoint();
   if (G.jumpBuf > 0) G.jumpBuf -= dt;
+  if (!G.air && G.S.ramps && onRamp(G.x, G.y)) rampJump();
   if (G.air){
     G.airT += dt;
     if (G.airT >= G.airDur){
-      G.air = false; pushPoint(); sfxLand(); buzz(14);
+      G.air = false; G.airH = 1; pushPoint(); sfxLand(); buzz(14);
       // the landing puff, except where this snake is seen through its own eyes (it would pop up right in front of the camera)
       if (!(view === 'eye' && CUR && viewers().includes(CUR.i))) burst(G.x, G.y, C.ribbon, 6, 2);
       if (G.jumpBuf > 0) jump();
@@ -2774,6 +2791,38 @@ function makeR3(){
   const gemMat = new THREE.MeshPhongMaterial({color: col(C.gem), emissive: col(C.gem), emissiveIntensity: 0.45, flatShading: true, shininess: 80});
   const beamMat = new THREE.MeshBasicMaterial({color: col(C.gem), transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide});
   const gemObjs = new Map();
+  // the rainbow road's ramps: a glowing rounded kicker striped with rainbow bands and white edge stripes
+  let RAMP = null;
+  function rampMesh(r){
+    if (!RAMP){
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
+      ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'].forEach((col2, k) => { x.fillStyle = col2; x.fillRect(k*256/7, 0, 256/7 + 1, 64); });
+      x.fillStyle = 'rgba(255,255,255,.85)'; x.fillRect(0, 6, 256, 5); x.fillRect(0, 53, 256, 5);   // white edge stripes, the same from either side
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      RAMP = {geo: new THREE.CylinderGeometry(1, 1, 1, 28, 1, false, 0, Math.PI), mat: new THREE.MeshBasicMaterial({map: t})};
+    }
+    // a half-cylinder lying on its side: rises and falls along the direction of travel
+    const m = new THREE.Mesh(RAMP.geo, RAMP.mat), g = new THREE.Group();
+    m.rotation.z = Math.PI/2; m.scale.set(0.3, r.alongX ? r.h : r.w, (r.alongX ? r.w : r.h)/2); m.rotation.y = r.alongX ? Math.PI/2 : 0;
+    g.add(m); g.position.set(r.x + r.w/2, 0, r.y + r.h/2);
+    const glow = glowSprite('#ffffff', 0.35); glow.scale.set(r.w*1.6, 0.6, 1); glow.position.y = 0.15; g.add(glow);
+    return g;
+  }
+  // the rainbow road's gems are spinning gold coins with a star on each face
+  let COIN = null;
+  function coin(){
+    if (!COIN){
+      const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+      const gr = x.createRadialGradient(64, 64, 10, 64, 64, 64); gr.addColorStop(0, '#fff2a8'); gr.addColorStop(0.7, '#ffcc33'); gr.addColorStop(1, '#c98a0a'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+      x.strokeStyle = '#b77a08'; x.lineWidth = 6; x.beginPath(); x.arc(64, 64, 52, 0, 7); x.stroke();
+      x.fillStyle = '#fff6c8'; x.beginPath(); for (let k = 0; k < 10; k++){ const a = -Math.PI/2 + k*Math.PI/5, rr = k % 2 ? 14 : 34; x.lineTo(64 + Math.cos(a)*rr, 64 + Math.sin(a)*rr); } x.closePath(); x.fill();
+      const face = new THREE.CanvasTexture(c); face.colorSpace = THREE.SRGBColorSpace;
+      const rim = new THREE.MeshPhongMaterial({color: 0xe0a21a, emissive: 0x7a4a00, emissiveIntensity: 0.6, shininess: 120, specular: 0xffffff});
+      const faceMat = new THREE.MeshPhongMaterial({map: face, emissive: 0x6a4800, emissiveIntensity: 0.5, shininess: 120, specular: 0xffffff});
+      COIN = {geo: new THREE.CylinderGeometry(0.3, 0.3, 0.07, 32), mats: [rim, faceMat, faceMat]};
+    }
+    const g = new THREE.Group(), m = new THREE.Mesh(COIN.geo, COIN.mats); m.rotation.x = Math.PI/2; g.add(m); return g;
+  }
   // the toy world's gems are little toadstools: a red cap with white spots on a cream stem
   let MUSH = null;
   function mushroom(){
@@ -2798,7 +2847,8 @@ function makeR3(){
       seen.add(g);
       let o = gemObjs.get(g);
       if (!o){
-        o = {gem: C.theme && C.theme.gemShape === 'mushroom' ? mushroom() : new THREE.Mesh(GEM_GEO, gemMat), glow: glowSprite(C.gem, 0.9), beam: new THREE.Mesh(BEAM_GEO, beamMat)};
+        const gs = C.theme && C.theme.gemShape;
+        o = {gem: gs === 'mushroom' ? mushroom() : gs === 'coin' ? coin() : new THREE.Mesh(GEM_GEO, gemMat), glow: glowSprite(C.gem, 0.9), beam: new THREE.Mesh(BEAM_GEO, beamMat)};
         scene.add(o.gem, o.glow, o.beam); gemObjs.set(g, o);
       }
       const grow = Math.max(0.01, g.born === undefined ? 1 : Math.min(1, (G.t - g.born)*3));
@@ -2974,6 +3024,7 @@ function makeR3(){
       b.position.set(o.x + o.w/2, 0, o.y + o.h/2); level.add(b);
     }
     for (const c of G.chunks.values()) for (const r of c.scaf) level.add(scaffold(r));
+    for (const c of G.chunks.values()) for (const r of (c.ramps || [])) level.add(rampMesh(r));
     buildDecor(T);
     cLow.set(C.hurdle); cLowS.set(C['hurdle-side']); cTall.set(C.pillar); cTallS.set(C['pillar-side']);
 
@@ -3690,7 +3741,7 @@ function makeR3(){
       // the camera follows the snake's heading with a little lag, which softens any wobble
       g.yaw += angDiff(G.th, g.yaw)*(g.snap ? 1 : 1 - Math.exp(-dt*(REDUCED ? 30 : 9)));
       const fx = Math.cos(g.yaw), fz = Math.sin(g.yaw);
-      const ap = G.air ? Math.min(1, G.airT/G.airDur) : 0, jh = Math.sin(Math.PI*ap)*1.2*Math.sqrt(K.jump);
+      const ap = G.air ? Math.min(1, G.airT/G.airDur) : 0, jh = Math.sin(Math.PI*ap)*1.2*Math.sqrt(K.jump)*(G.airH || 1);
 
       if (gone){ g.body.count = 0; g.dots.count = 0; } else updateBody(g);
       // a solo crash flickers the head; a fresh respawn in versus blinks it while it can't be hit
