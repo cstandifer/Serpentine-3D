@@ -905,7 +905,7 @@ const COURSES = [
    walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
   {name: 'Crossroads', base: 19, music: 'techno', ...lv('#ffffff', 120, ['#ffe94d', '#ff6b3d', '#ff4fd8']),
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
-  {name: 'Pinball', base: 19, music: 'electro', movers: 1.4, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
+  {name: 'Pinball', base: 19, music: 'swing', movers: 1.4, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
    walls: h => { const st = Math.round(h/3), sz = Math.max(2, Math.round(st/3)), w = []; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (i || j) w.push(block(i*st - 1, j*st - 1, sz, sz)); return w; }},
   {name: 'Night Market', base: 20, music: 'robot', gates: 1.2, ...lv('#ffffff', 290, ['#ff4fd8', '#8a7bff', '#2b8cff']),
    walls: h => { const y = Math.round(h*0.4), L = h - 7; return [block(-h + 4, -y, L, 1), block(3, -y, L, 1), block(-h + 4, y, L, 1), block(3, y, L, 1)]; }}
@@ -960,6 +960,7 @@ const THEMES = {
               pillarShape: 'crystal', hurdleShape: 'lightbar', decor: 'space', rainbow: true}
 };
 THEMES.robot = THEMES.house;   // the robot house course keeps the house look
+THEMES.swing = THEMES.electro;   // Pinball keeps the light-cycle city look with its own song
 const themeOf = S => THEMES[S.music] || THEMES.breakbeat;
 
 // ---- saved progress ----
@@ -2353,6 +2354,7 @@ const STYLES = {
       if (sec === 'robot' && (i >> 6) % 2 && s % 2 === 1) toneTo(P.in, 'square', mf(ch[(s >> 1) % 5] + 24), t, 0.012, sd*0.5, 5000);   // a twinkling arp on the second pass
     }}
 };
+STYLES.swing = STYLES.electro;   // Pinball's fallback if its track can't load
 const style = () => STYLES[G.S.music];
 function schedule(){
   if (!AC || !musicOn || trackOf()) return;
@@ -2374,17 +2376,18 @@ function schedule(){
 // downbeat) keep the visuals pulsing on the beat; key (a MIDI root) and minor set the notes of the gem chime.
 // A level without a file keeps its synth music, so files can arrive one at a time.
 // music key -> {src, bpm, offset, key, minor, vol, credit}. All from Pixabay (Pixabay Content License, no attribution required).
-// Level 10 (breakbeat) keeps its synth music. Level 6's track also plays on the Pinball course.
+// Level 10 (breakbeat) keeps its synth music. The Pinball course has its own track (swing), with level 6's look.
 const TRACKS = {
   lofi: {src: 'music/01-good-night-lofi.mp3', bpm: 80.0, offset: 0.802, key: 48, minor: false, vol: 0.86, credit: 'Good Night (Lofi Cozy Chill Music) by FASSounds (Pixabay)'},
   synthwave: {src: 'music/02-static-heart.mp3', bpm: 95.0, offset: 0.684, key: 55, minor: true, vol: 1.09, credit: 'Static Heart by AleXZavesa (Pixabay)'},
-  chiptune: {src: 'music/03-retro-gaming.mp3', bpm: 116.01, offset: 0.669, key: 53, minor: false, vol: 0.82, credit: 'Retro Gaming by moodmode (Pixabay)'},
+  chiptune: {src: 'music/03-return-of-the-8-bit-era.mp3', bpm: 87.0, offset: 1.127, key: 53, minor: true, vol: 0.88, credit: 'The Return Of The 8-bit Era by DJARTMUSIC (Pixabay)'},   // 174 bpm, pulsed on every other beat
   techno: {src: 'music/04-vampire-night.mp3', bpm: 136.0, offset: 0.721, key: 56, minor: false, vol: 1.04, credit: 'Vampire Night (Dark Acid Techno) by wbmstudio (Pixabay)'},
   disco: {src: 'music/05-midnight-parade.mp3', bpm: 125.62, offset: 1.525, key: 48, minor: false, vol: 1.17, credit: 'Midnight Parade by djovan (Pixabay)'},
   electro: {src: 'music/06-hard-cyberpunk.mp3', bpm: 124.0, offset: 1.36, key: 54, minor: true, vol: 1.1, credit: 'Hard Cyberpunk by Kulakovka (Pixabay)'},
   dub: {src: 'music/07-la-nuit.mp3', bpm: 125.24, offset: 1.27, key: 50, minor: false, vol: 0.82, credit: 'La nuit by Jean_Motell (Pixabay)'},
   dnb: {src: 'music/08-upbeat-electronic-beat.mp3', bpm: 130.01, offset: 1.219, key: 53, minor: false, vol: 0.92, credit: 'Upbeat Electronic Beat by Tunetank (Pixabay)'},
   trance: {src: 'music/09-lo-fi-jazz.mp3', bpm: 85.94, offset: 0.754, key: 55, minor: false, vol: 0.98, credit: 'Lo-Fi Jazz by ZephiraMusic (Pixabay)'},
+  swing: {src: 'music/pinball-20s-swing-rave.mp3', bpm: 124.98, offset: 0.516, key: 48, minor: false, vol: 1.5, credit: '20s swing rave by dferun (Pixabay)'},
   robot: {src: 'music/night-market-interstellar.mp3', bpm: 99.98, offset: 0.084, key: 52, minor: true, vol: 0.96, credit: 'Interstellar by QuentinGaming (Pixabay)'},
 };
 // what the menus call a level's music: its track's title, or the built-in style's name
@@ -2779,8 +2782,8 @@ function makeR3(){
       const grow = Math.max(0.01, g.born === undefined ? 1 : Math.min(1, (G.t - g.born)*3));
       const y = 0.55 + 0.1*Math.sin(t*3 + g.x);
       // gems bop to the beat
-      o.gem.position.set(g.x, y, g.y); o.gem.rotation.y = t*1.6 + g.y; o.gem.scale.setScalar(grow*(1 + 0.28*BEAT));
-      o.glow.position.set(g.x, y, g.y); o.glow.scale.setScalar(1.5*grow*(1 + 0.6*BEAT));
+      o.gem.position.set(g.x, y, g.y); o.gem.rotation.y = t*1.6 + g.y; o.gem.scale.setScalar(grow*(1 + 0.1*BEAT));
+      o.glow.position.set(g.x, y, g.y); o.glow.scale.setScalar(1.5*grow*(1 + 0.2*BEAT));
       o.beam.position.set(g.x, 3.5, g.y); o.beam.scale.set(1, grow, 1);
     }
     for (const [g, o] of gemObjs) if (!seen.has(g)) dropGem(g, o);
