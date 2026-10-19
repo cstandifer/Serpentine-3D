@@ -959,7 +959,7 @@ const THEMES = {
               sand: ['#b8946a', '#a8845a', '#c2a074', '#9e7c54'],
               balloons: [['#ff5a5f', '#ffd166', '#ffffff'], ['#3a86ff', '#ffffff', '#ffd166'], ['#ff8fab', '#fff1e6', '#ff5a5f'], ['#06a77d', '#ffd166', '#ffffff'],
                          ['#8338ec', '#ffbe0b', '#ffffff'], ['#ff7b00', '#2b2d42', '#ffd166'], ['#ef476f', '#118ab2', '#ffffff']],
-              pillarShape: 'balloon', hurdleShape: 'sandbag', decor: 'dawn'},
+              pillarShape: 'balloon', hurdleShape: 'bundle', decor: 'dawn'},
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
@@ -1441,7 +1441,7 @@ function scrape(nx, ny, px, py, cause){
 // logs, rocks, rounded hurdles) use a capsule: a line down the middle of the footprint with a radius
 // (o.cap, as a fraction of the footprint's width). Everything else is its box.
 const CAP_PILLAR = {bommie: 0.5, discoball: 0.5, round: 0.5, octagon: 0.5, coral: 0.48, crystal: 0.34, mirror: 0.3};
-const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5, rock: 0.5, sandbag: 0.5};
+const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5, rock: 0.5, bundle: 0.5};
 function shapeObs(o){
   const T = themeOf(G.S), c = o.tall ? CAP_PILLAR[T.pillarShape] : CAP_HURDLE[T.hurdleShape];
   if (c) o.cap = c;
@@ -2907,7 +2907,7 @@ function makeR3(){
   // ---- per-snake graphics: body, jump dots, head, shadow, glow, magnet ring and its own camera ----
   const MAX_BODY = 1500, MAX_DOTS = 400, MAX_PARTS = 400;
   const bodyMats = [gray(0.45), gray(0.45), gray(1), gray(0.3), gray(0.65), gray(0.65)].map(c => new THREE.MeshBasicMaterial({color: c}));
-  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1), SAND_GEO = new THREE.SphereGeometry(1, 16, 10);
+  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1), SAND_GEO = new THREE.SphereGeometry(1, 16, 10), BUNDLE_CYL = new THREE.CylinderGeometry(1, 1, 1, 16);
   const parts = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_PARTS);
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
@@ -3008,7 +3008,7 @@ function makeR3(){
 
   // level: floor, walls and obstacles are fixed once a level loads, so build them once
   function build(){
-    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== ENV_GEO && o.geometry !== SAND_GEO) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
+    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE && o.geometry !== ENV_GEO && o.geometry !== SAND_GEO && o.geometry !== BUNDLE_CYL) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
     level.clear();
     for (const [g, o] of gemObjs) dropGem(g, o);
     const T = C.theme || THEMES.breakbeat;
@@ -3361,19 +3361,19 @@ function makeR3(){
           const m = new THREE.MeshBasicMaterial({map: t}), side = new THREE.MeshBasicMaterial({map: t, color: 0xb0b0b0});
           const b = new THREE.Mesh(BOX, [side, side, m, side, side, side]); b.scale.set(w, H, d); return stood(b, H/2);
         }
-        case 'sandbag': {
-          // a little sandbag wall: a bottom row of burlap bags and a staggered row on top, each bag a squashed pillow
-          const g = new THREE.Group(), wide = Math.min(w, d), n = Math.max(2, Math.round(long/0.55)), seed = Math.abs(Math.round(o.x*11 + o.y*5));
-          const mats = T.sand.map(c => new THREE.MeshPhongMaterial({color: col(c), map: burlapTex(), emissive: col(c), emissiveIntensity: 0.18, shininess: 4, specular: 0x111111}));
-          const bag = (f, y, len, hh, k) => {
-            const m = new THREE.Mesh(SAND_GEO, mats[(seed + k) % mats.length]);
-            m.scale.set(alongX ? len*0.54 : wide*0.5, hh, alongX ? wide*0.5 : len*0.54); m.position.set(alongX ? f*long : 0, y, alongX ? 0 : f*long);
-            m.rotation.y = ((seed + k) % 3 - 1)*0.08; g.add(m);
-          };
-          const len = long/n;
-          for (let k = 0; k < n; k++) bag((k + 0.5)/n - 0.5, H*0.3, len, H*0.32, k);
-          for (let k = 0; k < n - 1; k++) bag((k + 1)/n - 0.5, H*0.74, len*0.95, H*0.27, k + 7);
-          return g;
+        case 'bundle': {
+          // a spare balloon envelope rolled up on the deck: bright bands of its two colors, rounded ends, rope ties.
+          // Built round (radius = half the footprint's width) along its length, then squashed down to hurdle height.
+          const wide = Math.min(w, d), seed = Math.abs(Math.round(o.x*11 + o.y*5)), pal = T.balloons[seed % T.balloons.length];
+          const r = wide/2, core = Math.max(0.01, long - wide), n = Math.max(3, Math.round(core/0.3)), seg = core/n;
+          const mats = pal.slice(0, 2).map(c => new THREE.MeshPhongMaterial({color: col(c), emissive: col(c), emissiveIntensity: 0.3, shininess: 30, specular: 0x333333}));
+          const rope = new THREE.MeshBasicMaterial({color: col('#3a2416')});
+          const roll = new THREE.Group();
+          for (let k = 0; k < n; k++){ const c = new THREE.Mesh(BUNDLE_CYL, mats[k % 2]); c.scale.set(r, seg, r); c.position.y = -core/2 + seg*(k + 0.5); roll.add(c); }
+          for (const sg of [-1, 1]){ const e = new THREE.Mesh(SAND_GEO, mats[0]); e.scale.setScalar(r); e.position.y = sg*core/2; roll.add(e); }
+          for (const f of [-0.3, 0.3]){ const t = new THREE.Mesh(BUNDLE_CYL, rope); t.scale.set(r*1.05, 0.05, r*1.05); t.position.y = f*core; roll.add(t); }
+          if (alongX) roll.rotation.z = Math.PI/2; else roll.rotation.x = Math.PI/2;
+          const g = stood(roll, r); g.scale.y = H/(2*r); return g;
         }
         case 'log': {
           // a felled log: bark on the sides, pale rings on the ends
