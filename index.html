@@ -440,6 +440,25 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 </style>
 </head>
 <body>
+<script>
+// If the game ever fails to start, say so on screen (with the reason) instead of leaving a black page.
+(() => {
+  let last = '';
+  addEventListener('error', e => { last = (e.message || '') + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''); });
+  addEventListener('unhandledrejection', e => { last = String(e.reason && (e.reason.stack || e.reason.message) || e.reason).split('\n')[0]; });
+  const show = why => {
+    if (window.__booted || document.getElementById('bootFail')) return;
+    const d = document.createElement('div'); d.id = 'bootFail';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#000;color:#fff;font:15px/1.5 ui-monospace,Menlo,monospace;padding:24px;text-align:center';
+    d.innerHTML = '<div><p style="font-size:20px;margin:0 0 10px">Serpentine didn\'t start.</p><p style="opacity:.7;margin:0 0 18px;max-width:560px;word-break:break-word"></p><button style="font:inherit;padding:10px 18px;background:#fff;color:#000;border:0;cursor:pointer">Reload</button></div>';
+    d.querySelector('p+p').textContent = why || last || 'It took too long to load. Check the connection and try again.';
+    d.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(d);
+  };
+  window.__bootFail = e => show(String(e && (e.stack || e.message) || e).split('\n').slice(0, 2).join(' '));
+  setTimeout(() => show(), 12000);
+})();
+</script>
 <canvas id="world" aria-label="Serpentine 3D game field" hidden></canvas>
 <div class="vig" id="vig" hidden></div>
 <canvas id="stage" aria-label="Serpentine map"></canvas>
@@ -804,7 +823,8 @@ const cvs = $('stage');
 const ctx = cvs.getContext('2d');
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // three.js draws the 3D views. If it can't load (offline), the game falls back to the top-down view.
-const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js').catch(() => null);
+// (a copy ships with the game, so a slow or blocked CDN can't leave the screen black; the CDN is only a backup)
+const THREE = await import('./vendor/three.module.min.js').catch(() => import('https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js')).catch(() => null);
 let R3 = null; // the 3D renderer, made once the palette and level code below exist
 
 // ---- palette ----
@@ -5271,7 +5291,8 @@ if (joinHash) joinGame(joinHash[1]); else startPhoneLink();
 $('how').open = !store.get('played');
 $('boardBox').open = false;   // the leaderboard starts folded; it's a tap away
 requestAnimationFrame(frame);
-})();
+window.__booted = true;
+})().catch(e => window.__bootFail && window.__bootFail(e));
 </script>
 </body>
 </html>
