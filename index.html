@@ -343,7 +343,7 @@ body.here #pauseBtn svg{width:26px;height:26px}
 .mp-note b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem;white-space:nowrap}
 .mp-note span{font-size:.72rem;line-height:1.4;color:var(--muted)}
 .mp-note .btn{font-size:.85rem;padding:12px 14px;white-space:nowrap}
-body.watching #stage{display:none}
+body.watching #stage,body.nomap #stage{display:none}
 .mp-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%)}
 @media (max-width:700px){.mp-top{top:calc(env(safe-area-inset-top,0px) + 70px);left:auto;right:16px;transform:none}.mp-top .team{max-width:60vw;white-space:normal;justify-content:flex-end}}
 /* playing on this phone: the map moves to the right-hand corner so the jump label stays readable */
@@ -998,12 +998,15 @@ let CTRL = (() => { const c = store.get('ctrl'); return c === 'keys' ? 'keys' : 
 let ARENA = null, WALLS = [];
 
 // ---- screen ----
-let W = 0, H = 0, DPR = 1, SCALE = 40;
+let W = 0, H = 0, DPR = 1, SCALE = 40, NOMAP = false;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
   const mini = view !== 'top';
   // with several views on this screen the map sits in the middle between them; with one view it goes to the corner, out of the way
-  cvs.classList.toggle('duo', mini && MODE !== 1 && typeof viewers === 'function' && viewers().length > 1);
+  const nv = MODE !== 1 && typeof viewers === 'function' ? viewers().length : 1;
+  cvs.classList.toggle('duo', mini && nv > 1);
+  // more than two views on one screen (party or tag team): no map at all, it would only cover the views
+  NOMAP = mini && nv > 2; document.body.classList.toggle('nomap', NOMAP);
   if (mini && MODE !== 1 && ARENA){
     // versus: one map of the whole arena, centered between the two views
     W = H = Math.round(Math.max(150, Math.min(240, Math.min(innerWidth, innerHeight)*0.3)));
@@ -1020,7 +1023,7 @@ function resize(){
   cvs.width = Math.round(W*DPR); cvs.height = Math.round(H*DPR);
   cvs.classList.toggle('mini', mini);
   // the jump label keeps clear of the map in the corner
-  document.documentElement.style.setProperty('--mapw', (mini ? W : 0) + 'px');
+  document.documentElement.style.setProperty('--mapw', (mini && !NOMAP ? W : 0) + 'px');
   cvs.style.width = mini ? W + 'px' : ''; cvs.style.height = mini ? H + 'px' : '';
   if (R3) R3.resize();
 }
@@ -2638,6 +2641,7 @@ function drawHead(beat){
 }
 
 function render(clock){
+  if (NOMAP) return;   // the map is hidden on this screen, so don't spend time drawing it
   const S = SCALE, beat = beatPulse(clock);
   RCAM = MODE !== 1 ? {x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2} : G.cam;
   const live = PL.filter(p => MODE === 1 || (p.alive && p.kind !== 'preview'));
