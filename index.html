@@ -1312,7 +1312,7 @@ const smooth01 = v => { v = Math.max(0, Math.min(1, v)); return v*v*(3 - 2*v); }
 function updateMovers(){
   for (const o of G.movers){ const m = o.mover, s = Math.sin(G.t*2*Math.PI/m.per + m.ph)*m.amp; o.x = m.x0 + m.ax*s; o.y = m.y0 + m.ay*s; }
   if (!G.gates.length) return;
-  const P = 8*60/(STYLES[G.S.music] || STYLES.lofi).bpm;   // two bars of the level's music
+  const P = 8*60/((typeof trackOf === 'function' && trackOf()) || STYLES[G.S.music] || STYLES.lofi).bpm;   // two bars of the level's music (its recorded track's tempo when it has one)
   for (const o of G.gates){
     const f = ((G.t/P + o.gate.ph) % 1 + 1) % 1;
     const u = f < 0.5 ? smooth01(f/0.06) : 1 - smooth01((f - 0.5)/0.06);
@@ -1965,6 +1965,7 @@ function initAudio(){
     musicBus = AC.createGain(); musicBus.gain.value = 0.55; musicBus.connect(master);
     sfxBus = AC.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
     noiseBuf = AC.createBuffer(1, AC.sampleRate*0.5, AC.sampleRate);
+    if (G && G.S) setTimeout(() => loadTrack(TRACKS[G.S.music]), 0);   // start fetching this level's track right away
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
   } catch(_) { AC = null; }
 }
@@ -2371,18 +2372,21 @@ function schedule(){
 // downbeat) keep the visuals pulsing on the beat; key (a MIDI root) and minor set the notes of the gem chime.
 // A level without a file keeps its synth music, so files can arrive one at a time.
 // music key -> {src, bpm, offset, key, minor, vol, credit}. All from Pixabay (Pixabay Content License, no attribution required).
-// Levels 6 (electro) and 10 (breakbeat) and the Pinball course keep their synth music.
+// Level 10 (breakbeat) keeps its synth music. Level 6's track also plays on the Pinball course.
 const TRACKS = {
-  lofi: {src: 'music/01-lofi-vlog-hip-hop.mp3', bpm: 95.0, offset: 1.947, key: 57, minor: true, vol: 0.98, credit: 'Lofi Vlog Hip Hop by TimCat (Pixabay)'},
+  lofi: {src: 'music/01-good-night-lofi.mp3', bpm: 80.0, offset: 0.802, key: 48, minor: false, vol: 0.86, credit: 'Good Night (Lofi Cozy Chill Music) by FASSounds (Pixabay)'},
   synthwave: {src: 'music/02-static-heart.mp3', bpm: 95.0, offset: 0.684, key: 55, minor: true, vol: 1.09, credit: 'Static Heart by AleXZavesa (Pixabay)'},
   chiptune: {src: 'music/03-retro-gaming.mp3', bpm: 116.01, offset: 0.669, key: 53, minor: false, vol: 0.82, credit: 'Retro Gaming by moodmode (Pixabay)'},
-  techno: {src: 'music/04-schmeegl-club.mp3', bpm: 120.01, offset: 1.832, key: 55, minor: true, vol: 0.85, credit: 'Schmeegl Club by Gnate-Saint (Pixabay)'},
-  disco: {src: 'music/05-hard-cyberpunk.mp3', bpm: 124.0, offset: 1.36, key: 54, minor: true, vol: 1.1, credit: 'Hard Cyberpunk by Kulakovka (Pixabay)'},
+  techno: {src: 'music/04-vampire-night.mp3', bpm: 136.0, offset: 0.721, key: 56, minor: false, vol: 1.04, credit: 'Vampire Night (Dark Acid Techno) by wbmstudio (Pixabay)'},
+  disco: {src: 'music/05-midnight-parade.mp3', bpm: 125.62, offset: 1.525, key: 48, minor: false, vol: 1.17, credit: 'Midnight Parade by djovan (Pixabay)'},
+  electro: {src: 'music/06-hard-cyberpunk.mp3', bpm: 124.0, offset: 1.36, key: 54, minor: true, vol: 1.1, credit: 'Hard Cyberpunk by Kulakovka (Pixabay)'},
   dub: {src: 'music/07-la-nuit.mp3', bpm: 125.24, offset: 1.27, key: 50, minor: false, vol: 0.82, credit: 'La nuit by Jean_Motell (Pixabay)'},
   dnb: {src: 'music/08-upbeat-electronic-beat.mp3', bpm: 130.01, offset: 1.219, key: 53, minor: false, vol: 0.92, credit: 'Upbeat Electronic Beat by Tunetank (Pixabay)'},
   trance: {src: 'music/09-lo-fi-jazz.mp3', bpm: 85.94, offset: 0.754, key: 55, minor: false, vol: 0.98, credit: 'Lo-Fi Jazz by ZephiraMusic (Pixabay)'},
   robot: {src: 'music/night-market-interstellar.mp3', bpm: 99.98, offset: 0.084, key: 52, minor: true, vol: 0.96, credit: 'Interstellar by QuentinGaming (Pixabay)'},
 };
+// what the menus call a level's music: its track's title, or the built-in style's name
+const musicName = k => TRACKS[k] ? TRACKS[k].credit.split(' by ')[0] : (STYLES[k] || {}).name || '';
 const trackBufs = new Map();   // src -> promise of a decoded buffer (or null if it couldn't load)
 let trackSrc = null, trackGain = null, trackT0 = 0, trackFor = null, trackPos = 0;
 // a track that can't load (offline, or the page opened straight from a file) falls back to the level's synth music
@@ -2395,7 +2399,7 @@ function loadTrack(T){
   return trackBufs.get(T.src);
 }
 function playTrack(T){
-  const g = G, from0 = trackFor === g ? trackPos : 0;   // a resume picks up where the song left off; a new level starts it over
+  const g = G, from0 = trackFor === T.src ? trackPos : 0;   // the same song (a pause, a lost life) picks up where it stopped
   loadTrack(T).then(buf => {
     if (!buf){ if (musicOn && G === g){ stepI = 0; nextStep = AC.currentTime + 0.05; } return; }   // falls back to the synth
     if (!musicOn || G !== g || trackSrc) return;
@@ -2404,7 +2408,7 @@ function playTrack(T){
     gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(1, at + (from ? 0.35 : 0.6));
     musicBus.gain.value = 0.55*(T.vol || 1);
     src.connect(gain).connect(musicBus); src.start(at, from);
-    trackSrc = src; trackGain = gain; trackT0 = at - from; trackFor = g;
+    trackSrc = src; trackGain = gain; trackT0 = at - from; trackFor = T.src;
   });
 }
 function stopTrack(){
@@ -3999,7 +4003,7 @@ function syncPhone(force){
       msg.pick = {snakes: Object.keys(SNAKES).map(k => ({k, name: SNAKES[k].name, icon: snakeIconRaw(k), open: snakeOpen(k), why: snakeOpen(k) ? '' : unlockText(k)})),
         cpus: lead && MODE !== 1 ? {n: SEATS.filter(x => x.kind === 'cpu').length, room: SEATS.length < seatRange()[1]} : null,
         snake: MODE === 1 ? playSnake() : seatSnake(SEATS[si]), lead, kind: MODE === 2 ? 'Course' : 'Level', level: MODE === 2 ? course : stage,
-        levels: !lead ? null : MODE === 2 ? COURSES.map((S, i) => ({i, name: S.name, sub: STYLES[S.music].name}))
+        levels: !lead ? null : MODE === 2 ? COURSES.map((S, i) => ({i, name: S.name, sub: musicName(S.music)}))
           : STAGES.map((S, i) => ({i, name: S.name, sub: 'Level ' + (i + 1), locked: i >= unlocked}))};
     }
     if (!lead && MODE !== 1){ msg.go = ''; msg.waitLead = SEATS[0] && SEATS[0].kind === 'phone' ? 'Player 1 starts the game from their phone.' : 'The game starts from the big screen.'; }
@@ -4293,7 +4297,7 @@ function setMode(m){
   applyModeUI(); setPhoneUI(); renderSeats(); refreshMenu(); resize();
 }
 
-buildSeg('coursePick', 'course', COURSES.map((S, i) => ({value: i, html: `<b>${S.name}</b><small>${STYLES[S.music].name}</small>`})), v => {
+buildSeg('coursePick', 'course', COURSES.map((S, i) => ({value: i, html: `<b>${S.name}</b><small>${musicName(S.music)}</small>`})), v => {
   course = +v; store.set('course', course); refreshMenu();
 });
 buildSeg('ctrlPick', 'ctrl', CAN_TILT
@@ -4368,10 +4372,10 @@ function updateMenuUI(){
   $('viewDesc').textContent = VIEWS[view].desc;
   const S = STAGES[stage], Cc = COURSES[course];
   $('stageDesc').innerHTML = MODE === 3
-    ? `<b>${S.name}.</b> The team needs ${teamGoal(S.goal, Math.max(2, SEATS.length))} gems to clear it. Music: ${STYLES[S.music].name}.`
-    : `<b>${S.name}.</b> Eat ${S.goal} gems to clear it. Music: ${STYLES[S.music].name}.` +
+    ? `<b>${S.name}.</b> The team needs ${teamGoal(S.goal, Math.max(2, SEATS.length))} gems to clear it. Music: ${musicName(S.music)}.`
+    : `<b>${S.name}.</b> Eat ${S.goal} gems to clear it. Music: ${musicName(S.music)}.` +
       (unlocked < STAGES.length ? ` Level ${unlocked + 1} unlocks when you clear level ${unlocked}.` : '');
-  $('courseDesc').innerHTML = `<b>${Cc.name}.</b> Music: ${STYLES[Cc.music].name}. ${Cc.movers ? 'Sliding pillars. ' : ''}${Cc.gates ? 'Beat gates. ' : ''}${partyTime(Math.max(2, SEATS.length))}-second round.`;
+  $('courseDesc').innerHTML = `<b>${Cc.name}.</b> Music: ${musicName(Cc.music)}. ${Cc.movers ? 'Sliding pillars. ' : ''}${Cc.gates ? 'Beat gates. ' : ''}${partyTime(Math.max(2, SEATS.length))}-second round.`;
   $('snakeDesc').textContent = SNAKES[playSnake()].desc + (MODE === 1 ? ' ' + Object.keys(SNAKE_UNLOCK).filter(k => !snakeOpen(k)).map(k => `${SNAKES[k].name}: ${unlockText(k).toLowerCase()}`).join(' ') : '');
   $('diffDesc').textContent = DIFFS[diff].desc;
   $('menuBoardLabel').textContent = DIFFS[diff].name;
@@ -4543,10 +4547,11 @@ function showClear(){
   if (G.idx + 1 >= STAGES.length){ if (MODE === 1) return showOver(true); if (ROLE === 'host') endTeam(true); return; }
   if (MODE === 1 && RUN.newSnakes && RUN.newSnakes.length) return showUnlock();
   const N = STAGES[G.idx + 1], team = MODE === 3, host = ROLE === 'host';
+  if (N) loadTrack(TRACKS[N.music]);   // fetch the next level's track while this card is up
   if (host){ stage = G.idx + 1; store.set('stage', stage); }
   $('clrEyebrow').textContent = team ? `Level ${G.idx + 1} cleared as a team` : `Level ${G.idx + 1} cleared`;
   $('clrTitle').textContent = N.name;
-  $('clrDesc').innerHTML = `<b>Level ${G.idx + 2}.</b> ${team ? 'The team needs' : 'Eat'} ${team ? teamGoal(N.goal, PL.length) : N.goal} gems to clear it. Music: ${STYLES[N.music].name}.` +
+  $('clrDesc').innerHTML = `<b>Level ${G.idx + 2}.</b> ${team ? 'The team needs' : 'Eat'} ${team ? teamGoal(N.goal, PL.length) : N.goal} gems to clear it. Music: ${musicName(N.music)}.` +
     (host ? '' : ' Waiting for the host to start it…');
   $('clrScore').textContent = RUN.banked;
   $('clrBonus').textContent = '+' + RUN.lastBonus;
