@@ -1002,7 +1002,8 @@ let W = 0, H = 0, DPR = 1, SCALE = 40;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
   const mini = view !== 'top';
-  cvs.classList.toggle('duo', mini && MODE !== 1);
+  // with several views on this screen the map sits in the middle between them; with one view it goes to the corner, out of the way
+  cvs.classList.toggle('duo', mini && MODE !== 1 && typeof viewers === 'function' && viewers().length > 1);
   if (mini && MODE !== 1 && ARENA){
     // versus: one map of the whole arena, centered between the two views
     W = H = Math.round(Math.max(150, Math.min(240, Math.min(innerWidth, innerHeight)*0.3)));
