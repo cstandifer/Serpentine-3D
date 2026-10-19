@@ -2420,6 +2420,12 @@ function stopTrack(){
 }
 function startMusic(){ if (!AC) return; musicOn = true; stepI = 0; nextStep = AC.currentTime + 0.05; beatTimes = []; const T = trackOf(); if (T) playTrack(T); }
 function stopMusic(){ musicOn = false; beatTimes = []; if (AC) stopTrack(); }
+// which beat of the music we're on (a running count), from the recorded track when one is playing
+function beatClock(clock){
+  const T = trackOf();
+  if (AC && musicOn && T && trackSrc){ const d = trackSrc.buffer.duration, pos = ((AC.currentTime - trackT0) % d + d) % d; return (pos - (T.offset || 0))/(60/T.bpm) + 1e3; }
+  return clock*((STYLES[G.S.music] || STYLES.lofi).bpm/60);
+}
 function beatPulse(clock){
   if (REDUCED) return 0;
   const T = trackOf();
@@ -2774,7 +2780,7 @@ function makeR3(){
   const parts = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_PARTS);
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
-  let GFX = [];
+  let GFX = [], floorMesh = null;
   function makeGfx(){
     // built while the player is loaded, so C.ribbon / RIB are that snake's colors
     const g = {ringReady: -1, RIB3: RIB.map(c => col(c)), yaw: G.th, snap: true, camPos: new THREE.Vector3(), headShow: true,
@@ -2901,7 +2907,7 @@ function makeR3(){
     tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map: tex}));
     floor.rotation.x = -Math.PI/2; floor.position.set((ARENA.x0 + ARENA.x1)/2, 0, (ARENA.y0 + ARENA.y1)/2);
-    level.add(floor);
+    level.add(floor); floorMesh = floor;
 
     const mats = {wall: boxMats('#050505', '#000'), tall: boxMats(C.pillar, C['pillar-side']), low: boxMats(C.hurdle, C['hurdle-side'])};
     const edgeMat = new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.85});
@@ -3423,7 +3429,7 @@ function makeR3(){
         L.b.rotation.z = -0.06 - 0.05*Math.sin(clock*1.7 + i*0.4);
         L.b.material.opacity = 0.2 + 0.6*beat;
       });
-      const bar = Math.floor(clock*(STYLES.techno.bpm/60)) % 4 === 0;
+      const bar = Math.floor(beatClock(clock)) % 4 === 0;
       DECOR.strobe.material.opacity = REDUCED ? 0 : (bar ? 0.55*beat : 0);
       for (const H of DECOR.heads){
         const tx = H.x + Math.cos(clock*0.6 + H.ph)*H.r, tz = H.z*0.6 + Math.sin(clock*0.8 + H.ph*1.3)*H.r*1.4;
@@ -3440,7 +3446,7 @@ function makeR3(){
       const F = DECOR.floor;
       if (F){
         // a new floor pattern on each beat of the music: checkers, stripes, rings out from the middle, or sparkle
-        const bi = Math.floor(clock*(STYLES.disco.bpm/60));
+        const bi = Math.floor(beatClock(clock));
         if (bi !== F.beat){
           F.beat = bi;
           const pat = bi % 8, black = new THREE.Color(0), cx2 = F.w/2, cz2 = F.hh/2;
@@ -3536,6 +3542,7 @@ function makeR3(){
     if (!G || !GFX.length) return;
     const beat = beatPulse(clock);
     syncGems(clock); syncDyn(); tickDecor(clock, dt, beat);
+    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.22*beat);   // the floor brightens a touch on every beat
 
     let np = 0;
     for (const pt of G.particles){
