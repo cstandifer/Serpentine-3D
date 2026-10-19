@@ -3171,7 +3171,8 @@ function makeR3(){
       // the outrun sun: yellow to pink, sliced by horizontal bands toward the bottom
       sky(discTex(g => { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#ffe94d'); gr.addColorStop(1, '#ff2e88');
         g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI*2); g.fill();
-        g.globalCompositeOperation = 'destination-out'; for (let k = 0; k < 7; k++){ const y = 140 + k*16; g.fillRect(0, y, 256, 2 + k*1.4); } }), 70, 14, 70);
+        g.globalCompositeOperation = 'destination-out'; for (let k = 0; k < 7; k++){ const y = 140 + k*16; g.fillRect(0, y, 256, 2 + k*1.4); } }), 70, 14, 70)
+        .position.set(cx + h + 70, 7, cz);   // straight ahead of the starting runway, so the level opens facing it
     } else if (T.decor === 'moon'){
       sky(discTex(g => { const gr = g.createRadialGradient(128, 128, 30, 128, 128, 128); gr.addColorStop(0, 'rgba(255,240,225,1)'); gr.addColorStop(0.45, 'rgba(255,214,194,.95)'); gr.addColorStop(0.5, 'rgba(255,180,160,.25)'); gr.addColorStop(1, 'rgba(255,180,160,0)');
         g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), 46, 20, 60);
