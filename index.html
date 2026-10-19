@@ -2444,13 +2444,13 @@ function beatPulse(clock){
     // where we are in the song, measured from its first downbeat
     const per = 60/T.bpm, d = trackSrc.buffer.duration, pos = ((AC.currentTime - trackT0) % d + d) % d;
     const ph = (((pos - (T.offset || 0)) % per) + per) % per;
-    return Math.exp(-ph*7);
+    return Math.min(1, ph/0.04)*Math.exp(-ph*4);
   }
   if (AC && musicOn){
     const now = AC.currentTime; let tb = -1;
     while (beatTimes.length > 1 && beatTimes[1] <= now) beatTimes.shift();
     if (beatTimes.length && beatTimes[0] <= now) tb = beatTimes[0];
-    return tb < 0 ? 0 : Math.exp(-(now - tb)*7);
+    return tb < 0 ? 0 : Math.min(1, (now - tb)/0.04)*Math.exp(-(now - tb)*4);
   }
   return 0.25 + 0.25*Math.sin(clock*2.4);
 }
@@ -2791,6 +2791,7 @@ function makeR3(){
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
   let GFX = [], floorMesh = null;
+  const RIPPLE_GEO = new THREE.RingGeometry(0.84, 1, 72);
   function makeGfx(){
     // built while the player is loaded, so C.ribbon / RIB are that snake's colors
     const g = {ringReady: -1, RIB3: RIB.map(c => col(c)), yaw: G.th, snap: true, camPos: new THREE.Vector3(), headShow: true,
@@ -2803,7 +2804,9 @@ function makeR3(){
     g.shadow = new THREE.Mesh(SHADOW_GEO, new THREE.MeshBasicMaterial({color: 0x080414, transparent: true, opacity: 0.45, depthWrite: false}));
     g.floorGlow = new THREE.Mesh(PLANE_GEO, new THREE.MeshBasicMaterial({map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}));
     g.ring = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false}));
-    for (const m of [g.shadow, g.floorGlow, g.ring]){ m.rotation.x = -Math.PI/2; scene.add(m); }
+    // a ring of light that ripples out across the floor from the snake on every beat
+    g.ripple = new THREE.Mesh(RIPPLE_GEO, new THREE.MeshBasicMaterial({color: col(C.ribbon), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false}));
+    for (const m of [g.shadow, g.floorGlow, g.ring, g.ripple]){ m.rotation.x = -Math.PI/2; scene.add(m); }
     buildHead(g);
     return g;
   }
@@ -2813,7 +2816,8 @@ function makeR3(){
   }
   function dropGfx(g){
     clearHead(g);
-    for (const m of [g.body, g.dots, g.head, g.shadow, g.floorGlow, g.ring]) scene.remove(m);
+    for (const m of [g.body, g.dots, g.head, g.shadow, g.floorGlow, g.ring, g.ripple]) scene.remove(m);
+    g.ripple.material.dispose();
     g.body.dispose(); g.dots.dispose(); g.dots.material.dispose();
     g.shadow.material.dispose(); g.floorGlow.material.dispose(); g.ring.geometry.dispose(); g.ring.material.dispose();
   }
@@ -3552,7 +3556,9 @@ function makeR3(){
     if (!G || !GFX.length) return;
     const beat = beatPulse(clock);
     syncGems(clock); syncDyn(); tickDecor(clock, dt, beat);
-    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.22*beat);   // the floor brightens a touch on every beat
+    // the floor swells brighter on every beat, more on the first beat of each bar, so the rhythm reads clearly
+    const down = Math.floor(beatClock(clock)) % 4 === 0;
+    if (floorMesh) floorMesh.material.color.setScalar(1 + beat*(down ? 0.6 : 0.35));
 
     let np = 0;
     for (const pt of G.particles){
@@ -3578,7 +3584,11 @@ function makeR3(){
       // a solo crash flickers the head; a fresh respawn in versus blinks it while it can't be hit
       g.headShow = !gone && !(MODE === 1 && dying && Math.floor(G.deadT*12) % 2) && !(p.grace > 0 && Math.floor(clock*10) % 2);
       g.head.position.set(G.x, jh, G.y); g.head.rotation.y = -G.th; g.head.scale.setScalar(1 + 0.035*beat);
-      if (g.headGlow) g.headGlow.scale.setScalar(HEAD*(2.4 + 0.3*beat));
+      if (g.headGlow) g.headGlow.scale.setScalar(HEAD*(2.4 + 0.9*beat));
+      // the beat ripple: grows outward through each beat and fades; the first beat of a bar is bigger and brighter
+      { const bc = beatClock(clock), ph = bc - Math.floor(bc), dn = Math.floor(bc) % 4 === 0, on = musicOn && !gone && !REDUCED;
+        g.ripple.visible = on;
+        if (on){ g.ripple.position.set(G.x, 0.015, G.y); g.ripple.scale.setScalar(0.6 + ph*(dn ? 9 : 6)); g.ripple.material.opacity = (1 - ph)*(1 - ph)*(dn ? 0.65 : 0.35); } }
       g.shadow.position.set(G.x, 0.011, G.y);
       g.shadow.scale.setScalar(Math.max(0.5, 1 - 0.22*jh)); g.shadow.material.opacity = Math.max(0.15, 0.45 - 0.15*jh);
       const R = 4 + 0.6*beat + G.flash;
