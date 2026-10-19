@@ -3562,8 +3562,10 @@ function makeR3(){
     const beat = beatPulse(clock); BEAT = beat;
     syncGems(clock); syncDyn(); tickDecor(clock, dt, beat);
     // on each beat: the floor swells brighter and takes a soft wash of its grid color, the arena's edges flash, gems bop
-    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.45*beat);
-    if (floorWash) floorWash.material.opacity = 0.13*beat;
+    // the floor only swells on the downbeat (the first beat of each bar), and gently; gems and edges mark every beat
+    const dn = Math.floor(beatClock(clock)) % 4 === 0 ? beat : 0;
+    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.3*dn);
+    if (floorWash) floorWash.material.opacity = 0.08*dn;
     if (wallEdges) wallEdges.opacity = 0.55 + 0.45*beat;
 
     let np = 0;
