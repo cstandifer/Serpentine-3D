@@ -1004,7 +1004,8 @@ function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
   const mini = view !== 'top';
   // with several views on this screen the map sits in the middle between them; with one view it goes to the corner, out of the way
-  const nv = MODE !== 1 && typeof viewers === 'function' ? viewers().length : 1;
+  // (the very first resize runs while the page is still loading, before there are any players to count)
+  let nv = 1; if (MODE !== 1) try { nv = viewers().length; } catch(_) {}
   cvs.classList.toggle('duo', mini && nv > 1);
   // more than two views on one screen (party or tag team): no map at all, it would only cover the views
   NOMAP = mini && nv > 2; document.body.classList.toggle('nomap', NOMAP);
@@ -1516,6 +1517,7 @@ function pullGems(dt){
 // the rainbow road's ramps: four big ones, one in each quarter of the field, aimed toward the middle. Each has a clear
 // run-up and a clear landing, and launches you through a trail of three coins floating in the air (they only count mid-jump).
 // Built from the level's seed, so every screen in a game gets the same ones.
+const RAMP_FLY = 9;   // how far a ramp throws you, measured from the foot of the ramp
 function placeRamps(){
   const rr = mulberry(G.seed ^ 0x52a3), cx = (ARENA.x0 + ARENA.x1)/2, cy = (ARENA.y0 + ARENA.y1)/2, half = (ARENA.x1 - ARENA.x0)/2;
   const L = 3.2, Wd = 2.0, inside = r => r.x > ARENA.x0 + 1 && r.y > ARENA.y0 + 1 && r.x + r.w < ARENA.x1 - 1 && r.y + r.h < ARENA.y1 - 1;
@@ -1544,7 +1546,6 @@ function onRamp(x, y){
   return !!(c && c.ramps && c.ramps.some(r => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h));
 }
 // off a ramp: a jump about 70% longer and higher than a normal one
-const RAMP_FLY = 9;   // how far a ramp throws you, measured from the foot of the ramp
 function rampJump(){
   G.air = true; G.airT = 0; G.airDur = RAMP_FLY/G.speed; G.airH = 2; G.jumpBuf = 0;
   pushPoint(); sfx(t => { tone('sine', 300, t, 0.22, 0.3, sfxBus, 1100); tone('triangle', 900, t + 0.05, 0.06, 0.25, sfxBus, 1800); }); buzz([10, 20, 30]);
