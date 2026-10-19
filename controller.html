@@ -125,7 +125,9 @@ details.set[open]{border-image:var(--holo) 1}
 .namecard .eyebrow{color:var(--lime)!important}
 .name-in{font-size:1.4rem;width:100%;padding:8px 12px;border:1.5px solid var(--cream);background:#000;color:var(--cream);outline:none;-webkit-user-select:text;user-select:text}
 .name-in:focus{border-color:var(--lime)}
-.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tools{display:flex;gap:8px}
+.tools .btn-ghost{flex:1}
+.tools [hidden]{display:none}
 .tools .btn-ghost{font-size:.7rem;padding:10px 4px}
 /* Sensitivity: a full bar with its current values, so it reads as a control, not a footnote */
 details.set{border:1.5px solid transparent;border-image:var(--holo) 1}
@@ -143,6 +145,11 @@ details.set[open] .sum-v::after{content:"\2212"}
 .row output{color:var(--line);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;height:28px;accent-color:var(--pink)}
 .check{display:flex;align-items:center;gap:10px;font-size:.74rem}
+/* how you play: three choices at the top of Controls */
+.modes{display:grid;gap:8px}
+.modes .chip{grid-template-columns:28px 1fr;align-items:center;column-gap:12px;font-size:.86rem}
+.modes .chip svg{width:28px;height:28px}
+.modes-lab{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.8rem}
 .check input{width:18px;height:18px;accent-color:var(--line)}
 .portrait-only{display:none}
 @media (orientation:landscape) and (max-height:500px){
@@ -196,8 +203,9 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
         <svg viewBox="0 0 72 72" aria-hidden="true"><rect x="22" y="8" width="28" height="52" rx="6" fill="none" stroke="#ff4fd8" stroke-width="2" transform="rotate(-14 36 34)"/><path d="M12 54c4 6 12 6 16 0M44 54c4 6 12 6 16 0" fill="none" stroke="#9893ad" stroke-width="1.5" stroke-linecap="round"/><path d="M8 30l-4 4 4 4M64 30l4 4-4 4" fill="none" stroke="#5ff0ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div class="desc"><b>Hold it upright like a remote</b>, screen toward you and tipped back a little. Tip a little for a gentle curve, more for a tight one. Jump for real to jump (keep a good grip).</div>
       </div>
-      <button class="btn" id="motionBtn">Enable motion</button>
-      <button class="btn btn-ghost" id="buttonsBtn">Use buttons only</button>
+      <button class="btn" id="motionBtn">Steer by tilting</button>
+      <button class="btn btn-ghost" id="buttonsBtn">Use buttons instead</button>
+      <div class="desc" style="text-align:center;margin-top:-6px">You can switch any time under Controls.</div>
       <a class="btn btn-ghost" id="screenBtn" href="index.html">Play on this phone instead</a>
       <div class="desc" style="text-align:center;margin-top:-6px">In a Party or Tag team game, play with your own view on this phone instead of watching the big screen.</div>
       <div class="hint" id="setupHint"></div>
@@ -209,16 +217,17 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     <div class="tools">
       <button class="btn btn-ghost" id="pauseBtn">Pause</button>
       <button class="btn btn-ghost" id="recenterBtn">Recenter</button>
-      <button class="btn btn-ghost" id="setBtn" aria-expanded="false" aria-controls="setPanel">Settings</button>
+      <button class="btn btn-ghost" id="setBtn" aria-expanded="false" aria-controls="setPanel">Controls</button>
     </div>
     <details class="set" id="setPanel">
       <summary hidden><span class="sum-l"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/><circle cx="7" cy="5" r="2" fill="#000"/><circle cx="13" cy="10" r="2" fill="#000"/><circle cx="9" cy="15" r="2" fill="#000"/></svg>Sensitivity</span><span class="sum-v" id="setSum"></span></summary>
       <div class="set-body">
-        <div class="row"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
-        <div class="row"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
-        <label class="check"><input type="checkbox" id="steerIn"> Steer by tilting</label>
-        <label class="check"><input type="checkbox" id="hopIn"> Jump by jumping</label>
-        <label class="check"><input type="checkbox" id="flipIn"> Flip left and right</label>
+        <div class="modes-lab">How you play</div>
+        <div class="modes" id="modes" role="radiogroup" aria-label="How you play"></div>
+        <div class="hint" id="modeHint"></div>
+        <div class="row tiltonly"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
+        <div class="row hoponly"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
+        <label class="check tiltonly"><input type="checkbox" id="flipIn"> Flip left and right</label>
         <button class="btn btn-ghost" id="viewBtn">Change the big screen's view</button>
         <button class="btn" id="setDone">Done</button>
       </div>
@@ -281,7 +290,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-18e</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-19a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -305,11 +314,42 @@ const SET = {
 function bindSettings(){
   const sync = () => { $('tiltOut').textContent = SET.tilt + '°'; $('jumpOut').textContent = SET.jump + ' / 5'; $('setSum').textContent = `Tilt ${SET.tilt}° · Jump ${SET.jump}/5`; drawZones(); };
   $('tiltIn').value = SET.tilt; $('jumpIn').value = SET.jump;
-  $('steerIn').checked = SET.steer; $('hopIn').checked = SET.hop; $('flipIn').checked = SET.flip;
+  $('flipIn').checked = SET.flip;
   $('tiltIn').addEventListener('input', e => { SET.tilt = +e.target.value; store.set('fullturn', SET.tilt); sync(); });
   $('jumpIn').addEventListener('input', e => { SET.jump = +e.target.value; store.set('jump', SET.jump); sync(); });
-  for (const k of ['steer', 'hop', 'flip']) $(k + 'In').addEventListener('change', e => { SET[k] = e.target.checked; store.set(k, SET[k] ? '1' : '0'); $('pad').classList.toggle('tilt', motionReady && SET.steer); });
-  sync();
+  $('flipIn').addEventListener('change', e => { SET.flip = e.target.checked; store.set('flip', SET.flip ? '1' : '0'); });
+  sync(); renderModes();
+}
+// ---- how you play: tilt and jump for real, tilt and tap to jump, or the buttons ----
+const MODES = [
+  {k: 'hop', name: 'Tilt + jump', sub: 'Tip the phone to steer, jump for real to jump', steer: true, hop: true,
+   icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="4" width="10" height="17" rx="2" transform="rotate(-14 14 12)"/><path d="M6 25h16M14 25v-2"/></svg>'},
+  {k: 'tap', name: 'Tilt + tap', sub: 'Tip the phone to steer, tap the screen to jump', steer: true, hop: false,
+   icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="4" width="10" height="17" rx="2" transform="rotate(-14 14 12)"/><circle cx="14" cy="12" r="2.4"/></svg>'},
+  {k: 'buttons', name: 'Buttons', sub: 'Hold Left or Right to turn, press Jump', steer: false, hop: false,
+   icon: '<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="7" height="10" rx="1.5"/><rect x="10.5" y="9" width="7" height="10" rx="1.5"/><rect x="19" y="9" width="7" height="10" rx="1.5"/></svg>'}];
+const modeNow = () => !SET.steer ? 'buttons' : SET.hop ? 'hop' : 'tap';
+function renderModes(){
+  const box = $('modes'), cur = modeNow(); box.innerHTML = '';
+  for (const m of MODES){
+    const b = document.createElement('button'); b.className = 'chip' + (m.k === cur ? ' on' : ''); b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', m.k === cur);
+    b.innerHTML = m.icon + '<span><b></b><br><small></small></span>'; b.querySelector('b').textContent = m.name; b.querySelector('small').textContent = m.sub;
+    b.addEventListener('click', () => setPlayMode(m.k)); box.appendChild(b);
+  }
+  // the tilt and jump tuning only matter when you're tilting or jumping
+  for (const el of document.querySelectorAll('.tiltonly')) el.hidden = !SET.steer;
+  for (const el of document.querySelectorAll('.hoponly')) el.hidden = !SET.hop;
+  $('recenterBtn').hidden = !(SET.steer && motionReady);
+  $('setBtn').textContent = 'Controls';
+}
+async function setPlayMode(k){
+  const m = MODES.find(x => x.k === k); $('modeHint').textContent = '';
+  // tilting needs the phone's motion sensors; this tap is what lets the phone ask for them
+  if (m.steer && !motionReady){ const ok = await askMotion(); if (!ok){ $('modeHint').textContent = 'Motion access was blocked, so the buttons stay on. You can allow it in your browser settings and reload.'; renderModes(); return; } }
+  SET.steer = m.steer; SET.hop = m.hop; store.set('steer', SET.steer ? '1' : '0'); store.set('hop', SET.hop ? '1' : '0');
+  $('pad').classList.toggle('tilt', motionReady && SET.steer);
+  if (motionReady && SET.steer){ $('gauge').hidden = false; $('meter').hidden = false; needCal = true; }
+  buzz(12); renderModes();
 }
 
 // ---- screens ----
@@ -575,8 +615,7 @@ function drawFrame(){
 let wake = null;
 async function keepAwake(){ try { if (!wake && 'wakeLock' in navigator){ wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch(_) {} }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && motionReady) keepAwake(); });
-async function enableMotion(){
-  $('setupHint').textContent = '';
+async function askMotion(){
   try {
     // iOS asks once for "motion and orientation"; both requests must start inside this tap
     const asks = [];
@@ -584,13 +623,15 @@ async function enableMotion(){
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') asks.push(DeviceOrientationEvent.requestPermission());
     const res = await Promise.all(asks);
     if (res.some(r => r !== 'granted')) throw new Error('denied');
-  } catch(_) {
-    $('setupHint').textContent = 'Motion access was blocked. You can still play with the buttons, or allow it in Safari settings and reload.';
-    return;
-  }
-  addEventListener('deviceorientation', onOrient);
-  addEventListener('devicemotion', onMotion);
+  } catch(_) { return false; }
+  if (!motionReady){ addEventListener('deviceorientation', onOrient); addEventListener('devicemotion', onMotion); }
   motionReady = true; needCal = true;
+  return true;
+}
+async function enableMotion(){
+  $('setupHint').textContent = '';
+  if (!(await askMotion())){ $('setupHint').textContent = 'Motion access was blocked. You can still play with the buttons, or allow it in Safari settings and reload.'; return; }
+  if (!SET.steer){ SET.steer = true; store.set('steer', '1'); }   // choosing tilt here means tilt, even if buttons were picked last time
   keepAwake();
   enterController();
   setTimeout(() => {
@@ -601,7 +642,8 @@ async function enableMotion(){
 function enterController(){
   show('ctl');
   $('pad').classList.toggle('tilt', motionReady && SET.steer);
-  if (!motionReady){ $('gauge').hidden = true; $('meter').hidden = true; }
+  if (!motionReady || !SET.steer){ $('gauge').hidden = true; $('meter').hidden = true; }
+  renderModes();
 }
 
 // ---- buttons ----
@@ -634,7 +676,7 @@ $('ctl').addEventListener('pointerdown', e => {
   e.preventDefault(); fireJump(false);
 });
 $('motionBtn').addEventListener('click', enableMotion);
-$('buttonsBtn').addEventListener('click', () => { SET.steer = SET.hop = false; enterController(); keepAwake(); });
+$('buttonsBtn').addEventListener('click', () => { SET.steer = SET.hop = false; store.set('steer', '0'); store.set('hop', '0'); enterController(); keepAwake(); });
 $('joinBtn').addEventListener('click', () => { connect($('codeIn').value); if (code.length === 4) show('setup'); });
 $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
 document.addEventListener('gesturestart', e => e.preventDefault());

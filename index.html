@@ -4028,7 +4028,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-18e';
+const CTRL_BUILD = '2026-10-19a';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
