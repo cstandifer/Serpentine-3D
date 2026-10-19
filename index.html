@@ -1150,7 +1150,7 @@ function loadWorld(cfg){
   const S = party ? COURSES[cfg.idx] : STAGES[cfg.idx], D = DIFFS[cfg.diff], K = SNAKES[cfg.snake];
   const n = multi ? cfg.players.length : 1;
   applyLook(S);
-  if (AC) loadTrack(TRACKS[S.music]);   // start fetching this level's recorded track, if it has one
+  if (AC && typeof TRACKS !== 'undefined') loadTrack(TRACKS[S.music]);   // start fetching this level's recorded track, if it has one
   // more snakes, more room: the arena's area grows with the number of players (two play on the regular size)
   const roomy = Math.sqrt(Math.max(1, n/2));
   const half = Math.round((party ? S.base : S.half + Math.max(0, D.room))*roomy);   // harder never means a smaller field
@@ -2385,17 +2385,20 @@ const TRACKS = {
 };
 const trackBufs = new Map();   // src -> promise of a decoded buffer (or null if it couldn't load)
 let trackSrc = null, trackGain = null, trackT0 = 0, trackFor = null, trackPos = 0;
-const trackOf = () => (G && G.S && TRACKS[G.S.music]) || null;
+// a track that can't load (offline, or the page opened straight from a file) falls back to the level's synth music
+const trackBad = new Set(location.protocol === 'file:' ? Object.values(TRACKS).map(T => T.src) : []);
+const trackOf = () => { const T = G && G.S && TRACKS[G.S.music]; return T && !trackBad.has(T.src) ? T : null; };
 function loadTrack(T){
-  if (!T || !AC) return Promise.resolve(null);
+  if (!T || !AC || trackBad.has(T.src)) return Promise.resolve(null);
   if (!trackBufs.has(T.src)) trackBufs.set(T.src, fetch(T.src).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-    .then(b => new Promise((res, rej) => AC.decodeAudioData(b, res, rej))).catch(() => null));
+    .then(b => new Promise((res, rej) => AC.decodeAudioData(b, res, rej))).catch(() => { trackBad.add(T.src); return null; }));
   return trackBufs.get(T.src);
 }
 function playTrack(T){
   const g = G, from0 = trackFor === g ? trackPos : 0;   // a resume picks up where the song left off; a new level starts it over
   loadTrack(T).then(buf => {
-    if (!buf || !musicOn || G !== g || trackSrc) return;
+    if (!buf){ if (musicOn && G === g){ stepI = 0; nextStep = AC.currentTime + 0.05; } return; }   // falls back to the synth
+    if (!musicOn || G !== g || trackSrc) return;
     const src = AC.createBufferSource(), gain = AC.createGain(), at = AC.currentTime + 0.05, from = from0 % buf.duration;
     src.buffer = buf; src.loop = true;
     gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(1, at + (from ? 0.35 : 0.6));
