@@ -1150,6 +1150,7 @@ function loadWorld(cfg){
   const S = party ? COURSES[cfg.idx] : STAGES[cfg.idx], D = DIFFS[cfg.diff], K = SNAKES[cfg.snake];
   const n = multi ? cfg.players.length : 1;
   applyLook(S);
+  if (AC) loadTrack(TRACKS[S.music]);   // start fetching this level's recorded track, if it has one
   // more snakes, more room: the arena's area grows with the number of players (two play on the regular size)
   const roomy = Math.sqrt(Math.max(1, n/2));
   const half = Math.round((party ? S.base : S.half + Math.max(0, D.room))*roomy);   // harder never means a smaller field
@@ -2351,7 +2352,7 @@ const STYLES = {
 };
 const style = () => STYLES[G.S.music];
 function schedule(){
-  if (!AC || !musicOn) return;
+  if (!AC || !musicOn || trackOf()) return;
   const st = style();
   musicBus.gain.value = 0.55*(st.vol || 1);   // styles are balanced to sit at about the same loudness
   const bpm = st.bpm*(1 + Math.min(0.12, (G.speed - G.base)*0.02)), sd = 60/bpm/4;
@@ -2365,10 +2366,51 @@ function schedule(){
     nextStep += sd;
   }
 }
-function startMusic(){ if (!AC) return; musicOn = true; stepI = 0; nextStep = AC.currentTime + 0.05; beatTimes = []; }
-function stopMusic(){ musicOn = false; beatTimes = []; }
+// ---- recorded tracks ----
+// A level whose music has an MP3 here plays it on a loop instead of the synth. bpm and offset (seconds to the first
+// downbeat) keep the visuals pulsing on the beat; key (a MIDI root) and minor set the notes of the gem chime.
+// A level without a file keeps its synth music, so files can arrive one at a time.
+const TRACKS = {};   // music key -> {src, bpm, offset, key, minor, vol, credit}
+const trackBufs = new Map();   // src -> promise of a decoded buffer (or null if it couldn't load)
+let trackSrc = null, trackGain = null, trackT0 = 0, trackFor = null, trackPos = 0;
+const trackOf = () => (G && G.S && TRACKS[G.S.music]) || null;
+function loadTrack(T){
+  if (!T || !AC) return Promise.resolve(null);
+  if (!trackBufs.has(T.src)) trackBufs.set(T.src, fetch(T.src).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(b => new Promise((res, rej) => AC.decodeAudioData(b, res, rej))).catch(() => null));
+  return trackBufs.get(T.src);
+}
+function playTrack(T){
+  const g = G, from0 = trackFor === g ? trackPos : 0;   // a resume picks up where the song left off; a new level starts it over
+  loadTrack(T).then(buf => {
+    if (!buf || !musicOn || G !== g || trackSrc) return;
+    const src = AC.createBufferSource(), gain = AC.createGain(), at = AC.currentTime + 0.05, from = from0 % buf.duration;
+    src.buffer = buf; src.loop = true;
+    gain.gain.setValueAtTime(0.0001, at); gain.gain.exponentialRampToValueAtTime(1, at + (from ? 0.35 : 0.6));
+    musicBus.gain.value = 0.55*(T.vol || 1);
+    src.connect(gain).connect(musicBus); src.start(at, from);
+    trackSrc = src; trackGain = gain; trackT0 = at - from; trackFor = g;
+  });
+}
+function stopTrack(){
+  if (!trackSrc) return;
+  const now = AC.currentTime, d = trackSrc.buffer.duration;
+  trackPos = ((now - trackT0) % d + d) % d;
+  trackGain.gain.cancelScheduledValues(now); trackGain.gain.setValueAtTime(Math.max(0.0001, trackGain.gain.value), now); trackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+  trackSrc.stop(now + 0.3); trackSrc = null; trackGain = null;
+}
+function startMusic(){ if (!AC) return; musicOn = true; stepI = 0; nextStep = AC.currentTime + 0.05; beatTimes = []; const T = trackOf(); if (T) playTrack(T); }
+function stopMusic(){ musicOn = false; beatTimes = []; if (AC) stopTrack(); }
 function beatPulse(clock){
   if (REDUCED) return 0;
+  const T = trackOf();
+  if (AC && musicOn && T){
+    if (!trackSrc) return 0;
+    // where we are in the song, measured from its first downbeat
+    const per = 60/T.bpm, d = trackSrc.buffer.duration, pos = ((AC.currentTime - trackT0) % d + d) % d;
+    const ph = (((pos - (T.offset || 0)) % per) + per) % per;
+    return Math.exp(-ph*7);
+  }
   if (AC && musicOn){
     const now = AC.currentTime; let tb = -1;
     while (beatTimes.length > 1 && beatTimes[1] <= now) beatTimes.shift();
@@ -2404,6 +2446,8 @@ function sfxScrape(){ sfx(t => { noise(t, 'bandpass', 2600, 0.14, 0.08, sfxBus);
 function sfxLand(){ sfx(t => tone('sine', 150, t, 0.25, 0.1, sfxBus, 70)); }
 // a gem rings two notes of whatever chord the music is on, so it always fits the song
 function gemNotes(){
+  const T = trackOf();
+  if (T){ let a = T.key ?? 60; while (a < 84) a += 12; return [a, a + 7]; }   // a recorded track: root and fifth of its key
   const st = style(), bar = Math.floor(Math.max(0, stepI - 1)/16) % 4;
   let ch = st.chords ? st.chords[bar] : null;
   if (!ch){ const r = (st.roots || [57, 57, 57, 57])[bar]; ch = [r, r + 3, r + 7]; }
