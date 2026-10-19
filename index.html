@@ -2778,8 +2778,9 @@ function makeR3(){
       }
       const grow = Math.max(0.01, g.born === undefined ? 1 : Math.min(1, (G.t - g.born)*3));
       const y = 0.55 + 0.1*Math.sin(t*3 + g.x);
-      o.gem.position.set(g.x, y, g.y); o.gem.rotation.y = t*1.6 + g.y; o.gem.scale.setScalar(grow);
-      o.glow.position.set(g.x, y, g.y); o.glow.scale.setScalar(1.5*grow);
+      // gems bop to the beat
+      o.gem.position.set(g.x, y, g.y); o.gem.rotation.y = t*1.6 + g.y; o.gem.scale.setScalar(grow*(1 + 0.28*BEAT));
+      o.glow.position.set(g.x, y, g.y); o.glow.scale.setScalar(1.5*grow*(1 + 0.6*BEAT));
       o.beam.position.set(g.x, 3.5, g.y); o.beam.scale.set(1, grow, 1);
     }
     for (const [g, o] of gemObjs) if (!seen.has(g)) dropGem(g, o);
@@ -2792,7 +2793,7 @@ function makeR3(){
   const parts = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_PARTS);
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
-  let GFX = [], floorMesh = null;
+  let GFX = [], floorMesh = null, floorWash = null, wallEdges = null, BEAT = 0;
   function makeGfx(){
     // built while the player is loaded, so C.ribbon / RIB are that snake's colors
     const g = {ringReady: -1, RIB3: RIB.map(c => col(c)), yaw: G.th, snap: true, camPos: new THREE.Vector3(), headShow: true,
@@ -2920,6 +2921,9 @@ function makeR3(){
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map: tex}));
     floor.rotation.x = -Math.PI/2; floor.position.set((ARENA.x0 + ARENA.x1)/2, 0, (ARENA.y0 + ARENA.y1)/2);
     level.add(floor); floorMesh = floor;
+    // a soft wash of the grid's color over the whole floor, breathing with the beat
+    floorWash = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({color: col(T.grid[0]), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false}));
+    floorWash.rotation.x = -Math.PI/2; floorWash.position.set(floor.position.x, 0.004, floor.position.z); level.add(floorWash);
 
     const mats = {wall: boxMats('#050505', '#000'), tall: boxMats(C.pillar, C['pillar-side']), low: boxMats(C.hurdle, C['hurdle-side'])};
     const edgeMat = new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.85});
@@ -2928,7 +2932,7 @@ function makeR3(){
       if (edged) b.add(new THREE.LineSegments(EDGES, edgeMat));
       level.add(b);
     };
-    mats.wall = boxMats(T.wall[0], T.wall[1]); edgeMat.color = col(T.edge);
+    mats.wall = boxMats(T.wall[0], T.wall[1]); edgeMat.color = col(T.edge); wallEdges = edgeMat;
     for (const o of WALLS) addBox(o, WALL_H, mats.wall, true);
     for (const o of G.walls) addBox(o, WALL_H, mats.wall, true);
     const shapes = shapeKit(T);
@@ -3552,9 +3556,12 @@ function makeR3(){
   }
   function render(clock, dt){
     if (!G || !GFX.length) return;
-    const beat = beatPulse(clock);
+    const beat = beatPulse(clock); BEAT = beat;
     syncGems(clock); syncDyn(); tickDecor(clock, dt, beat);
-    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.45*beat);   // the floor swells a little brighter on each beat
+    // on each beat: the floor swells brighter and takes a soft wash of its grid color, the arena's edges flash, gems bop
+    if (floorMesh) floorMesh.material.color.setScalar(1 + 0.45*beat);
+    if (floorWash) floorWash.material.opacity = 0.13*beat;
+    if (wallEdges) wallEdges.opacity = 0.55 + 0.45*beat;
 
     let np = 0;
     for (const pt of G.particles){
