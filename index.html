@@ -4664,12 +4664,22 @@ function renderBoard(el, diff, mark){
   });
   el.replaceChildren(ol);
 }
+// a run saved without a name gets a random snake name (12 letters at most, to fit the board)
+const SNAKE_ADJ = ['Sly', 'Swift', 'Silent', 'Golden', 'Lucky', 'Velvet', 'Midnight', 'Sneaky', 'Dizzy', 'Sunny', 'Jazzy', 'Cosmic', 'Mellow', 'Turbo', 'Noodle'];
+const SNAKE_KIND = ['Mamba', 'Cobra', 'Viper', 'Python', 'Boa', 'Asp', 'Adder', 'Krait', 'Taipan', 'Racer', 'Garter', 'Rattler', 'Kingsnake', 'Sidewinder', 'Noodle'];
+function randomSnakeName(){
+  for (;;){
+    const a = SNAKE_ADJ[Math.floor(Math.random()*SNAKE_ADJ.length)], k = SNAKE_KIND[Math.floor(Math.random()*SNAKE_KIND.length)];
+    if (a !== k && (a + ' ' + k).length <= 12) return a + ' ' + k;
+  }
+}
 function saveName(name){
   if (!pending) return;
-  name = cleanName(name) || cleanName(store.get('name')) || 'Snake';
+  const typed = cleanName(name);
+  name = typed || randomSnakeName();
   const e = {...pending, name, at: Date.now()}, b = boards[e.diff];
   b.splice(rankFor(e.diff, e.score), 0, e); b.length = Math.min(b.length, BOARD_N);
-  store.set('board-' + e.diff, JSON.stringify(b)); store.set('name', name);
+  store.set('board-' + e.diff, JSON.stringify(b)); if (typed) store.set('name', typed);   // only a name someone typed is remembered for next time
   pending = null; lastEntry = e;
   $('entry').hidden = true;
   renderBoard($('overBoard'), e.diff, e); updateMenuUI(); syncPhone(true);
