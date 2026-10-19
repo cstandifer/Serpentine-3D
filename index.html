@@ -905,7 +905,7 @@ const STAGES = [
   {name: 'Mirror Ball', goal: 26, half: 22, music: 'disco', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
    walls: [block(-3, -17, 6, 2), block(-3, 15, 6, 2)]},
   {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
-  {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 1.4, gates: 0.6,
+  {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 2.4, moverSpeed: 1.35, clutter: 1.4, gates: 1.8,
    walls: [block(-17, -16, 9, 2), block(8, -16, 9, 2), block(-17, 14, 9, 2), block(8, 14, 9, 2)]},
   // the construction site sits late: its scaffolding makes it a real step up
   {name: 'Rooms', goal: 30, half: 23, music: 'dnb', scaffolds: 1, ...lv('#ffffff', 200),
@@ -1287,7 +1287,7 @@ function ensureChunk(cx, cy){
   // movers: a pillar sliding along a short track (the whole track is kept clear when placing it)
   const nMover = G.S.movers ? Math.floor(rnd()*(0.5 + 1.5*d)*G.S.movers + 0.35) : 0;
   for (let i = 0; i < nMover; i++) for (let a = 0; a < 8; a++){
-    const horiz = rnd() < .5, amp = 1.4 + rnd()*1.6, per = 2.6 + rnd()*2.4, ph = rnd()*Math.PI*2;
+    const horiz = rnd() < .5, amp = 1.4 + rnd()*1.6, per = (2.6 + rnd()*2.4)/(G.S.moverSpeed || 1), ph = rnd()*Math.PI*2;   // a level can make its movers quicker
     const gx = 2 + Math.floor(rnd()*(CH - 4)), gy = 2 + Math.floor(rnd()*(CH - 4)), bx = ox + gx + 0.1, by = oy + gy + 0.1;
     const reach = horiz ? {x: bx - amp, y: by, w: ms + 2*amp, h: ms} : {x: bx, y: by - amp, w: ms, h: ms + 2*amp};
     if (fits(reach, 1.1)){ const o = {x: bx, y: by, w: ms, h: ms, tall: true, mover: {x0: bx, y0: by, ax: horiz ? 1 : 0, ay: horiz ? 0 : 1, amp, per, ph}}; c.obs.push(shapeObs(o)); G.movers.push(o); break; }
