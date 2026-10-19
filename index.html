@@ -4503,7 +4503,7 @@ function updateMenuUI(){
   $('phoneBox').hidden = CTRL !== 'phones';
   $('ctrlDesc').innerHTML = CTRL === 'device' ? '<b>Tilt this screen</b> like a steering wheel to turn. <b>Tap anywhere</b> to jump.'
     : CTRL === 'keys' ? (CAN_TILT ? '<b>Drag sideways</b> to turn. <b>Tap anywhere</b> to jump.' : '<b>Arrow keys</b> turn, <b>Space</b> jumps, C changes view.')
-    : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the code below with your phone.';
+    : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the QR code with your phone to connect.';
   $('snakeLabel').textContent = MODE !== 1 ? 'Snake (everyone)' : 'Snake';
   holdCtrlHeight();
   sendLobby();
@@ -4591,6 +4591,8 @@ function saveBest(sc){
   return isBest;
 }
 // ---- leaderboard: top 10 per difficulty, kept in this browser ----
+// (ask the browser to keep this site's storage instead of clearing it when space runs low or the site sits unused)
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(_) {}
 const BOARD_N = 10;
 const boards = {};
 for (const k in DIFFS){ try { boards[k] = JSON.parse(store.get('board-' + k)) || []; } catch(_) { boards[k] = []; } }
