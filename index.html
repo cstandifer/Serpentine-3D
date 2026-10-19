@@ -4127,6 +4127,9 @@ function seatFor(L){
     const j = i >= 0 ? i : SEATS.findIndex(st => st.gone && st.kind === L.kind);
     if (j >= 0 && j < PL.length){
       SEATS[j].link = L; SEATS[j].gone = false;
+      // back in time: their snake returns with the lives it had
+      if (SEATS[j].savedLives > 0 && PL[j]){ PL[j].lives = SEATS[j].savedLives; PL[j].respawnT = 0.8; }
+      delete SEATS[j].savedLives;
       if (L.kind === 'screen'){ linkSend(L, {t: 'hi', seat: j}); sendStart(L, j, true); }
       seatsChanged(); return;
     }
@@ -4136,14 +4139,34 @@ function seatFor(L){
   if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
   seatsChanged();
 }
+// a player who left mid-round: their snake leaves the field (no one is steering it), their lives kept for a return
+function takeOut(i){
+  const p = PL[i], st = SEATS[i];
+  if (!p || !st || st.savedLives != null) return;
+  st.savedLives = Math.max(0, p.lives); p.alive = false; p.lives = 0;
+}
+// the host's watchdog: a link that has gone quiet (a phone that left the controller page, a screen that closed,
+// often without the connection ever saying so) is let go; a player still gone after a while is taken out
+const LINK_QUIET_DROP_MS = 7000, GONE_OUT_MS = 10000;
+setInterval(() => {
+  if (ROLE !== 'host' || !LINK.links) return;
+  const now = performance.now();
+  for (const L of LINK.links.slice()) if (now - L.seen > LINK_QUIET_DROP_MS){
+    LINK.links = LINK.links.filter(x => x !== L);
+    try { L.conn.close(); } catch(_) {}
+    linkGone(L);
+  }
+  if (state === 'play' || state === 'paused') SEATS.forEach((st, i) => { if (st.gone && now - st.goneAt > GONE_OUT_MS) takeOut(i); });
+}, 1000);
 function linkGone(L){
   const i = seatOf(L);
   if (i >= 0){
     if (state === 'menu'){ SEATS.splice(i, 1); }
     else {
-      SEATS[i].link = null; SEATS[i].gone = true;
-      // a screen that leaves takes its snake with it; a phone's snake just stops steering until it's back
-      if (L.kind === 'screen' && PL[i]){ PL[i].alive = false; PL[i].lives = 0; }
+      SEATS[i].link = null; SEATS[i].gone = true; SEATS[i].goneAt = performance.now();
+      // a screen that leaves takes its snake with it (its lives are kept in case it comes back this round);
+      // a phone's snake just stops steering, and is taken out too if the phone hasn't come back after a few seconds
+      if (L.kind === 'screen' && PL[i]) takeOut(i);
     }
     seatsChanged();
   }
@@ -4401,6 +4424,8 @@ function syncPhone(force){
 // and everyone else's follows the host's relays.
 const CL = {peer: null, conn: null, code: '', lobby: null, msg: '', stuck: false};
 function netSend(m){ if (CL.conn && CL.conn.open) try { CL.conn.send(m); } catch(_) {} }
+setInterval(() => { if (ROLE === 'client') netSend({t: 'ping'}); }, 1000);
+addEventListener('pagehide', () => { if (ROLE === 'client' && CL.conn) try { CL.conn.close(); } catch(_) {} });
 function showJoin(msg){
   hideOverlays(); $('joinOv').hidden = false;
   $('joinMsg').textContent = msg || '';
@@ -5021,6 +5046,11 @@ function start(idx){
 }
 function nextStage(){
   if (state !== 'clear' || !G.cardShown || ROLE !== 'host') return;
+  if (MODE !== 1 && SEATS.some(st => st.gone)){
+    const keep = SEATS.map(st => !st.gone);
+    if (RUN.tagLives && RUN.tagLives.length === SEATS.length) RUN.tagLives = RUN.tagLives.filter((_, i) => keep[i]);
+    SEATS = SEATS.filter(st => !st.gone); renderSeats();
+  }
   if (!readyToPlay()) return nudgeWaiting();
   initAudio();
   loadStage(G.idx + 1);

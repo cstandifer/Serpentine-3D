@@ -380,6 +380,8 @@ function dial(){
     else if (!c.open) giveUp();
   });
 }
+// leaving this page (to play on a screen instead, or closing the tab): hang up right away so the game frees the seat
+addEventListener('pagehide', () => { try { if (conn) conn.close(); } catch(_) {} });
 function scheduleRetry(){ clearTimeout(retry); retry = setTimeout(() => { if (!connected() && code) connect(code); }, 2500); }
 
 // ---- messages from the game ----
