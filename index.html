@@ -926,7 +926,7 @@ const THEMES = {
   // a bright toy world: checkered grass, stacked toy blocks, log hurdles, low-poly clouds
   chiptune:  {sky: ['#2f6dff', '#a8d8ff'], fog: '#c4e6ff', fogNear: 18, fogFar: 70, floor: '#3fae3a', floor2: '#4fc246', grid: ['#2a8a26', '#2a8a26'],
               hurdle: ['#b5793a', '#7a4a1e'], pillar: ['#ff3b3b', '#b51f1f'], blocks: ['#ff3b3b', '#ffd23f', '#2b6bff', '#3dc95a'],
-              wall: ['#d9b77e', '#9c7c4c'], edge: '#ffffff', gem: '#a35bff', pillarShape: 'toyblocks', hurdleShape: 'log', decor: 'clouds'},
+              wall: ['#d9b77e', '#9c7c4c'], edge: '#ffffff', gem: '#ff3b3b', gemShape: 'mushroom', pillarShape: 'toyblocks', hurdleShape: 'log', decor: 'clouds'},
   // a construction site: asphalt and road paint, traffic cones, striped barricades, tower cranes overhead
   dnb:       {sky: ['#1a1a22', '#6a5442'], fog: '#3e342c', fogNear: 10, fogFar: 46, floor: '#2b2b2d', grid: ['#ffcc00', '#ffffff'],
               hurdle: ['#ff7a00', '#ffffff'], pillar: ['#ff6a00', '#a33f00'], wall: ['#8a8a85', '#5a5a55'], edge: '#ffcc00', gem: '#5ff0ff',
@@ -2774,6 +2774,22 @@ function makeR3(){
   const gemMat = new THREE.MeshPhongMaterial({color: col(C.gem), emissive: col(C.gem), emissiveIntensity: 0.45, flatShading: true, shininess: 80});
   const beamMat = new THREE.MeshBasicMaterial({color: col(C.gem), transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide});
   const gemObjs = new Map();
+  // the toy world's gems are little toadstools: a red cap with white spots on a cream stem
+  let MUSH = null;
+  function mushroom(){
+    if (!MUSH){
+      const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+      x.fillStyle = '#e8322a'; x.fillRect(0, 0, 256, 128); x.fillStyle = '#fff6ea';
+      for (const [u, v, r] of [[20, 70, 14], [70, 40, 18], [120, 80, 13], [170, 35, 17], [215, 75, 15], [100, 18, 9], [240, 25, 9], [45, 105, 8], [150, 110, 8], [200, 110, 8]]){ x.beginPath(); x.arc(u, v, r, 0, 7); x.fill(); }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      MUSH = {capGeo: new THREE.SphereGeometry(0.3, 24, 12, 0, Math.PI*2, 0, Math.PI/2), underGeo: new THREE.CircleGeometry(0.3, 24), stemGeo: new THREE.CylinderGeometry(0.11, 0.13, 0.26, 16),
+        cap: new THREE.MeshPhongMaterial({map: t, shininess: 60, specular: 0x444444, emissive: 0x551010, emissiveIntensity: 0.35}),
+        under: new THREE.MeshPhongMaterial({color: 0xe9d9b8, side: THREE.DoubleSide}), stem: new THREE.MeshPhongMaterial({color: 0xf6ead2, emissive: 0x332a1a, emissiveIntensity: 0.4})};
+    }
+    const g = new THREE.Group(), cap = new THREE.Mesh(MUSH.capGeo, MUSH.cap), under = new THREE.Mesh(MUSH.underGeo, MUSH.under), stem = new THREE.Mesh(MUSH.stemGeo, MUSH.stem);
+    cap.scale.y = 0.85; cap.position.y = 0.04; under.rotation.x = Math.PI/2; under.position.y = 0.04; stem.position.y = -0.1;
+    g.add(cap, under, stem); return g;
+  }
   function dropGem(g, o){ scene.remove(o.gem, o.glow, o.beam); o.glow.material.dispose(); gemObjs.delete(g); }
   function syncGems(t){
     const seen = new Set();
@@ -2782,7 +2798,7 @@ function makeR3(){
       seen.add(g);
       let o = gemObjs.get(g);
       if (!o){
-        o = {gem: new THREE.Mesh(GEM_GEO, gemMat), glow: glowSprite(C.gem, 0.9), beam: new THREE.Mesh(BEAM_GEO, beamMat)};
+        o = {gem: C.theme && C.theme.gemShape === 'mushroom' ? mushroom() : new THREE.Mesh(GEM_GEO, gemMat), glow: glowSprite(C.gem, 0.9), beam: new THREE.Mesh(BEAM_GEO, beamMat)};
         scene.add(o.gem, o.glow, o.beam); gemObjs.set(g, o);
       }
       const grow = Math.max(0.01, g.born === undefined ? 1 : Math.min(1, (G.t - g.born)*3));
