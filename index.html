@@ -2418,8 +2418,18 @@ function stopTrack(){
   trackGain.gain.cancelScheduledValues(now); trackGain.gain.setValueAtTime(Math.max(0.0001, trackGain.gain.value), now); trackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
   trackSrc.stop(now + 0.3); trackSrc = null; trackGain = null;
 }
-function startMusic(){ if (!AC) return; musicOn = true; stepI = 0; nextStep = AC.currentTime + 0.05; beatTimes = []; const T = trackOf(); if (T) playTrack(T); }
-function stopMusic(){ musicOn = false; beatTimes = []; if (AC) stopTrack(); }
+// the built-in songs also pick up where they stopped after a pause or a lost life
+let synthFor = null, synthPos = 0;
+function startMusic(){
+  if (!AC) return;
+  musicOn = true; nextStep = AC.currentTime + 0.05; beatTimes = [];
+  stepI = G && synthFor === G.S.music ? synthPos : 0;
+  const T = trackOf(); if (T) playTrack(T);
+}
+function stopMusic(){
+  if (musicOn && G && G.S && !trackOf()){ synthFor = G.S.music; synthPos = stepI; }
+  musicOn = false; beatTimes = []; if (AC) stopTrack();
+}
 // which beat of the music we're on (a running count), from the recorded track when one is playing
 function beatClock(clock){
   const T = trackOf();
