@@ -978,7 +978,7 @@ const THEMES = {
   dub:       {sky: ['#003a4a', '#00788a'], fog: '#00515e', fogNear: 5, fogFar: 30, floor: '#8a8466', grid: ['#9e9878', '#96906f'],   // sand, with faint ripple lines
               hurdle: ['#b98f8a', '#7d5f63'], pillar: ['#9a8494', '#5f4e5e'], coral: ['#e86f8f', '#f09a5a', '#b07ad9', '#d8c79a', '#e8d070', '#f2a6c2'],
               star: ['#e2552b', '#ee7a2f', '#c93f5a'], rock: '#8c7f86', wall: ['#0b3b44', '#062a30'], edge: '#3fe0c8', gem: '#ffffff',
-              pillarShape: 'bommie', hurdleShape: 'reef', decor: 'reef'},
+              pillarShape: 'bommie', hurdleShape: 'anemone', decor: 'reef'},
   // a rainbow road floating in deep space
   breakbeat: {sky: ['#010008', '#120838'], fog: '#07031c', fogNear: 16, fogFar: 64, floor: '#000000', grid: ['#1a0f3a', '#1a0f3a'],
               stripes: ['#ff3b3b', '#ff9d2e', '#ffe94d', '#4dff6a', '#3dc9ff', '#5b6bff', '#c45bff'],
@@ -1467,7 +1467,7 @@ function scrape(nx, ny, px, py, cause){
 // logs, rocks, rounded hurdles) use a capsule: a line down the middle of the footprint with a radius
 // (o.cap, as a fraction of the footprint's width). Everything else is its box.
 const CAP_PILLAR = {bommie: 0.5, discoball: 0.5, round: 0.5, octagon: 0.5, crystal: 0.34};
-const CAP_HURDLE = {reef: 0.5, soft: 0.5, log: 0.5};
+const CAP_HURDLE = {reef: 0.5, anemone: 0.5, soft: 0.5, log: 0.5};
 function shapeObs(o){
   const T = themeOf(G.S), c = o.tall ? CAP_PILLAR[T.pillarShape] : CAP_HURDLE[T.hurdleShape];
   if (c) o.cap = c;
@@ -2894,7 +2894,11 @@ function makeR3(){
   // ---- per-snake graphics: body, jump dots, head, shadow, glow, magnet ring and its own camera ----
   const MAX_BODY = 1500, MAX_DOTS = 400, MAX_PARTS = 400;
   const bodyMats = [gray(0.45), gray(0.45), gray(1), gray(0.3), gray(0.65), gray(0.65)].map(c => new THREE.MeshBasicMaterial({color: c}));
-  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1);
+  const SHADOW_GEO = new THREE.CircleGeometry(0.34, 24), PLANE_GEO = new THREE.PlaneGeometry(1, 1), SAND_GEO2 = new THREE.SphereGeometry(1, 14, 10),
+    URCHIN_SPIKE = new THREE.ConeGeometry(0.01, 0.2, 4).translate(0, 0.1, 0),
+    ANEM_STALK = new THREE.CylinderGeometry(0.07, 0.09, 0.14, 10).translate(0, 0.07, 0), ANEM_DISC = new THREE.CylinderGeometry(0.1, 0.08, 0.025, 12),
+    ANEM_TENT = new THREE.CylinderGeometry(0.008, 0.016, 1, 5).translate(0, 0.5, 0), ANEM_TIP = new THREE.SphereGeometry(0.018, 6, 5),
+    FISH = {body: new THREE.MeshPhongMaterial({color: 0xff7a1a, emissive: 0x7a2a00, shininess: 70}), band: new THREE.MeshPhongMaterial({color: 0xffffff, emissive: 0x666666}), tailGeo: new THREE.ConeGeometry(0.04, 0.06, 4)};
   const parts = new THREE.InstancedMesh(BOX, new THREE.MeshBasicMaterial({color: 0xffffff}), MAX_PARTS);
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
@@ -3384,6 +3388,60 @@ function makeR3(){
           glow.scale.set(w + 0.25, H + 0.1, d + 0.25); glow.position.y = H/2; g.add(glow);
           return g;
         }
+        case 'anemone': {
+          // an anemone bed: a low ridge of lumpy reef rock with anemones growing along it. Each anemone is a short
+          // stalk with a crown of tentacles opening outward, glowing at the tips, and sways on its own. Sea urchins
+          // tuck in between, the odd starfish clings to the rock, and a few small striped fish dart around.
+          const g = new THREE.Group(), wide = Math.min(w, d), seed = Math.abs(Math.round(o.x*11 + o.y*5)), rr = mulberry(seed + 3);
+          const at = (f, y, side) => alongX ? [f*long, y, side*wide] : [side*wide, y, f*long];
+          // the rock ridge
+          const nr = Math.max(2, Math.round(long/0.6));
+          for (let k = 0; k < nr; k++){
+            const f = nr > 1 ? k/(nr - 1) - 0.5 : 0, len = long/nr*1.35, r = new THREE.Mesh(REEF.rockGeo(seed + k), REEF.rock);
+            r.scale.set(alongX ? len : wide*0.95, H*0.55, alongX ? wide*0.95 : len); r.position.set(...at(f*(long - wide*0.5)/long, H*0.18, 0)); r.rotation.y = seed + k; g.add(r);
+          }
+          // the anemones
+          const kinds = [['#ff6f9f', '#ffd6e6'], ['#ff8a3d', '#ffe0b8'], ['#b46bff', '#f0d6ff'], ['#2fd6b0', '#d6fff4'], ['#ff4f6a', '#ffe9a8']];
+          const na = Math.max(3, Math.round(long/0.38)), sways = [];
+          for (let k = 0; k < na; k++){
+            const [c1, c2] = kinds[(seed + k) % kinds.length], f = (k + 0.5)/na - 0.5 + (rr() - 0.5)*0.06, side = (rr() - 0.5)*0.35;
+            const an = new THREE.Group(); an.position.set(...at(f, H*0.32, side)); an.scale.setScalar(1.15 + rr()*0.45);
+            const stalkMat = new THREE.MeshPhongMaterial({color: col(c1), emissive: col(c1), emissiveIntensity: 0.25, shininess: 20});
+            const stalk = new THREE.Mesh(ANEM_STALK, stalkMat); an.add(stalk);
+            const disc = new THREE.Mesh(ANEM_DISC, new THREE.MeshPhongMaterial({color: col(c2), emissive: col(c1), emissiveIntensity: 0.35})); disc.position.y = 0.13; an.add(disc);
+            // tentacles: two rings, the outer ones leaning further out, each a tapered stem with a glowing tip
+            const nt = 22, tent = new THREE.InstancedMesh(ANEM_TENT, new THREE.MeshPhongMaterial({color: col(c1), emissive: col(c1), emissiveIntensity: 0.35, shininess: 30}), nt);
+            const tips = new THREE.InstancedMesh(ANEM_TIP, new THREE.MeshBasicMaterial({color: col(c2)}), nt);
+            const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), dir = new THREE.Vector3();
+            for (let t = 0; t < nt; t++){
+              const outer = t < 14, ang = (t/(outer ? 14 : 8))*Math.PI*2 + (outer ? 0 : 0.4), lean = outer ? 0.75 + rr()*0.3 : 0.25 + rr()*0.25, len = (outer ? 0.2 : 0.17) + rr()*0.06, base = outer ? 0.07 : 0.035;
+              dir.set(Math.cos(ang)*Math.sin(lean), Math.cos(lean), Math.sin(ang)*Math.sin(lean));
+              q.setFromUnitVectors(UP, dir); v.set(Math.cos(ang)*base, 0.14, Math.sin(ang)*base);
+              tent.setMatrixAt(t, m4.compose(v, q, sc.set(1, len, 1)));
+              tips.setMatrixAt(t, m4.compose(v.clone().addScaledVector(dir, len), q, sc.set(1, 1, 1)));
+            }
+            an.add(tent, tips); g.add(an); sways.push({g: an, ph: rr()*6, sp: 0.8 + rr()*0.6});
+          }
+          // sea urchins tucked in along the ridge
+          const urchinMat = new THREE.MeshPhongMaterial({color: 0x2a1030, emissive: 0x100410, shininess: 60, specular: 0x8866aa});
+          for (let u = 0; u < Math.max(1, Math.round(long/1.2)); u++){
+            const ur = new THREE.Group(), body = new THREE.Mesh(SAND_GEO2, urchinMat); body.scale.setScalar(0.1); ur.add(body);
+            for (let k = 0; k < 22; k++){ const sp = new THREE.Mesh(URCHIN_SPIKE, urchinMat), dv = new THREE.Vector3(rr() - 0.5, rr()*0.9, rr() - 0.5).normalize(); sp.quaternion.setFromUnitVectors(UP, dv); sp.position.copy(dv).multiplyScalar(0.08); ur.add(sp); }
+            ur.position.set(...at((rr() - 0.5)*0.9, 0.08, rr() < 0.5 ? -0.42 : 0.42)); g.add(ur);
+          }
+          // a starfish on the rock now and then
+          if (seed % 2 === 0){ const st = REEF.star(T.star[seed % T.star.length], 0.15); st.position.set(...at((rr() - 0.5)*0.8, H*0.42, rr() < 0.5 ? -0.3 : 0.3)); st.rotation.x = -Math.PI/2; st.rotation.z = seed; g.add(st); }
+          // small striped fish, circling the anemones
+          const fish = [];
+          for (let k = 0; k < (seed % 3 === 0 ? 2 : 1); k++){
+            const fg = new THREE.Group(), body = new THREE.Mesh(SAND_GEO2, FISH.body); body.scale.set(0.09, 0.055, 0.04); fg.add(body);
+            for (const bx of [-0.03, 0.035]){ const band = new THREE.Mesh(SAND_GEO2, FISH.band); band.scale.set(0.012, 0.058, 0.043); band.position.x = bx; fg.add(band); }
+            const tail = new THREE.Mesh(FISH.tailGeo, FISH.body); tail.position.x = -0.1; tail.rotation.z = Math.PI/2; fg.add(tail);
+            g.add(fg); fish.push({g: fg, r: 0.25 + rr()*0.25, y: H*0.9 + rr()*0.25, ph: rr()*6, sp: 0.9 + rr()*0.6, cx: (rr() - 0.5)*long*0.6});
+          }
+          g.userData.anemones = {sways, fish, alongX};
+          return g;
+        }
         case 'reef': {
           // a low reef ridge: lumpy rock along the hurdle, crusted with brain and plate coral, the odd starfish on top
           const g = new THREE.Group(), wide = Math.min(w, d), n = Math.max(2, Math.round(long/0.55)), seed = Math.abs(Math.round(o.x*11 + o.y*5));
@@ -3746,7 +3804,7 @@ function makeR3(){
       decor.add(bubbles); DECOR.bubbles = {pts: bubbles, info};
     }
     // mirror-ball pillars catch the light as they turn
-    DECOR.spinners = []; DECOR.wallShafts = []; level.traverse(o => { if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); if (o.userData && o.userData.shaft) DECOR.wallShafts.push(o.userData.shaft); });
+    DECOR.spinners = []; DECOR.wallShafts = []; DECOR.anemones = []; level.traverse(o => { if (o.userData && o.userData.anemones) DECOR.anemones.push(o.userData.anemones); if (o.userData && o.userData.spin) DECOR.spinners.push(o.userData.spin); if (o.userData && o.userData.shaft) DECOR.wallShafts.push(o.userData.shaft); });
   }
   function tickDecor(clock, dt, beat){
     if (!DECOR) return;
@@ -3805,6 +3863,12 @@ function makeR3(){
     }
     else if (k === 'skyline') DECOR.items.forEach((b, i) => { b.material.opacity = 0.3 + 0.45*beat*((i % 2) ? 1 : 0.7); b.rotation.z = Math.sin(clock*0.4 + i)*0.12; });
     else if (k === 'reef'){
+      for (const A of DECOR.anemones || []){
+        for (const s2 of A.sways){ s2.g.rotation.x = Math.sin(clock*s2.sp + s2.ph)*0.16; s2.g.rotation.z = Math.cos(clock*s2.sp*0.8 + s2.ph)*0.16; }
+        for (const f of A.fish){ const a = clock*f.sp + f.ph, x = f.cx + Math.cos(a)*f.r, z = Math.sin(a)*f.r;
+          if (A.alongX) f.g.position.set(x, f.y + Math.sin(a*2)*0.05, z); else f.g.position.set(z, f.y + Math.sin(a*2)*0.05, x);
+          f.g.rotation.y = A.alongX ? -a - Math.PI/2 : -a; }
+      }
       for (const kp of DECOR.kelp) kp.k.rotation.z = Math.sin(clock*0.9 + kp.ph)*0.18;
       DECOR.items.forEach((r, i) => { r.material.opacity = 0.05 + 0.03*Math.sin(clock*0.6 + i); });
       const B = DECOR.bubbles, a = B.pts.geometry.attributes.position.array;
