@@ -981,7 +981,7 @@ const THEMES = {
 // conduits with small amber lights; the floor keeps its scattered glints, here like starlight on polished black.
 THEMES.trance = THEMES.robot = {sky: ['#000000', '#05060a'], fog: '#05060a', fogNear: 18, fogFar: 75, floor: '#07080b', grid: ['#262a31', '#30353d', '#22252b'], wash: '#8a96a8',
   hurdle: ['#7d838c', '#40444b'], pillar: ['#8a9099', '#4a4f57'], wall: ['#16181c', '#0a0b0d'], edge: '#c9b48a', gem: '#ffe9b8',
-  pillarShape: 'module', hurdleShape: 'conduit', decor: 'void'};
+  pillarShape: 'module', hurdleShape: 'conduit', wallShape: 'glass', decor: 'void'};
 THEMES.swing = THEMES.electro;   // Pinball keeps the light-cycle city look with its own song
 const themeOf = S => THEMES[S.music] || THEMES.breakbeat;
 
@@ -1175,7 +1175,8 @@ function loadStage(idx){ loadWorld(makeCfg(idx)); }
 function loadWorld(cfg){
   CFG = cfg;
   const multi = cfg.mode !== 1, party = cfg.mode === 2;
-  const S = party ? COURSES[cfg.idx] : STAGES[cfg.idx], D = DIFFS[cfg.diff], K = SNAKES[cfg.snake];
+  // (an index out of range falls back to the first course or level instead of crashing)
+  const S = (party ? COURSES[cfg.idx] : STAGES[cfg.idx]) || (cfg.idx = 0, party ? COURSES[0] : STAGES[0]), D = DIFFS[cfg.diff], K = SNAKES[cfg.snake];
   const n = multi ? cfg.players.length : 1;
   applyLook(S);
   if (AC && typeof TRACKS !== 'undefined') loadTrack(TRACKS[S.music]);   // start fetching this level's recorded track, if it has one
@@ -3023,7 +3024,7 @@ function makeR3(){
 
   // level: floor, walls and obstacles are fixed once a level loads, so build them once
   function build(){
-    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
+    level.traverse(o => { if (o.isMesh || o.isLine){ if (o.geometry !== BOX && o.geometry !== EDGES && o.geometry !== POLE) o.geometry.dispose(); [].concat(o.material).forEach(m => { if (m === steel || m === planks || (GLASS && (m === GLASS.side || m === GLASS.top))) return; if (m.map) m.map.dispose(); m.dispose(); }); } });
     level.clear();
     for (const [g, o] of gemObjs) dropGem(g, o);
     const T = C.theme || THEMES.breakbeat;
@@ -3066,8 +3067,9 @@ function makeR3(){
       level.add(b);
     };
     mats.wall = boxMats(T.wall[0], T.wall[1]); edgeMat.color = col(T.edge); wallEdges = edgeMat;
-    for (const o of WALLS) addBox(o, WALL_H, mats.wall, true);
-    for (const o of G.walls) addBox(o, WALL_H, mats.wall, true);
+    const wallOf = T.wallShape ? o => level.add(seeWall(o, T.wallShape, edgeMat)) : o => addBox(o, WALL_H, mats.wall, true);
+    for (const o of WALLS) wallOf(o);
+    for (const o of G.walls) wallOf(o);
     const shapes = shapeKit(T);
     DYN = [];
     for (const c of G.chunks.values()) for (const o of c.obs){
@@ -3095,6 +3097,24 @@ function makeR3(){
   function stripeTex(draw, w, h){
     const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
+  }
+  // ---- see-through walls for the space levels: a solid-looking block of smoked glass ----
+  let GLASS = null;
+  function seeWall(o, style, edgeMat){
+    const g = new THREE.Group(), alongX = o.w >= o.h, L = alongX ? o.w : o.h, T2 = alongX ? o.h : o.w;
+    g.position.set(o.x + o.w/2, 0, o.y + o.h/2); if (!alongX) g.rotation.y = Math.PI/2;
+    // a solid slab of smoked glass: tinted see-through faces, darker toward the floor, with bright edges so its shape stays clear
+    if (!GLASS){
+      const c = document.createElement('canvas'); c.width = 4; c.height = 128; const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#c4d4e6'); gr.addColorStop(0.55, '#6f849c'); gr.addColorStop(1, '#1c2430'); x.fillStyle = gr; x.fillRect(0, 0, 4, 128);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      GLASS = {side: new THREE.MeshPhongMaterial({map: t, emissive: 0x1a2430, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide, shininess: 120, specular: 0xffffff}),
+               top: new THREE.MeshPhongMaterial({color: 0xcfe0f2, emissive: 0x2a3644, transparent: true, opacity: 0.72, depthWrite: false, side: THREE.DoubleSide, shininess: 120, specular: 0xffffff})};
+    }
+    const b = new THREE.Mesh(BOX, [GLASS.side, GLASS.side, GLASS.top, GLASS.side, GLASS.side, GLASS.side]);
+    b.scale.set(L, WALL_H, T2); b.position.y = WALL_H/2; b.renderOrder = 2; g.add(b);
+    const e = new THREE.LineSegments(EDGES, edgeMat); e.scale.copy(b.scale); e.position.copy(b.position); g.add(e);
+    return g;
   }
   function shapeKit(T){
     const top = c => new THREE.MeshBasicMaterial({color: col(c)});
@@ -5077,7 +5097,7 @@ if (!R3) MODE = 1;   // party and tag team need the 3D views
 applyModeUI();
 setMuted(muted);
 RUN = newRunState();
-loadStage(stage);
+loadStage(MODE === 2 ? course : stage);   // a party loads its course, not the last solo level
 setView(view);
 updateMenuUI();
 buildTiltRows($('menuTilt')); buildTiltRows($('sTilt')); buildTiltRows($('cTilt')); syncTiltRows();
