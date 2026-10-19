@@ -1173,7 +1173,7 @@ function loadWorld(cfg){
     // tag team lines up on the runway like solo; a party is spread around the arena below
     const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...cols[i]));
     p.kind = pp.kind; p.name = pp.name; p.ep = 0; p.K = SNAKES[pp.snake] || K;
-    if (cfg.lives){ p.lives = cfg.lives[i]; if (p.lives <= 0) p.alive = false; }
+    if (cfg.lives){ p.lives = cfg.lives[i]; if (p.lives <= 0){ p.alive = false; p.outAtStart = true; } }
     p.local = ROLE === 'host' ? pp.kind !== 'screen' : i === ME;
     return p;
   }); }
@@ -4240,7 +4240,11 @@ function viewers(){
   if (MODE === 1) return [0];
   if (ROLE === 'client') return PL[ME] ? [ME] : [];
   if (CAN_TILT){ const i = PL.findIndex(p => p.kind === 'device'); return i >= 0 ? [i] : []; }
-  return PL.map((p, i) => ['phone', 'keys', 'device'].includes(p.kind) || (p.kind === 'cpu' && CPU_VIEW) ? i : -1).filter(i => i >= 0);
+  const vs = PL.map((p, i) => ['phone', 'keys', 'device'].includes(p.kind) || (p.kind === 'cpu' && CPU_VIEW) ? i : -1).filter(i => i >= 0);
+  // tag team: players already out when this level started give their share of the screen to the ones still in
+  // (if everyone on this screen is out, keep their views so it still shows the team)
+  const still = vs.filter(i => !PL[i].outAtStart);
+  return still.length ? still : vs;
 }
 // nobody of yours left in a party: everyone playing on this screen (or its phones) is out of lives
 function localHumansOut(){
