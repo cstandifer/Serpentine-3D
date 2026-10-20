@@ -517,7 +517,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   <div class="sways">
     <div class="sway"><span class="n">1</span><b>Scan with a phone</b><div class="qr off" id="qr4" aria-hidden="true"></div><span>Play on your own phone, or use it as a controller on this screen.</span></div>
     <div class="sway"><span class="n">2</span><b>Laptop or tablet</b><div class="code" id="sheetCode">····</div><span id="sheetCodeHow"></span></div>
-    <div class="sway"><span class="n">3</span><b>Right here</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span>Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
+    <div class="sway"><span class="n">3</span><b>On this screen</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span>Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
   </div>
   <button class="btn" id="sheetGo">Start</button>
 </section>
@@ -551,14 +551,13 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
     <details class="how" id="how">
       <summary>How to play</summary>
       <ul class="rules">
-        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Tilt to steer</b>: your phone as a controller, or the phone or tablet you're playing on, like a steering wheel. A little for a gentle curve, more for a tight one. Arrow keys and dragging work too.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> to clear low lime hurdles: for real while holding a phone controller, or <b>tap anywhere</b> on the screen you're playing on. Space works too.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Pink pillars are too tall to jump. <b>Steer around them.</b> From level 5 some slide back and forth.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Steer</b> by tilting your phone, or with the arrow keys (A and D work too). A little for a gentle curve, more for a tight one.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> for real holding a phone controller, tap the screen you're playing on, or press Space. Low obstacles and your own tail can be jumped.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Tall obstacles can't be jumped. <b>Steer around them.</b> Some slide back and forth.</span></li>
         <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="4" width="16" height="9" style="fill:var(--pillar)"/><rect x="5" y="13" width="16" height="6" style="fill:var(--hurdle)"/></svg></span><span><b>Beat gates</b> rise and fall with the music. Jump them while they're down.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can’t be jumped by any snake.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span>Gems make you longer. Don’t run into your tail, but you can jump it.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="10" width="20" height="6" rx="3" style="fill:rgba(246,239,253,.15)"/><rect x="3" y="10" width="13" height="6" rx="3" style="fill:var(--gem)"/></svg></span><span>Eat the level’s gem goal to <b>clear it</b> and unlock the next level.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span>You get <b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clear levels to unlock new snakes.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can't be jumped by any snake.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span><b>Gems</b> make you longer. Eat the level's gem goal to clear it.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span><b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clearing levels unlocks new snakes.</span></li>
       </ul>
     </details>
     <div class="pick">
@@ -579,7 +578,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
           <div><b>Laptops and tablets</b><span id="inviteDesc"></span></div>
         </div>
         <div class="way way-add">
-          <div><b>Right here</b><span id="addHint">Add yourself on this screen, or computer snakes to fill out the field.</span></div>
+          <div><b>On this screen</b><span id="addHint">Add yourself on this screen, or computer snakes to fill out the field.</span></div>
           <div class="addrow"><button class="btn btn-ghost" id="addLocal">+ Me, on this keyboard</button><button class="btn btn-ghost" id="addCpu">+ Computer snake</button></div>
           <label class="scheck" id="cpuViewRow"><input type="checkbox" id="cpuView"> Give computer snakes their own view on this screen</label>
         </div>
@@ -780,6 +779,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="eyebrow">You</div>
       <div class="you"><span class="sw big" id="cSwatch"></span><input class="name-in" id="cName" maxlength="12" autocomplete="nickname" spellcheck="false" placeholder="Your name" aria-label="Your name"></div>
       <label class="csnake">Your snake <select class="snakeSel" id="cSnake"></select></label>
+      <label class="scheck" style="margin-top:10px"><input type="checkbox" id="cMusic"> Play the music on this screen too</label>
     </div>
     <div class="pick" id="cPlayersBox" hidden>
       <div class="eyebrow">Players</div>
@@ -795,6 +795,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="eyebrow" id="cViewLabel">View</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="cViewLabel" id="cViewPick"></div>
     </div>
+    <button class="btn btn-ghost" id="cCtlBtn" hidden>Use this phone as a controller instead</button>
     <button class="btn btn-ghost" id="cLeaveBtn">Leave and go to the main menu</button>
   </div>
 </div>
@@ -1816,8 +1817,9 @@ function watchFor(i){
 const playerName = i => { const p = PL[i]; if (!p) return ''; return p.name || (p.kind === 'cpu' ? 'CPU ' + (i + 1) : ROLE === 'client' && i === ME ? 'You' : 'P' + (i + 1)); };
 
 // ---- making sure everyone has a controller before play starts ----
-// solo with Phone + screen needs the phone before it starts; party and tag team need enough players
-function missingPhones(){ return MODE === 1 && CTRL === 'phones' && !phoneOn() ? [0] : []; }
+// solo never waits: the keyboard (or this screen's tilt) works from the start, and a phone takes over when it connects;
+// party and tag team need enough players
+function missingPhones(){ return []; }
 const seatRange = () => MODE === 3 ? [2, 4] : [2, 8];
 function seatsOk(){ const [lo, hi] = seatRange(); return SEATS.length >= lo && SEATS.length <= hi; }
 const readyToPlay = () => ROLE === 'host' && (MODE === 1 ? missingPhones().length === 0 : seatsOk());
@@ -4039,7 +4041,10 @@ function makeR3(){
 //     screen. Each screen moves its own snake and reports it ({t:'pos'}) so steering never waits on the network;
 //     this host referees gems ({t:'claim'} -> {t:'gem'}), the clock and the team's lives, and relays everyone's
 //     positions to every screen ({t:'w'}, about 15 a second).
-const LINK = {peer: null, code: '', links: []};   // each link: {conn, kind: 'phone' | 'screen', seen, name}
+const LINK = {peer: null, code: '', links: []};
+// this device's id, shared by the game page and the phone controller page (same site, same storage), so a player who
+// switches between them (controller to their own screen, or back) keeps one seat instead of getting a second snake
+const DEVICE = (() => { try { let d = localStorage.getItem('serpentine-device'); if (!d){ d = Math.random().toString(36).slice(2, 10); localStorage.setItem('serpentine-device', d); } return d; } catch(_) { return ''; } })();   // each link: {conn, kind: 'phone' | 'screen', seen, name}
 // The STUN servers and the optional TURN relay live in ice.js, shared with the controller.
 let ICE = null;
 const PEER_OPTS = window.SERPENTINE_PEER || {};   // lets a test point PeerJS at its own broker
@@ -4048,7 +4053,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20a';
+const CTRL_BUILD = '2026-10-20b';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -4076,7 +4081,7 @@ function setPhoneUI(note){
   $('bigQr').hidden = !wantQr;
   $('bqEyebrow').textContent = MODE === 1 ? (on ? 'Phone connected' : 'Play with your phone') : MODE === 2 ? 'Join the party' : 'Join the team';
   $('bqDesc').textContent = MODE === 1 ? (on ? 'Tilt to steer, jump for real. Press Start on your phone or here.' : "Point your phone's camera here. Your phone becomes the controller.")
-    : `Scan to play on your phone, or to steer on this screen. Laptops and tablets: open ${siteName()} and type this code under Joining a friend's game?`;
+    : `Scan with your phone to join. You'll steer your snake here, or you can play it on your phone. Laptops and tablets: open ${siteName()} and type this code under Joining a friend's game?`;
   const url = controllerURL(LINK.code);
   const local = location.protocol === 'file:';
   const how = `Open <b>${siteName()}</b> and type this code under <b>Joining a friend's game?</b>`;
@@ -4107,7 +4112,7 @@ async function startPhoneLink(){
     peer.on('open', () => { store.set('phone', code); drawQR(); setPhoneUI(); });
     peer.on('connection', conn => {
       const meta = conn.metadata || {};
-      const L = {conn, kind: meta.kind === 'screen' ? 'screen' : 'phone', seen: performance.now(), name: cleanName(meta.name)};
+      const L = {conn, kind: meta.kind === 'screen' ? 'screen' : 'phone', seen: performance.now(), name: cleanName(meta.name), device: String(meta.device || '').slice(0, 16)};
       conn.on('open', () => {
         if (ROLE !== 'host'){ conn.close(); return; }
         L.seen = performance.now();
@@ -4138,9 +4143,30 @@ async function startPhoneLink(){
 // Phones and other screens take a seat when they connect. This screen can add its own players too:
 // up to two keyboard players (or one "this screen" tilt player on a tablet) and computer snakes.
 // Seats keep their order during a round (it's the player order); one that drops out is marked gone.
+// a player switched devices: their seat (and, mid-round, their snake and lives) moves to the new connection, and the
+// device they left is told so it stops trying to reconnect
+function moveSeat(j, L){
+  const st = SEATS[j], old = st.link;
+  st.link = L; st.kind = L.kind; st.gone = false; delete st.goneAt; if (L.name) st.name = L.name;
+  if (old && old !== L){
+    LINK.links = LINK.links.filter(x => x !== old);
+    linkSend(old, {t: 'moved'}); setTimeout(() => { try { old.conn.close(); } catch(_) {} }, 400);
+  }
+  const p = PL[j];
+  if (state !== 'menu' && p && j < PL.length){
+    p.kind = L.kind; p.local = L.kind !== 'screen';
+    if (st.savedLives > 0){ p.lives = st.savedLives; p.respawnT = 0.8; }
+    delete st.savedLives;
+    if (L.kind === 'screen'){ linkSend(L, {t: 'hi', seat: j}); sendStart(L, j, true); }
+  } else if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: j, playing: state !== 'menu'});
+  seatsChanged(); syncPhone(true);
+}
 function seatFor(L){
   // a phone or tablet hosting shows only its own player's view, so a phone that scans its code plays on itself
   if (CAN_TILT && L.kind === 'phone'){ linkSend(L, {t: 'useScreen', code: LINK.code}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 600); return; }
+  // the same device is already in this game (it switched between controller and its own screen): move its seat over
+  const same = L.device ? SEATS.findIndex(st => st.device === L.device && st.link !== L) : -1;
+  if (same >= 0) return moveSeat(same, L);
   if (state !== 'menu'){
     // someone who dropped out mid-round gets their seat back
     const i = SEATS.findIndex(st => st.gone && st.kind === L.kind && st.name === L.name);
@@ -4155,7 +4181,7 @@ function seatFor(L){
     }
   }
   if (SEATS.length >= 8){ linkSend(L, {t: 'full'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400); return; }
-  SEATS.push({kind: L.kind, link: L, name: L.name, snake});
+  SEATS.push({kind: L.kind, link: L, name: L.name, snake, device: L.device});
   if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
   seatsChanged();
 }
@@ -4278,6 +4304,9 @@ function sendLobby(){
   for (const L of screens()) linkSend(L, {...base, you: seatOf(L)});
 }
 function sendStart(L, i, late){
+  // building the level can keep a slow device busy (and silent) for a few seconds: give it extra time before the
+  // heartbeat counts it as gone
+  L.seen = performance.now() + 10000;
   const m = {t: 'start', cfg: CFG, me: i, banked: RUN.banked};
   // someone joining a round already under way also needs the clock and which gems are gone or new
   if (late && G){
@@ -4378,7 +4407,10 @@ function onScreenMsg(L, m){
 function onPhone(L, m){
   // which snake this phone steers: solo's one snake (when Phone + screen is the control), or its own seat
   let pi = -1;
-  if (MODE === 1){ if (CTRL === 'phones') pi = 0; }
+  // in solo, the first connected phone steers the one snake; any other phone just watches (and is told why)
+  const extra = MODE === 1 && phones()[0] !== L;
+  if (extra && m.t !== 'view') return;
+  if (MODE === 1) pi = 0;
   else { const i = seatOf(L); if (i >= 0 && i < PL.length && PL[i].kind === 'phone' && state !== 'menu') pi = i; }
   if (m.t === 'steer'){ if (pi >= 0){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); } }
   else if (m.t === 'jump'){ if (pi >= 0) jumpFor(pi); }
@@ -4422,7 +4454,7 @@ function syncPhone(force){
   for (const L of ls){
     let msg;
     if (MODE === 1){
-      msg = {t: 'state', state, go, view, mode: 1, ask, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
+      msg = {t: 'state', state, go, view, mode: 1, ask, extra: phones()[0] !== L, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
          level: G.idx + 1, name: G.S.name, gems: Math.min(G.gems, G.S.goal), goal: G.S.goal};
     } else {
       const i = seatOf(L), p = i >= 0 && i < PL.length && state !== 'menu' ? PL[i] : null;
@@ -4432,8 +4464,9 @@ function syncPhone(force){
         left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
     }
     // before a game: everyone picks a snake on their phone; player 1 (or solo's phone) also picks the level and starts it
+    if (msg.extra) msg.go = '';   // a second phone in solo can't start or steer
     const si = seatOf(L), lead = MODE === 1 || si === 0;
-    if (state === 'menu'){
+    if (state === 'menu' && !msg.extra){
       msg.pick = {snakes: Object.keys(SNAKES).map(k => ({k, name: SNAKES[k].name, icon: snakeIconRaw(k), open: snakeOpen(k), why: snakeOpen(k) ? '' : unlockText(k)})),
         cpus: lead && MODE !== 1 ? {n: SEATS.filter(x => x.kind === 'cpu').length, room: SEATS.length < seatRange()[1]} : null,
         snake: MODE === 1 ? playSnake() : seatSnake(SEATS[si]), lead, kind: MODE === 2 ? 'Course' : 'Level', level: MODE === 2 ? course : stage,
@@ -4472,6 +4505,7 @@ async function joinGame(code){
   CTRL = CAN_TILT ? 'device' : 'keys';
   if (view === 'top' && R3) setView('chase');
   state = 'menu'; stopMusic();
+  $('phoneChip').hidden = true;   // this screen's own phone code no longer applies
   showClient(`Connecting to game ${code}…`);
   if (typeof window.Peer !== 'function') return showClient("Couldn't load the link library. Check your connection and reload.", true);
   if (!ICE) ICE = await window.getIceServers();
@@ -4486,7 +4520,7 @@ async function joinGame(code){
   peer.on('disconnected', () => { if (!peer.destroyed) try { peer.reconnect(); } catch(_) {} });
 }
 function dialHost(){
-  const c = CL.peer.connect('serpentine-' + CL.code.toLowerCase(), {reliable: true, metadata: {kind: 'screen', name: store.get('name') || ''}});
+  const c = CL.peer.connect('serpentine-' + CL.code.toLowerCase(), {reliable: true, metadata: {kind: 'screen', name: store.get('name') || '', device: DEVICE}});
   const timer = setTimeout(() => {
     if (c.open) return;
     try { c.close(); } catch(_) {}
@@ -4495,7 +4529,7 @@ function dialHost(){
   }, 10000);
   c.on('open', () => { clearTimeout(timer); CL.conn = c; showClient('Connected. Waiting for the host to start…'); });
   c.on('data', onHost);
-  c.on('close', () => { if (CL.conn !== c) return; CL.conn = null; hostLost(); });
+  c.on('close', () => { if (CL.conn !== c) return; CL.conn = null; if (!CL.moved) hostLost(); });
 }
 function hostLost(){
   if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); }
@@ -4517,6 +4551,8 @@ function renderClientLobby(){
     : L ? `${L.mode === 2 ? 'Party' : 'Tag team'} on ${L.where}. ${CL.msg}` : CL.msg;
   $('cSwatch').style.background = me ? me.color : 'transparent';
   $('cYouBox').hidden = !me;
+  // on a phone: switch to steering your snake on the big screen instead (your seat comes with you)
+  $('cCtlBtn').hidden = !CAN_TILT || !CL.code;
   if (me && document.activeElement !== $('cSnake')){
     if (!$('cSnake').options.length) for (const k in SNAKES){ const o = document.createElement('option'); o.value = k; o.textContent = SNAKES[k].name; $('cSnake').appendChild(o); }
     $('cSnake').value = me.snake || 'classic';
@@ -4542,6 +4578,7 @@ function onHost(m){
   if (m.t === 'hi'){ ME = m.seat; showClient(m.playing ? "A round is under way. You'll join the next one." : 'Waiting for the host to start…'); }
   else if (m.t === 'lobby'){ CL.lobby = m; if (m.you >= 0) ME = m.you; if (state === 'menu') renderClientLobby(); }
   else if (m.t === 'full') showClient('This game is full (8 players).', true);
+  else if (m.t === 'moved'){ CL.moved = true; if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); } showClient("You're playing from your other device now. Reload this page to play here again.", true); }
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Tag team and you'll join.");
   else if (m.t === 'start') clientStart(m);
   else if (m.t === 'w'){ if (G && state !== 'menu') applyWorld(m); }
@@ -4549,6 +4586,7 @@ function onHost(m){
   else if (m.t === 'phase') applyPhase(m);
 }
 function clientStart(m){
+  netSend({t: 'ping'});   // say we're still here before (and after) the heavy work of building the level
   ME = m.me; MODE = m.cfg.mode;
   RUN = {...newRunState(), diff: m.cfg.diff, snake: m.cfg.snake, banked: m.banked || 0};
   initAudio();
@@ -4562,6 +4600,7 @@ function clientStart(m){
   }
   if (view === 'top') setView('chase');
   hideOverlays();
+  netSend({t: 'ping'});
   if (m.now && m.now.state === 'paused'){ state = 'play'; pause(); return; }
   begin();
 }
@@ -4731,6 +4770,8 @@ buildSeg('modePick', 'mode', [{value: 1, html: '<b>Solo</b><small>Just you</smal
 $('modePick').style.setProperty('--n', 3);
 function setMode(m){
   MODE = m; store.set('players', m);
+  // switching to party or tag team: everyone already connected (phones and screens that joined during solo) takes a seat
+  if (m !== 1 && ROLE === 'host' && state === 'menu') for (const L of LINK.links.slice()) if (seatOf(L) < 0) seatFor(L);
   // solo keeps its unlock order; a party can play any course
   if (MODE !== 2 && stage >= unlocked){ stage = unlocked - 1; store.set('stage', stage); }
   if (MODE !== 1 && view === 'top') setView('chase');
@@ -4840,12 +4881,15 @@ function updateMenuUI(){
   $('courseBox').hidden = MODE !== 2;
   $('stageBox').hidden = MODE === 2;
   $('ctrlBox').hidden = MODE !== 1;
+  $('boardBox').hidden = MODE !== 1;   // the leaderboard is for solo runs
+  const vt = $('view-top'); if (vt){ vt.closest('label').hidden = MODE !== 1; $('viewPick').style.setProperty('--n', MODE !== 1 ? 2 : 3); }
+  $('viewLabel').textContent = MODE !== 1 ? 'View (keyboard players; everyone can change their own)' : 'View';
   $('ctrl-' + CTRL).checked = true;
   $('menuTilt').hidden = CTRL !== 'device';
   $('phoneBox').hidden = CTRL !== 'phones';
   $('ctrlDesc').innerHTML = CTRL === 'device' ? '<b>Tilt this screen</b> like a steering wheel to turn. <b>Tap anywhere</b> to jump.'
     : CTRL === 'keys' ? (CAN_TILT ? '<b>Drag sideways</b> to turn. <b>Tap anywhere</b> to jump.' : '<b>Arrow keys</b> turn, <b>Space</b> jumps, C changes view.')
-    : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the QR code with your phone to connect.';
+    : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the QR code with your phone to connect. Until it does, the arrow keys and Space work.';
   $('snakeLabel').textContent = MODE !== 1 ? 'Snake (everyone)' : 'Snake';
   holdCtrlHeight();
   sendLobby();
@@ -5068,7 +5112,8 @@ function begin(){
   TILT.cal = true;   // however the screen is held right now counts as straight ahead
   hideOverlays(); $('pauseBtn').hidden = false;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  startMusic(); keepAwake(true);
+  if (!(ROLE === 'client' && store.get('clientMusic') !== '1')) startMusic();   // the big screen plays the music
+  keepAwake(true);
   toScreens({t: 'phase', state: 'play'});
 }
 function start(idx){
@@ -5141,6 +5186,9 @@ $('nextBtn').addEventListener('click', nextStage);
 $('resumeBtn').addEventListener('click', resume);
 $('rematchBtn').addEventListener('click', () => start(MODE === 3 ? stage : G.idx));
 $('duelMenuBtn').addEventListener('click', toMenu);
+$('cMusic').checked = store.get('clientMusic') === '1';
+$('cMusic').addEventListener('change', e => { store.set('clientMusic', e.target.checked ? '1' : '0'); });
+$('cCtlBtn').addEventListener('click', () => { if (CL.code) location.href = controllerURL(CL.code); });
 $('joinInlineGo').addEventListener('click', () => { initAudio(); joinGame($('joinInline').value); });
 $('joinInline').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); $('joinInlineGo').click(); } });
 $('joinInline').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });

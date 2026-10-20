@@ -229,6 +229,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
         <div class="row hoponly"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
         <label class="check tiltonly"><input type="checkbox" id="flipIn"> Flip left and right</label>
         <button class="btn btn-ghost" id="viewBtn">Change the big screen's view</button>
+        <button class="btn btn-ghost" id="ctlScreenBtn" hidden>Play on this phone instead</button>
         <button class="btn" id="setDone">Done</button>
       </div>
     </details>
@@ -290,7 +291,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20a</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20b</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -386,9 +387,12 @@ async function connect(c){
     peer.on('disconnected', () => { if (!peer.destroyed) try { peer.reconnect(); } catch(_) {} });
   } else if (peer.open) dial();
 }
+// this phone's id, shared with the game page, so switching between controller and playing on this phone keeps one seat
+const DEVICE = (() => { try { let d = localStorage.getItem('serpentine-device'); if (!d){ d = Math.random().toString(36).slice(2, 10); localStorage.setItem('serpentine-device', d); } return d; } catch(_) { return ''; } })();
+let movedAway = false;
 function dial(){
   if (connected()) return;
-  const c = peer.connect('serpentine-' + code.toLowerCase(), {reliable: true});
+  const c = peer.connect('serpentine-' + code.toLowerCase(), {reliable: true, metadata: {kind: 'phone', device: DEVICE}});
   // the game was found but the two devices couldn't open a path to each other: say so instead of
   // hanging on "Connecting…", then try again
   let settled = false;
@@ -416,7 +420,7 @@ function dial(){
   c.on('data', onGame);
   c.on('error', giveUp);
   c.on('close', () => {
-    if (conn === c){ conn = null; pill('Reconnecting…', 'bad'); scheduleRetry(); }
+    if (conn === c){ conn = null; if (movedAway){ pill('Playing elsewhere', 'bad'); return; } pill('Reconnecting…', 'bad'); scheduleRetry(); }
     else if (!c.open) giveUp();
   });
 }
@@ -433,11 +437,19 @@ function onGame(m){
   else if (m.t === 'full'){ pill('Game full', 'bad'); $('ctlHint').textContent = 'This game is full (8 players).'; $('setupEyebrow').textContent = 'This game is full (8 players).'; }
   // the game is hosted on a phone or tablet, which only shows its own player's view: play on this phone instead
   else if (m.t === 'useScreen') location.href = screenURL();
+  // this player's seat moved to another device (they're playing on their own screen now): stop, and say so
+  else if (m.t === 'moved'){ movedAway = true; pill('Playing elsewhere', 'bad'); $('ctlHint').textContent = "You're playing from your other device now. Reload this page to steer from here again."; }
   else if (m.t === 'state'){
     // a run just started: fold the settings away and shrink the gauges
     if (m.state === 'play' && gameState !== 'play') setOpen(false);
     gameState = m.state;
     $('ctl').classList.toggle('playing', m.state === 'play');
+    // solo with another phone already steering: say so, instead of leaving buttons that do nothing
+    const EXTRA = "Another phone is already steering this solo game. If the big screen switches to Party or Tag team, you'll get your own snake.";
+    if (m.extra) $('ctlHint').textContent = EXTRA; else if ($('ctlHint').textContent === EXTRA) $('ctlHint').textContent = '';
+    if (m.extra){ $('goBtn').hidden = true; }
+    // party and tag team: the option to play on this phone instead lives under Controls too
+    $('ctlScreenBtn').hidden = m.mode < 2;
     // party and tag team: show which player this phone is, in that snake's color, plus the clock or the level
     const duo = m.mode >= 2;
     $('me').classList.toggle('on', duo); $('me').textContent = 'P' + (m.player || 1);
@@ -686,6 +698,7 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 // ---- playing on this phone instead of steering the big screen ----
 const screenURL = () => { const u = new URL('index.html', location.href); u.search = ''; u.hash = code ? 'join=' + code : ''; return u.href; };
 $('screenBtn').addEventListener('click', e => { e.preventDefault(); location.href = screenURL(); });
+$('ctlScreenBtn').addEventListener('click', () => { location.href = screenURL(); });
 
 // ---- start ----
 bindSettings();
