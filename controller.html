@@ -279,7 +279,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20c</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20d</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -290,7 +290,34 @@ const store = {
   get(k){ try { return localStorage.getItem('serpentine-ctl-' + k); } catch(_) { return null; } },
   set(k, v){ try { localStorage.setItem('serpentine-ctl-' + k, String(v)); } catch(_) {} }
 };
-const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(_) {} };
+// haptics: Android phones vibrate; iPhones can't vibrate from a web page, so they get the system tick a switch
+// control makes when it's toggled (iOS 18+, with System Haptics on): one tick per pulse in the pattern
+let hapticSwitch = null, hapticT = [];
+function hapticTick(){
+  try {
+    if (!hapticSwitch){
+      const l = document.createElement('label'), i = document.createElement('input');
+      i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+      l.setAttribute('aria-hidden', 'true');
+      l.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;z-index:-1';
+      l.appendChild(i); document.body.appendChild(l); hapticSwitch = l;
+    }
+    hapticSwitch.click();
+  } catch(_) {}
+}
+function haptic(p){
+  try {
+    if (navigator.vibrate){ navigator.vibrate(p); return; }
+    const pulses = Array.isArray(p) ? p : [p];
+    hapticT.forEach(clearTimeout); hapticT = [];
+    let t = 0;
+    for (let k = 0; k < pulses.length; k += 2){
+      if (t === 0) hapticTick(); else hapticT.push(setTimeout(hapticTick, t));
+      t += (pulses[k] || 0) + (pulses[k + 1] || 0);
+    }
+  } catch(_) {}
+}
+const buzz = haptic;
 
 // ---- settings ----
 const SET = {

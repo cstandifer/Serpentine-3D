@@ -1152,10 +1152,39 @@ function applyLook(S){
   if (C.gem !== T.gem){ C.gem = T.gem; GLOW_GEM = makeGlow(C.gem); }
 }
 
-// vibration patterns (Android phones; iPhones don't let web pages vibrate)
-const GEM_BUZZ = [10, 40, 14], CLEAR_BUZZ = [30, 50, 30, 50, 30, 90, 140];
-// haptics go to the phone of whichever snake the event happened to (in solo, to every phone)
-const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(_) {} phoneSend({t: 'buzz', p}, MODE !== 1 && CUR ? CUR.i : undefined); };
+// haptics: Android phones vibrate; iPhones can't vibrate from a web page, so they get the system tick a switch
+// control makes when it's toggled (iOS 18+, with System Haptics on): one tick per pulse in the pattern
+let hapticSwitch = null, hapticT = [];
+function hapticTick(){
+  try {
+    if (!hapticSwitch){
+      const l = document.createElement('label'), i = document.createElement('input');
+      i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+      l.setAttribute('aria-hidden', 'true');
+      l.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;z-index:-1';
+      l.appendChild(i); document.body.appendChild(l); hapticSwitch = l;
+    }
+    hapticSwitch.click();
+  } catch(_) {}
+}
+function haptic(p){
+  try {
+    if (navigator.vibrate){ navigator.vibrate(p); return; }
+    const pulses = Array.isArray(p) ? p : [p];
+    hapticT.forEach(clearTimeout); hapticT = [];
+    let t = 0;
+    for (let k = 0; k < pulses.length; k += 2){
+      if (t === 0) hapticTick(); else hapticT.push(setTimeout(hapticTick, t));
+      t += (pulses[k] || 0) + (pulses[k + 1] || 0);
+    }
+  } catch(_) {}
+}
+// patterns: a gem is a quick double tap, a crash a heavier double, clearing a level a little rising flourish
+const GEM_BUZZ = [10, 40, 14], CRASH_BUZZ = [40, 30, 70], CLEAR_BUZZ = [30, 50, 30, 50, 30, 90, 140], WIN_BUZZ = [30, 60, 30, 60, 90];
+// haptics on this device, and on the phone of whichever snake the event happened to (in solo, to every phone)
+const buzz = p => { haptic(p); phoneSend({t: 'buzz', p}, MODE !== 1 && CUR ? CUR.i : undefined); };
+// a snake whose player is holding this very device (a joined phone, or a phone or tablet playing here)
+const ownSnake = p => !!p && (ROLE === 'client' ? p.i === ME : p.kind === 'device');
 let wake = null;
 async function keepAwake(on){
   try {
@@ -1959,7 +1988,8 @@ function dieP(p, cause){
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
   if (viewers().includes(p.i)) G.shake = Math.max(G.shake, 0.35);
   sfxCrash();
-  phoneSend({t: 'buzz', p: [40, 30, 70]}, p.i);
+  if (ownSnake(p)) haptic(CRASH_BUZZ);
+  phoneSend({t: 'buzz', p: CRASH_BUZZ}, p.i);
 }
 // somewhere open to start or respawn: clear of walls, obstacles and other snakes, facing the middle
 function findSpot(self, spots){
@@ -2044,7 +2074,7 @@ function credit(i, g){
   const sp = [];
   while (G.gemsLeft < G.minGems){ const n = spawnGem(); if (!n) break; sp.push([n.id, r2(n.x), r2(n.y)]); G.gemsLeft++; }
   burst(g.x, g.y, C.gem, 14, 4);
-  if (live){ sfxGem(); buzz(GEM_BUZZ); } else if (p.local) phoneSend({t: 'buzz', p: GEM_BUZZ}, i);
+  if (live){ sfxGem(); buzz(GEM_BUZZ); } else { if (ownSnake(p)) haptic(GEM_BUZZ); if (p.local) phoneSend({t: 'buzz', p: GEM_BUZZ}, i); }
   if (MODE !== 1) toScreens({t: 'gem', id: g.id, by: i, sp});
   if (MODE === 1 && G.gems >= G.S.goal) stageClear();
   if (MODE === 3 && state === 'play' && ++G.teamGems >= G.goal) teamClear();
@@ -2057,7 +2087,7 @@ function teamClear(){
   RUN.tagLives = PL.map(p => p.lives);
   if (G.idx + 1 < STAGES.length && G.idx + 2 > unlocked){ unlocked = G.idx + 2; store.set('unlocked', unlocked); }
   burst(G.x, G.y, C.gem, 30, 6);
-  stopMusic(); sfxClear(); phoneSend({t: 'buzz', p: CLEAR_BUZZ});
+  stopMusic(); sfxClear(); haptic(CLEAR_BUZZ); phoneSend({t: 'buzz', p: CLEAR_BUZZ});
   $('pauseBtn').hidden = true;
   toScreens({t: 'phase', state: 'clear', banked: RUN.banked, bonus});
 }
@@ -2071,7 +2101,7 @@ function die(cause){
   RUN.carry = G.gems;   // the gems you'd collected on this level carry over to the restart
   stopMusic(); sfxCrash();
   $('pauseBtn').hidden = true;
-  buzz([40, 30, 70]);
+  buzz(CRASH_BUZZ);
 }
 function stageClear(){
   state = 'clear'; G.clearT = 0;
@@ -4091,7 +4121,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20c';
+const CTRL_BUILD = '2026-10-20d';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -5012,7 +5042,7 @@ function showDuel(res, why){
   $('duelTitle').style.color = w ? w.color : '';
   $('resList').innerHTML = res.map((r, k) => `<li class="${ROLE === 'client' && r.i === ME ? 'me' : ''}"><span class="r">${k + 1}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${esc(r.name)}</span><small>${r.gems} ${r.gems === 1 ? 'gem' : 'gems'}</small><span class="sc">${r.score}</span></li>`).join('');
   finishResults(MODE === 2 && G && COURSES[G.idx] ? `Rematch on ${COURSES[G.idx].name}` : 'Rematch');
-  phoneSend({t: 'buzz', p: [30, 60, 30, 60, 90]});
+  haptic(WIN_BUZZ); phoneSend({t: 'buzz', p: WIN_BUZZ});
 }
 function showTeamOver(team){
   $('duelEyebrow').textContent = team.won ? `The team cleared all ${STAGES.length} levels` : `Out of team lives on level ${team.level}`;
