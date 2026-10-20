@@ -409,6 +409,40 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .pagehead .back{background:none;border:1.5px solid var(--rule);color:var(--cream);font:inherit;font-size:.78rem;padding:8px 12px;cursor:pointer}
 .pagehead .back:hover,.pagehead .back:focus-visible{border-color:var(--line)}
 .pagehead .pagename{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:1rem;color:var(--cream)}
+/* solo and host: no big title, a row of tabs, and only the open tab's settings */
+#menu:not([data-page="doors"]) .mast, #menu:not([data-page="doors"]) .card > div:first-child{display:none}
+.pagehead .howbtn{margin-left:auto}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border-bottom:1.5px solid var(--rule)}
+.tab{display:grid;gap:3px;justify-items:start;text-align:left;min-width:0;background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1.5px;padding:8px 8px 9px;color:var(--muted);font:inherit;cursor:pointer}
+.tab .tl{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.78rem;text-transform:uppercase;color:inherit}
+.tab .tv{font-size:.66rem;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab:hover{color:var(--cream)}
+.tab[aria-selected="true"]{color:var(--cream);border-image:var(--holo) 1;border-bottom:3px solid}
+.tab[aria-selected="true"] .tv{color:var(--cream)}
+.tab:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+#menu[data-tab] [data-tab]{display:none}
+#menu[data-tab="level"] [data-tab~="level"],#menu[data-tab="snake"] [data-tab~="snake"],#menu[data-tab="controls"] [data-tab~="controls"],
+#menu[data-tab="options"] [data-tab~="options"],#menu[data-tab="game"] [data-tab~="game"],#menu[data-tab="players"] [data-tab~="players"]{display:grid}
+#menu .pick{border-top:0;padding-top:0}
+#menu .pick > .eyebrow::before{content:none}
+/* the open tab keeps one height per page, so Start doesn't jump around as you switch tabs */
+.panel{display:grid;gap:18px;align-content:start}
+/* the card never grows past the screen: Start always shows, and a tab too tall for a small screen scrolls inside */
+#menu[data-page="solo"] .card,#menu[data-page="host"] .card{box-sizing:border-box;max-height:calc(100dvh - 56px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));grid-template-rows:auto auto minmax(0,1fr) auto;margin-bottom:auto}
+#menu[data-page="solo"] .panel,#menu[data-page="host"] .panel{overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-width:thin;margin-right:-10px;padding-right:10px}
+#menu[data-page="solo"] .startbar,#menu[data-page="host"] .startbar{position:static;margin:0;padding:0;background:none}
+/* a tab named for its only setting doesn't repeat the name above it */
+#menu[data-page="solo"] #stageLabel,#snakeLabel,#ctrlLabel,#lobbyBox > .eyebrow:first-child{display:none}
+.tab .tl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pagehead .back{white-space:nowrap;flex:none}
+.pagehead .pagename{min-width:0}
+@media (max-width:480px){
+  .tab{padding:8px 5px 9px}
+  .tab .tl{font-size:.66rem;font-stretch:100%}
+  .pagehead{gap:10px}
+  .pagehead .pagename{font-size:.82rem}
+  .pagehead .back{font-size:.7rem;padding:7px 9px}
+}
 .jb-err{color:var(--pink)}
 .jb-err:empty{display:none}
 .joinbar{display:grid;gap:12px;padding:14px;border:1.5px solid transparent;border-image:var(--holo) 1;background:rgba(95,240,255,.05)}
@@ -545,40 +579,32 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
     <div class="doors" data-on="doors" role="group" aria-label="What do you want to do?">
       <button class="door" id="doorSolo" data-door="solo"><span class="d-k">Play solo</span><span class="d-s">Ten levels, each with its own world and song. Keyboard, touch or your phone.</span><span class="d-tag">Last time</span></button>
       <button class="door" id="doorHost" data-door="host"><span class="d-k">Host a party</span><span class="d-s">Friends join on their phones or laptops. Play against each other, or as a team.</span><span class="d-tag">Last time</span></button>
-      <button class="door" id="doorJoin" data-door="join"><span class="d-k">Join a friend's game</span><span class="d-s">Got a 4-letter code from their screen? Play your own snake here.</span></button>
+      <button class="door" id="doorJoin" data-door="join"><span class="d-k">Join a friend's game</span><span class="d-s" id="doorJoinTxt">Got a 4-letter code from their screen? Play your own snake here.</span></button>
     </div>
     <div class="pagehead" data-on="solo host join">
       <button class="back" id="pageBack" aria-label="Back to the start">&larr; Back</button>
       <div class="pagename" id="pageName">Solo</div>
+      <button class="back howbtn" id="howBtn" data-on="solo host">How to play</button>
     </div>
+    <!-- solo and host settings are split into tabs, so each fits on one screen -->
+    <div class="tabs" id="tabs" data-on="solo host" role="tablist" aria-label="Game setup"></div>
     <!-- joining someone else's game, with the code box right there -->
     <div class="joinbar" id="joinBar" data-on="join">
-      <div class="jb-t"><span>Type the code from their screen. You'll get your own snake and your own view on this screen, and the host starts the game.</span></div>
+      <div class="jb-t"><span id="joinHow">Type the code from their screen. You'll get your own snake and your own view on this screen, and the host starts the game.</span></div>
       <div class="jb-f">
         <input class="code-in jb-in" id="joinInline" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="Game code to join">
         <button class="btn" id="joinInlineGo">Join</button>
       </div>
       <div class="desc jb-err" id="joinErr" role="alert"></div>
-      <div class="desc">On a phone? You can also point your camera at the QR code on their screen.</div>
+      <div class="desc" id="joinTip">On a phone? You can also point your camera at the QR code on their screen.</div>
     </div>
-    <details data-on="solo host" class="how" id="how">
-      <summary>How to play</summary>
-      <ul class="rules">
-        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Steer</b> by tilting your phone, or with the arrow keys (A and D work too). A little for a gentle curve, more for a tight one.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> for real holding a phone controller, tap the screen you're playing on, or press Space. Low obstacles and your own tail can be jumped.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Tall obstacles can't be jumped. <b>Steer around them.</b> Some slide back and forth.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="4" width="16" height="9" style="fill:var(--pillar)"/><rect x="5" y="13" width="16" height="6" style="fill:var(--hurdle)"/></svg></span><span><b>Beat gates</b> rise and fall with the music. Jump them while they're down.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can't be jumped by any snake.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span><b>Gems</b> make you longer. Eat the level's gem goal to clear it.</span></li>
-        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span><b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clearing levels unlocks new snakes.</span></li>
-      </ul>
-    </details>
-    <div data-on="host" class="pick">
+    <div class="panel" id="panel" data-on="solo host" role="tabpanel">
+    <div data-on="host" data-tab="game" class="pick">
       <div class="eyebrow" id="modeLabel">Game</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="modeLabel" id="modePick"></div>
       <div class="desc" id="modeDesc"></div>
     </div>
-    <div data-on="solo host" class="pick" id="lobbyBox" hidden>
+    <div data-on="solo host" data-tab="players" class="pick" id="lobbyBox" hidden>
       <div class="eyebrow">Add players</div>
       <div class="need" id="lobbyNeed"></div>
       <div class="ways">
@@ -599,32 +625,32 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="eyebrow in-game" id="seatHead">In this game</div>
       <ol class="seats" id="seatList"></ol>
     </div>
-    <div data-on="solo host" class="pick" id="courseBox" hidden>
+    <div data-on="solo host" data-tab="game" class="pick" id="courseBox" hidden>
       <div class="eyebrow" id="courseLabel">Course</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="courseLabel" id="coursePick"></div>
       <div class="desc" id="courseDesc"></div>
     </div>
-    <div data-on="solo host" class="pick" id="stageBox">
+    <div data-on="solo host" data-tab="level game" class="pick" id="stageBox">
       <div class="eyebrow" id="stageLabel">Level</div>
       <div class="seg" style="--n:5" role="radiogroup" aria-labelledby="stageLabel" id="stagePick"></div>
       <div class="desc" id="stageDesc"></div>
     </div>
-    <div data-on="solo host" class="pick">
+    <div data-on="solo host" data-tab="snake" class="pick">
       <div class="eyebrow" id="snakeLabel">Snake</div>
       <div class="seg" style="--n:4" role="radiogroup" aria-labelledby="snakeLabel" id="snakePick"></div>
       <div class="desc" id="snakeDesc"></div>
     </div>
-    <div data-on="solo host" class="pick">
+    <div data-on="solo host" data-tab="options" class="pick">
       <div class="eyebrow" id="diffLabel">Difficulty</div>
       <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="diffLabel" id="diffPick"></div>
       <div class="desc" id="diffDesc"></div>
     </div>
-    <div data-on="solo host" class="pick">
+    <div data-on="solo host" data-tab="options" class="pick">
       <div class="eyebrow" id="viewLabel">View</div>
       <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="viewLabel" id="viewPick"></div>
       <div class="desc" id="viewDesc"></div>
     </div>
-    <div data-on="solo host" class="pick" id="ctrlBox">
+    <div data-on="solo host" data-tab="controls" class="pick" id="ctrlBox">
       <div class="eyebrow" id="ctrlLabel">Controls</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="ctrlLabel" id="ctrlPick"></div>
       <div class="ctrl-more" id="ctrlMore">
@@ -639,10 +665,30 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       </div>
       </div>
     </div>
+    </div>
     <div data-on="solo host" class="startbar">
     <button class="btn" id="startBtn">Start level 1</button>
     <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Tilt or drag sideways to turn, tap to jump</span></div>
     </div>
+  </div>
+</div>
+
+<div class="overlay confirm" id="howOv" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+    <div>
+      <div class="eyebrow">Serpentine</div>
+      <h1 class="title" id="howTitle">How to play</h1>
+    </div>
+      <ul class="rules">
+        <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Steer</b> by tilting your phone, or with the arrow keys (A and D work too). A little for a gentle curve, more for a tight one.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="9" width="16" height="6" style="fill:var(--hurdle)"/><rect x="5" y="15" width="16" height="4" style="fill:var(--hurdle-side)"/></svg></span><span><b>Jump</b> for real holding a phone controller, tap the screen you're playing on, or press Space. Low obstacles and your own tail can be jumped.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="8" y="3" width="10" height="8" style="fill:var(--pillar)"/><rect x="8" y="11" width="10" height="12" style="fill:var(--pillar-side)"/></svg></span><span>Tall obstacles can't be jumped. <b>Steer around them.</b> Some slide back and forth.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="5" y="4" width="16" height="9" style="fill:var(--pillar)"/><rect x="5" y="13" width="16" height="6" style="fill:var(--hurdle)"/></svg></span><span><b>Beat gates</b> rise and fall with the music. Jump them while they're down.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><rect x="3" y="6" width="20" height="6" style="fill:var(--wall)"/><rect x="3" y="12" width="20" height="7" style="fill:var(--wall-side)"/><rect x="9" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/><rect x="16" y="6" width="1.5" height="6" style="fill:var(--wall-side)"/></svg></span><span>Walls can't be jumped by any snake.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 3l6 10-6 10-6-10z" style="fill:var(--gem)"/></svg></span><span><b>Gems</b> make you longer. Eat the level's gem goal to clear it.</span></li>
+        <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span><b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clearing levels unlocks new snakes.</span></li>
+      </ul>
+    <button class="btn" id="howDone">Got it</button>
   </div>
 </div>
 
@@ -1872,6 +1918,7 @@ function nudgeWaiting(){
   }
   // elsewhere, on the menu, it scrolls to the Add players step
   if (!$('menu').hidden && MODE !== 1){
+    setTab('players');
     const lb = $('lobbyBox'); lb.scrollIntoView({behavior: REDUCED ? 'auto' : 'smooth', block: 'start'});
     lb.classList.remove('flash'); void lb.offsetWidth; lb.classList.add('flash'); return;
   }
@@ -4572,9 +4619,11 @@ function showClient(msg, stuck){
 }
 function renderClientLobby(){
   const L = CL.lobby, me = L && L.seats[ME];
+  // a phone that typed the code of a screen playing solo becomes that screen's controller
+  if (L && L.mode === 1 && CAN_TILT && CL.code && !CL.toCtl){ CL.toCtl = true; CL.moved = true; showClient('That screen is playing solo. Turning this phone into its controller…'); location.href = controllerURL(CL.code); return; }
   $('cEyebrow').textContent = CL.code ? `Game ${CL.code}` : 'Joining';
   $('cTitle').textContent = me ? `You're player ${ME + 1}` : 'Serpentine';
-  $('cMsg').textContent = CL.moved ? CL.msg : L && L.mode === 1 ? 'That screen switched to solo. Ask the host to pick Party or Tag team.'
+  $('cMsg').textContent = CL.moved ? CL.msg : L && L.mode === 1 ? "That screen is playing solo. To play together, ask them to go back and pick Host a party. (On a phone, you can steer their solo game: scan their QR code.)"
     : L ? `${L.mode === 2 ? 'Party' : 'Tag team'} on ${L.where}. ${CL.msg}` : CL.msg;
   $('cSwatch').style.background = me ? me.color : 'transparent';
   $('cYouBox').hidden = !me;
@@ -4919,7 +4968,7 @@ function updateMenuUI(){
     : CTRL === 'keys' ? (CAN_TILT ? '<b>Drag sideways</b> to turn. <b>Tap anywhere</b> to jump.' : '<b>Arrow keys</b> turn, <b>Space</b> jumps, C changes view.')
     : '<b>Your phone steers this screen.</b> Tilt it to turn and jump for real. Scan the QR code with your phone to connect. Until it does, the arrow keys and Space work.';
   $('snakeLabel').textContent = MODE !== 1 ? 'Snake (everyone)' : 'Snake';
-  holdCtrlHeight();
+  holdCtrlHeight(); renderTabs();
   sendLobby();
 }
 // show the chosen level and snake behind the menu
@@ -4953,7 +5002,7 @@ function refreshMenu(){
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
-function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
+function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'clientOv', 'unlock', 'confirm', 'howOv']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
   res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
@@ -5128,6 +5177,71 @@ function nextStage(){
   if (MODE !== 1) sendStarts();
   begin();
 }
+// solo and host settings, one tab at a time; each tab shows what's chosen in it
+const TABS = {solo: [['level', 'Level'], ['snake', 'Snake'], ['controls', 'Controls'], ['options', 'Options']],
+  host: [['game', 'Game'], ['players', 'Players'], ['options', 'Options']]};
+let TAB = '';
+function tabValue(k){
+  if (k === 'level') return `${stage + 1} · ${STAGES[stage].name}`;
+  if (k === 'snake') return SNAKES[playSnake()].name;
+  if (k === 'controls') return CTRL === 'device' ? 'Tilt' : CTRL === 'phones' ? 'Phone' : CAN_TILT ? 'Touch' : 'Keyboard';
+  if (k === 'options') return `${DIFFS[diff].name} · ${VIEWS[view].name}`;
+  if (k === 'game') return MODE === 2 ? `Party · ${COURSES[course].name}` : `Tag team · level ${stage + 1}`;
+  if (k === 'players'){ const [lo, hi] = seatRange(); return `${SEATS.length} of ${hi}` + (SEATS.length < lo ? `, need ${lo}` : ''); }
+  return '';
+}
+function renderTabs(){
+  const list = TABS[PAGE], box = $('tabs');
+  if (!list) return;
+  if (box.dataset.page !== PAGE){
+    box.dataset.page = PAGE; box.innerHTML = '';
+    for (const [k, label] of list){
+      const b = document.createElement('button');
+      b.className = 'tab'; b.id = 'tab-' + k; b.dataset.k = k; b.setAttribute('role', 'tab'); b.setAttribute('aria-controls', 'panel');
+      b.innerHTML = '<span class="tl"></span><span class="tv"></span>'; b.querySelector('.tl').textContent = label;
+      b.addEventListener('click', () => setTab(k));
+      box.appendChild(b);
+    }
+  }
+  for (const b of box.children){
+    const on = b.dataset.k === TAB;
+    b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1;
+    b.querySelector('.tv').textContent = tabValue(b.dataset.k);
+  }
+}
+function setTab(k){
+  TAB = k; $('menu').dataset.tab = k;
+  renderTabs();
+  if (k === 'controls') holdCtrlHeight();
+}
+// the panel keeps the height of this page's tallest tab (as far as the screen allows), so Start stays put
+function holdPanelHeight(){
+  const pn = $('panel'), list = TABS[PAGE];
+  if (!list || $('menu').hidden) return;
+  pn.style.minHeight = '';
+  const was = TAB; let tall = 0;
+  for (const [k] of list){ $('menu').dataset.tab = k; tall = Math.max(tall, pn.offsetHeight); }
+  $('menu').dataset.tab = was;
+  pn.style.minHeight = '';
+  // never taller than the room left on screen (the panel scrolls inside past that)
+  const card = pn.closest('.card'), room = pn.offsetHeight + (innerHeight - 56 - card.offsetHeight);
+  pn.style.minHeight = Math.max(0, Math.min(tall, room)) + 'px';
+}
+$('tabs').addEventListener('keydown', e => {
+  const list = TABS[PAGE]; if (!list || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  e.preventDefault(); e.stopPropagation();
+  const i = list.findIndex(([k]) => k === TAB), j = (i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length;
+  setTab(list[j][0]); $('tab-' + list[j][0]).focus();
+});
+addEventListener('resize', () => requestAnimationFrame(holdPanelHeight));
+// how to play: its own card over the menu, opened from the page header (and once by itself for a first game)
+let howSeen = false;
+function openHow(){ howSeen = true; $('howOv').hidden = false; setTimeout(() => $('howDone').focus({preventScroll: true}), 30); }
+function closeHow(){ $('howOv').hidden = true; if (!$('menu').hidden) $('howBtn').focus({preventScroll: true}); }
+$('howBtn').addEventListener('click', openHow);
+$('howDone').addEventListener('click', closeHow);
+$('howOv').addEventListener('click', e => { if (e.target === $('howOv')) closeHow(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('howOv').hidden){ e.preventDefault(); e.stopImmediatePropagation(); closeHow(); } }, true);
 function goPage(p){
   if (p === 'host' && !R3) p = 'doors';   // party and tag team need the 3D views
   PAGE = p; $('menu').dataset.page = p;
@@ -5139,8 +5253,11 @@ function goPage(p){
   for (const d of document.querySelectorAll('.door')) d.classList.toggle('last', d.dataset.door === last);
   $('doorHost').disabled = !R3;
   if (p !== 'join') $('joinErr').textContent = '';
+  if (TABS[p]) setTab(TABS[p][0][0]); else { TAB = ''; delete $('menu').dataset.tab; }
   setPhoneUI(); updateMenuUI(); $('menu').scrollTop = 0;
   if ($('menu').hidden) return;
+  requestAnimationFrame(holdPanelHeight);
+  if (TABS[p] && !store.get('played') && !howSeen) openHow();
   const f = p === 'doors' ? (document.querySelector('.door.last:not(:disabled)') || $('doorSolo')) : p === 'join' ? $('joinInline') : $('startBtn');
   setTimeout(() => f.focus({preventScroll: true}), 30);
 }
@@ -5393,10 +5510,15 @@ buildTiltRows($('menuTilt')); buildTiltRows($('sTilt')); buildTiltRows($('cTilt'
 renderSeats();
 // opened from an invite (…#join=CODE): join that game on this screen; otherwise set up to host
 const joinHash = /^#join=([A-Za-z0-9]{4})$/.exec(location.hash);
+// on a phone, a code can also mean "steer that big screen's solo game"
+if (CAN_TILT){
+  $('doorJoinTxt').textContent = 'Got a 4-letter code from a big screen? Steer it with this phone, or play your own snake here.';
+  $('joinHow').textContent = "Type the code from the big screen. If it's a party, you play your own snake on this phone. If it's playing solo, this phone becomes its controller.";
+  $('joinTip').textContent = 'You can also point your camera at the QR code on that screen.';
+}
 let bootPage = 'doors'; try { if (sessionStorage.getItem('serpentine-page') === 'join') bootPage = 'join'; sessionStorage.removeItem('serpentine-page'); } catch(_) {}
 goPage(bootPage);
 if (joinHash) joinGame(joinHash[1]); else startPhoneLink();
-$('how').open = !store.get('played');
 requestAnimationFrame(frame);
 window.__booted = true;
 })().catch(e => window.__bootFail && window.__bootFail(e));
