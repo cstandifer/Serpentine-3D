@@ -224,6 +224,8 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
         <div class="row tiltonly"><label for="tiltIn">Tilt for a full turn <output id="tiltOut"></output></label><input type="range" id="tiltIn" min="20" max="80" step="1"><div class="ends"><span>Twitchy</span><span>Relaxed</span></div></div>
         <div class="row hoponly"><label for="jumpIn">Jump sensitivity <output id="jumpOut"></output></label><input type="range" id="jumpIn" min="1" max="5" step="1"><div class="ends"><span>Big jumps</span><span>Little hops</span></div></div>
         <label class="check tiltonly"><input type="checkbox" id="flipIn"> Flip left and right</label>
+        <button class="btn btn-ghost" id="hapticTest">Test vibration</button>
+        <div class="hint" id="hapticHint"></div>
         <button class="btn btn-ghost" id="viewBtn">Change the big screen's view</button>
         <button class="btn btn-ghost" id="ctlScreenBtn" hidden>Play on this phone instead</button>
         <button class="btn" id="setDone">Done</button>
@@ -279,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20d</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20e</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -305,9 +307,14 @@ function hapticTick(){
     hapticSwitch.click();
   } catch(_) {}
 }
+// iPhones only allow the tick inside a tap, and a touch only counts once the finger lifts: a buzz asked for while a
+// finger is down (a jump on press) plays its first tick as that finger comes up
+let tickWanted = 0;
+addEventListener('touchend', () => { if (tickWanted && performance.now() - tickWanted < 600){ tickWanted = 0; hapticTick(); } }, {capture: true, passive: true});
 function haptic(p){
   try {
     if (navigator.vibrate){ navigator.vibrate(p); return; }
+    tickWanted = performance.now();
     const pulses = Array.isArray(p) ? p : [p];
     hapticT.forEach(clearTimeout); hapticT = [];
     let t = 0;
@@ -677,6 +684,11 @@ for (const [id, v] of [['leftBtn', -1], ['rightBtn', 1]]){
   b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
 }
 press('jumpBtn', () => fireJump(false));
+$('hapticTest').addEventListener('click', () => {
+  haptic([30, 50, 30, 50, 30, 90, 140]);
+  $('hapticHint').textContent = navigator.vibrate ? 'You should feel a short buzz pattern.'
+    : 'iPhone: you should feel a few light taps. Nothing? Check that System Haptics is on (Settings > Sounds & Haptics) and iOS is 18 or newer.';
+});
 $('goBtn').addEventListener('click', () => { send({t: 'go'}); buzz(20); });
 $('recenterBtn').addEventListener('click', () => { needCal = true; tiltV = 0; rel = 0; buzz(10); });
 $('pauseBtn').addEventListener('click', () => send({t: 'pause'}));

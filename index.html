@@ -1167,9 +1167,14 @@ function hapticTick(){
     hapticSwitch.click();
   } catch(_) {}
 }
+// iPhones only allow the tick inside a tap, and a touch only counts once the finger lifts: a buzz asked for while a
+// finger is down (a jump on press) plays its first tick as that finger comes up
+let tickWanted = 0;
+addEventListener('touchend', () => { if (tickWanted && performance.now() - tickWanted < 600){ tickWanted = 0; hapticTick(); } }, {capture: true, passive: true});
 function haptic(p){
   try {
     if (navigator.vibrate){ navigator.vibrate(p); return; }
+    tickWanted = performance.now();
     const pulses = Array.isArray(p) ? p : [p];
     hapticT.forEach(clearTimeout); hapticT = [];
     let t = 0;
@@ -4121,7 +4126,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20d';
+const CTRL_BUILD = '2026-10-20e';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
