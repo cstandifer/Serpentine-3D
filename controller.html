@@ -32,7 +32,7 @@ body{background:#000;color:var(--cream);font-family:var(--mono);font-size:12px;
 button,input{font:inherit}
 :focus-visible{outline:2px solid var(--lime);outline-offset:3px}
 [hidden]{display:none!important}
-.wide,.brand,.title,.btn,.status .score,.pad button,.gauge .lab,.code-in,.name-in,.me{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase}
+.wide,.brand,.title,.btn,.status .score,.pad button,.gauge .lab,.code-in,.me{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase}
 .app{min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:auto 1fr;gap:16px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 20px);max-width:480px;margin:0 auto}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1.5px solid var(--line)}
 .brand{font-size:1.15rem;line-height:1;color:var(--line)}
@@ -121,10 +121,6 @@ details.set[open]{border-image:var(--holo) 1}
 .tools #setBtn[aria-expanded="true"]{background:var(--cream);color:#000}
 .pad button:not(.jump){grid-auto-flow:column;gap:4px}
 .pad button.fire,.pad button.jump.fire{background:var(--lime);color:#000;border-color:var(--lime)}
-.namecard{border-color:var(--lime)}
-.namecard .eyebrow{color:var(--lime)!important}
-.name-in{font-size:1.4rem;width:100%;padding:8px 12px;border:1.5px solid var(--cream);background:#000;color:var(--cream);outline:none;-webkit-user-select:text;user-select:text}
-.name-in:focus{border-color:var(--lime)}
 .tools{display:flex;gap:8px}
 .tools .btn-ghost{flex:1}
 .tools [hidden]{display:none}
@@ -243,14 +239,6 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
         <div class="gems" id="gems"></div>
       </div>
     </div>
-    <div class="card namecard" id="namePanel" hidden>
-      <div>
-        <div class="eyebrow" id="nameRank" style="color:var(--ribbon)">You made the board</div>
-        <div class="title" id="nameScore">0</div>
-      </div>
-      <input class="name-in" id="nameIn" maxlength="12" autocomplete="nickname" autocapitalize="words" spellcheck="false" placeholder="Your name" aria-label="Your name">
-      <button class="btn" id="nameBtn">Save to leaderboard</button>
-    </div>
     <div class="card pickcard" id="pickCard" hidden>
       <div class="eyebrow">Your snake</div>
       <div class="chips" id="snakeChips"></div>
@@ -291,7 +279,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20b</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20c</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -438,6 +426,7 @@ function onGame(m){
   // the game is hosted on a phone or tablet, which only shows its own player's view: play on this phone instead
   else if (m.t === 'useScreen') location.href = screenURL();
   // this player's seat moved to another device (they're playing on their own screen now): stop, and say so
+  else if (m.t === 'removed'){ movedAway = true; pill('Removed', 'bad'); $('ctlHint').textContent = 'The host removed you from this game. Reload this page to join again.'; }
   else if (m.t === 'moved'){ movedAway = true; pill('Playing elsewhere', 'bad'); $('ctlHint').textContent = "You're playing from your other device now. Reload this page to steer from here again."; }
   else if (m.t === 'state'){
     // a run just started: fold the settings away and shrink the gauges
@@ -456,27 +445,18 @@ function onGame(m){
     if (duo && m.color) $('me').style.background = m.color;
     // in a party or tag team each player has their own view on the big screen
     $('viewBtn').textContent = m.mode >= 2 ? `My view: ${m.view === 'eye' ? 'Eye' : 'Chase'} (tap to switch)` : "Change the big screen's view";
+    const who = m.pname || `Player ${m.player}`;
     $('lvl').textContent = m.mode === 2
-      ? (m.state === 'play' ? `Player ${m.player}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `Player ${m.player}, party on ${m.name}`)
-      : m.mode === 3 ? `Player ${m.player}, team level ${m.level} / ${m.name}${m.alive === false ? ', respawning' : ''}`
+      ? (m.state === 'play' ? `${who}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `${who}, party on ${m.name}`)
+      : m.mode === 3 ? `${who}, team level ${m.level} / ${m.name}${m.alive === false ? ', respawning' : ''}`
       : `Level ${m.level} / ${m.name}`;
     $('score').textContent = m.score;
     $('gems').textContent = m.goal ? `${m.gems}/${m.goal} ${m.mode === 3 ? 'team gems' : 'gems'}` : `${m.gems} ${m.gems === 1 ? 'gem' : 'gems'}`;
-    pill(duo ? `Player ${m.player}` : 'Connected', 'on');
+    pill(duo ? who : 'Connected', 'on');
     $('hearts').innerHTML = Array.from({length: m.maxLives || 3}, (_, i) => `<svg viewBox="0 0 16 16"><path class="${i < m.lives ? 'on' : 'off'}" d="${HEART}"/></svg>`).join('');
     $('goBtn').hidden = !m.go; $('goBtn').textContent = m.go || 'Start';
     renderPick(m.pick, m.waitLead);
     $('pauseBtn').textContent = m.state === 'paused' ? 'Resume' : 'Pause';
-    // the big screen asks for a name when a run makes the leaderboard
-    const np = $('namePanel');
-    if (m.ask && np.hidden){
-      $('nameRank').textContent = `You made the board at #${m.ask.rank}`;
-      $('nameScore').textContent = m.ask.score;
-      $('nameIn').value = store.get('name') || m.ask.name || '';
-      buzz([20, 40, 20]);
-    }
-    np.hidden = !m.ask;
-    $('goBtn').classList.toggle('btn-ghost', !!m.ask);
   }
 }
 
@@ -671,13 +651,6 @@ for (const [id, v] of [['leftBtn', -1], ['rightBtn', 1]]){
 }
 press('jumpBtn', () => fireJump(false));
 $('goBtn').addEventListener('click', () => { send({t: 'go'}); buzz(20); });
-function sendName(){
-  const n = $('nameIn').value.trim().slice(0, 12);
-  if (n) store.set('name', n);
-  send({t: 'name', name: n}); $('nameIn').blur(); $('namePanel').hidden = true; buzz(20);
-}
-$('nameBtn').addEventListener('click', sendName);
-$('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter') sendName(); });
 $('recenterBtn').addEventListener('click', () => { needCal = true; tiltV = 0; rel = 0; buzz(10); });
 $('pauseBtn').addEventListener('click', () => send({t: 'pause'}));
 $('viewBtn').addEventListener('click', () => send({t: 'view'}));
@@ -686,7 +659,7 @@ $('setBtn').addEventListener('click', () => setOpen(!$('setPanel').open));
 $('setDone').addEventListener('click', () => setOpen(false));
 // tap anywhere on the controller to jump (except on its buttons, settings and the name box)
 $('ctl').addEventListener('pointerdown', e => {
-  if (e.target.closest('button, a, input, label, details, summary, .namecard, .tools')) return;
+  if (e.target.closest('button, a, input, label, details, summary, .tools')) return;
   e.preventDefault(); fireJump(false);
 });
 $('motionBtn').addEventListener('click', enableMotion);

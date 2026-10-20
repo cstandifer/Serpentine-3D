@@ -218,26 +218,8 @@ body.here #pauseBtn svg{width:26px;height:26px}
 .phone .desc{margin-top:8px;font-size:.66rem}
 .phone .desc a{color:var(--cream);word-break:break-all}
 
-/* leaderboard: ruled rows like the flyer's line-up */
-.board{list-style:none;margin:12px 0 0;padding:0;display:grid;border-top:1.5px solid var(--line)}
-.board li{display:grid;grid-template-columns:28px 20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--rule-soft);font-variant-numeric:tabular-nums}
-.board .r{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.95rem;color:var(--muted)}
-.board li:first-child .r{color:var(--line)}
-.board .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.board .n small{font-weight:400;color:var(--muted);margin-left:6px}
-.board .s{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:1.05rem}
-.board .sn{width:18px;height:18px;display:block}
-.board li.me{background:var(--line);color:#000;padding-left:6px;padding-right:6px}
-.board li.me .r,.board li.me small{color:#000}
-.board-empty{margin-top:12px;font-size:.7rem;color:var(--muted)}
-.board-head{display:flex;justify-content:space-between;align-items:baseline;margin-top:2px}
-.entry{display:grid;gap:10px;padding:14px;border:1.5px solid var(--lime)}
-.entry .eyebrow{color:var(--lime)!important}
-.entry .row{display:grid;grid-template-columns:1fr auto;gap:8px}
 .name-in{min-width:0;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:1.1rem;text-transform:uppercase;padding:8px 10px;border:1.5px solid var(--cream);background:#000;color:var(--cream);outline:none;-webkit-user-select:text;user-select:text}
 .name-in:focus{border-color:var(--lime)}
-.entry .btn{padding:10px 14px;font-size:.9rem}
-.entry .btn::after{display:none}
 
 .vs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .vs-p{padding:12px;border:1.5px solid var(--rule-soft);display:grid;gap:6px}
@@ -406,6 +388,29 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .code-in{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:2.4rem;letter-spacing:.14em;text-align:center;width:100%;padding:10px 8px 10px 16px;border:1.5px solid var(--cream);background:#000;color:var(--line);outline:none;-webkit-user-select:text;user-select:text}
 .code-in:focus{border-color:var(--lime)}
 /* the join bar on the menu: an obvious way into someone else's game */
+/* the main menu's pages: three doors first, then solo, host or join */
+#menu[data-page="doors"] [data-on]:not([data-on~="doors"]),
+#menu[data-page="solo"] [data-on]:not([data-on~="solo"]),
+#menu[data-page="host"] [data-on]:not([data-on~="host"]),
+#menu[data-page="join"] [data-on]:not([data-on~="join"]){display:none!important}
+.doors{display:grid;gap:10px}
+@media (min-width:1000px) and (hover:hover){ .doors{grid-template-columns:repeat(3,minmax(0,1fr))} }
+.door{position:relative;display:grid;align-content:start;gap:8px;text-align:left;background:#000;color:var(--cream);border:1.5px solid var(--rule);padding:18px 18px 20px;cursor:pointer;font:inherit;min-width:0}
+.door:hover:not(:disabled),.door:focus-visible{border-color:var(--line);outline:none}
+.door:focus-visible{box-shadow:0 0 0 2px var(--cyan)}
+.door:disabled{opacity:.4;cursor:default}
+.door .d-k{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:1.05rem;line-height:1.05}
+.door .d-s{font-size:.74rem;line-height:1.55;color:var(--muted)}
+.door .d-tag{display:none;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:#000;background:var(--holo);padding:3px 6px;justify-self:start}
+.door.last{border:1.5px solid transparent;border-image:var(--holo) 1}
+.door.last .d-tag{display:inline-block}
+.door:active:not(:disabled){background:rgba(95,240,255,.06)}
+.pagehead{display:flex;align-items:center;gap:14px}
+.pagehead .back{background:none;border:1.5px solid var(--rule);color:var(--cream);font:inherit;font-size:.78rem;padding:8px 12px;cursor:pointer}
+.pagehead .back:hover,.pagehead .back:focus-visible{border-color:var(--line)}
+.pagehead .pagename{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:1rem;color:var(--cream)}
+.jb-err{color:var(--pink)}
+.jb-err:empty{display:none}
 .joinbar{display:grid;gap:12px;padding:14px;border:1.5px solid transparent;border-image:var(--holo) 1;background:rgba(95,240,255,.05)}
 .jb-t{display:grid;gap:4px}
 .jb-t b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.95rem}
@@ -441,14 +446,10 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .btn-ghost{background:transparent}
 .btn-ghost:active{background:var(--cream)}
 .goal-bar i{background:var(--btn)}
-.board{border-top:0;background:var(--holo) top/100% 1.5px no-repeat;padding-top:1.5px}
-.board li:first-child .r{background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
-.board li.me{background:var(--btn)}
 .split{background:linear-gradient(180deg,#5ff0ff,#8a7bff,#ff4fd8,#ffe94d,#7dff5a);border:0;width:3px}
 .duo-t.hurry{background:var(--pink);border-color:var(--pink)}
 .lives .on,.duo-p .hearts .on{fill:var(--pink)}
 .how summary::after{color:var(--pink)}
-.entry{border-color:var(--lime)}
 </style>
 </head>
 <body>
@@ -480,7 +481,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   <div class="mp-top" id="mpTop"></div>
   <ol class="mp-board" id="mpBoard"></ol>
   <div id="mpTags"></div>
-  <div class="mp-note" id="mpWatch" hidden><b>Watching</b><span>You're not in this game. To play, add yourself on the menu before the next round.</span></div>
+  <div class="mp-note" id="mpWatch" hidden><b>Watching</b><span id="mpWatchTxt">You're not in this game. To play, add yourself on the menu before the next round.</span></div>
   <div class="mp-note" id="mpOut" hidden><b>You're out</b><span>The computer snakes are still going.</span><button class="btn" id="skipBtn">Skip to results</button></div>
 </div>
 <div class="hud">
@@ -540,15 +541,27 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
         </svg>
       </div>
     </div>
-    <!-- joining someone else's game: right under the title, with the code box right there -->
-    <div class="joinbar" id="joinBar">
-      <div class="jb-t"><b>Joining a friend's game?</b><span>Type the 4-letter code from their screen to play your own snake here.</span></div>
+    <!-- the first step: what do you want to do? each door opens its own short page -->
+    <div class="doors" data-on="doors" role="group" aria-label="What do you want to do?">
+      <button class="door" id="doorSolo" data-door="solo"><span class="d-k">Play solo</span><span class="d-s">Ten levels, each with its own world and song. Keyboard, touch or your phone.</span><span class="d-tag">Last time</span></button>
+      <button class="door" id="doorHost" data-door="host"><span class="d-k">Host a party</span><span class="d-s">Friends join on their phones or laptops. Play against each other, or as a team.</span><span class="d-tag">Last time</span></button>
+      <button class="door" id="doorJoin" data-door="join"><span class="d-k">Join a friend's game</span><span class="d-s">Got a 4-letter code from their screen? Play your own snake here.</span></button>
+    </div>
+    <div class="pagehead" data-on="solo host join">
+      <button class="back" id="pageBack" aria-label="Back to the start">&larr; Back</button>
+      <div class="pagename" id="pageName">Solo</div>
+    </div>
+    <!-- joining someone else's game, with the code box right there -->
+    <div class="joinbar" id="joinBar" data-on="join">
+      <div class="jb-t"><span>Type the code from their screen. You'll get your own snake and your own view on this screen, and the host starts the game.</span></div>
       <div class="jb-f">
         <input class="code-in jb-in" id="joinInline" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="Game code to join">
         <button class="btn" id="joinInlineGo">Join</button>
       </div>
+      <div class="desc jb-err" id="joinErr" role="alert"></div>
+      <div class="desc">On a phone? You can also point your camera at the QR code on their screen.</div>
     </div>
-    <details class="how" id="how">
+    <details data-on="solo host" class="how" id="how">
       <summary>How to play</summary>
       <ul class="rules">
         <li><span class="glyph"><svg viewBox="0 0 26 26" style="fill:none;stroke:var(--cyan);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round"><path d="M4 20h9V7"/><path d="M9 11l4-4 4 4"/></svg></span><span><b>Steer</b> by tilting your phone, or with the arrow keys (A and D work too). A little for a gentle curve, more for a tight one.</span></li>
@@ -560,12 +573,12 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
         <li><span class="glyph"><svg viewBox="0 0 26 26"><path d="M13 21s-8-4.8-8-10.2A4.3 4.3 0 0 1 13 8a4.3 4.3 0 0 1 8 2.8C21 16.2 13 21 13 21z" style="fill:var(--pillar)"/></svg></span><span><b>3 lives</b> per run. A crash restarts the level, but you keep the gems you'd collected. Clearing levels unlocks new snakes.</span></li>
       </ul>
     </details>
-    <div class="pick">
-      <div class="eyebrow" id="modeLabel">Players</div>
+    <div data-on="host" class="pick">
+      <div class="eyebrow" id="modeLabel">Game</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="modeLabel" id="modePick"></div>
       <div class="desc" id="modeDesc"></div>
     </div>
-    <div class="pick" id="lobbyBox" hidden>
+    <div data-on="solo host" class="pick" id="lobbyBox" hidden>
       <div class="eyebrow">Add players</div>
       <div class="need" id="lobbyNeed"></div>
       <div class="ways">
@@ -586,32 +599,32 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="eyebrow in-game" id="seatHead">In this game</div>
       <ol class="seats" id="seatList"></ol>
     </div>
-    <div class="pick" id="courseBox" hidden>
+    <div data-on="solo host" class="pick" id="courseBox" hidden>
       <div class="eyebrow" id="courseLabel">Course</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="courseLabel" id="coursePick"></div>
       <div class="desc" id="courseDesc"></div>
     </div>
-    <div class="pick" id="stageBox">
+    <div data-on="solo host" class="pick" id="stageBox">
       <div class="eyebrow" id="stageLabel">Level</div>
       <div class="seg" style="--n:5" role="radiogroup" aria-labelledby="stageLabel" id="stagePick"></div>
       <div class="desc" id="stageDesc"></div>
     </div>
-    <div class="pick">
+    <div data-on="solo host" class="pick">
       <div class="eyebrow" id="snakeLabel">Snake</div>
       <div class="seg" style="--n:4" role="radiogroup" aria-labelledby="snakeLabel" id="snakePick"></div>
       <div class="desc" id="snakeDesc"></div>
     </div>
-    <div class="pick">
+    <div data-on="solo host" class="pick">
       <div class="eyebrow" id="diffLabel">Difficulty</div>
       <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="diffLabel" id="diffPick"></div>
       <div class="desc" id="diffDesc"></div>
     </div>
-    <div class="pick">
+    <div data-on="solo host" class="pick">
       <div class="eyebrow" id="viewLabel">View</div>
       <div class="seg" style="--n:3" role="radiogroup" aria-labelledby="viewLabel" id="viewPick"></div>
       <div class="desc" id="viewDesc"></div>
     </div>
-    <div class="pick" id="ctrlBox">
+    <div data-on="solo host" class="pick" id="ctrlBox">
       <div class="eyebrow" id="ctrlLabel">Controls</div>
       <div class="seg" style="--n:2" role="radiogroup" aria-labelledby="ctrlLabel" id="ctrlPick"></div>
       <div class="ctrl-more" id="ctrlMore">
@@ -626,12 +639,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       </div>
       </div>
     </div>
-    <details class="how" id="boardBox">
-      <summary>Leaderboard</summary>
-      <div class="board-head"><span class="eyebrow" id="menuBoardLabel" style="margin-top:12px">Normal</span></div>
-      <div id="menuBoard"></div>
-    </details>
-    <div class="startbar">
+    <div data-on="solo host" class="startbar">
     <button class="btn" id="startBtn">Start level 1</button>
     <div class="hint"><span class="hint-kb">Keyboard: hold ← → to steer, Space jumps, C changes view</span><span class="hint-touch">Tilt or drag sideways to turn, tap to jump</span></div>
     </div>
@@ -684,15 +692,6 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="stat"><div class="v" id="stLevel">1</div><div class="k">Level</div></div>
       <div class="stat"><div class="v" id="stGems">0</div><div class="k">Gems</div></div>
     </div>
-    <div class="entry" id="entry" hidden>
-      <div><div class="eyebrow" id="entryRank">You made the board</div>
-      <div class="desc" id="entryHint" style="margin-top:4px">Type your name here or on your phone.</div></div>
-      <div class="row"><input class="name-in" id="nameIn" maxlength="12" autocomplete="off" spellcheck="false" aria-label="Your name"><button class="btn" id="nameBtn">Save</button></div>
-    </div>
-    <div>
-      <div class="eyebrow" id="overBoardLabel">Leaderboard</div>
-      <div id="overBoard"></div>
-    </div>
     <div class="actions">
       <button class="btn" id="againBtn">Retry level 1</button>
       <button class="btn btn-ghost" id="setupBtn">Main menu</button>
@@ -721,6 +720,11 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
       <div class="eyebrow">Paused</div>
       <h1 class="title" id="pauseTitle">Catch your breath</h1>
       <div class="desc" id="pauseNote" style="margin-top:10px" hidden></div>
+    </div>
+    <div class="pick" id="pauseSeatsBox" hidden>
+      <div class="eyebrow">Players</div>
+      <ol class="seats" id="pauseSeats"></ol>
+      <div class="desc">A snake stuck with nobody steering it? Remove it here. Removed players can join again next round.</div>
     </div>
     <div class="actions row3">
       <button class="btn" id="resumeBtn">Resume</button>
@@ -752,21 +756,6 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   </div>
 </div>
 
-<div class="overlay" id="joinOv" hidden>
-  <div class="card">
-    <div>
-      <div class="eyebrow">Join a game</div>
-      <h1 class="title">Got a code?</h1>
-      <div class="desc" style="margin-top:10px">Type the four letters shown on the game screen. You'll play your own snake on this screen.</div>
-    </div>
-    <input class="code-in" id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Game code">
-    <div class="desc" id="joinMsg" style="color:var(--pink)"></div>
-    <div class="actions">
-      <button class="btn" id="joinGo">Join</button>
-      <button class="btn btn-ghost" id="joinBack">Back to the main menu</button>
-    </div>
-  </div>
-</div>
 
 <div class="overlay" id="clientOv" hidden>
   <div class="card">
@@ -1048,6 +1037,8 @@ const VIEWS = {
 let view = VIEWS[store.get('view')] ? store.get('view') : 'eye';
 // 1 = solo, 2 = party (up to 8 snakes, everyone for themselves), 3 = tag team (2 to 4 snakes sharing one gem goal)
 let MODE = [1, 2, 3].includes(+store.get('players')) ? +store.get('players') : 1;
+// which page of the main menu is showing: the three doors, or solo, host or join
+let PAGE = 'doors';
 let ROLE = 'host';    // 'client' once this screen joins a game that another screen is hosting
 let ME = 0;           // on a client: which snake is this screen's own
 let SEATS = [];       // on the host: everyone in the party or team, in player order
@@ -1974,7 +1965,7 @@ function endDuel(){
   stopMusic(); sfxClear(); keepAwake(false);
   $('pauseBtn').hidden = true;
   const res = PL.map((p, i) => ({name: playerName(i), color: p.look.color, score: pScore(p), gems: p.gems, lives: p.lives, i}))
-    .sort((a, b) => b.score - a.score);
+    .filter(r => !(SEATS[r.i] && SEATS[r.i].removed)).sort((a, b) => b.score - a.score);
   const why = G.left <= 0 ? 'time' : 'lives';
   toScreens({t: 'phase', state: 'over', res, why});
   showDuel(res, why);
@@ -1985,7 +1976,7 @@ function endTeam(won){
   stopMusic(); sfxClear(); keepAwake(false);
   $('pauseBtn').hidden = true;
   const team = {won, level: G.idx + 1, score: RUN.banked + (won ? 0 : PL.reduce((a, p) => a + pScore(p), 0)),
-    players: PL.map((p, i) => ({name: playerName(i), color: p.look.color, gems: p.gems, i}))};
+    players: PL.map((p, i) => ({name: playerName(i), color: p.look.color, gems: p.gems, i})).filter(r => !(SEATS[r.i] && SEATS[r.i].removed))};
   toScreens({t: 'phase', state: 'over', team});
   showTeamOver(team);
 }
@@ -4053,7 +4044,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20b';
+const CTRL_BUILD = '2026-10-20c';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -4077,7 +4068,7 @@ function setPhoneUI(note){
   $('phoneChipTxt').textContent = on ? 'Phone connected' : LINK.code ? 'Phone code ' + LINK.code : 'No phone';
   $('phoneCode').textContent = $('inviteCode').textContent = $('bqCode').textContent = $('sheetCode').textContent = LINK.code || '····';
   // the big QR beside the menu: shown on computers whenever a phone is part of the plan
-  const wantQr = ROLE === 'host' && !CAN_TILT && location.protocol !== 'file:' && (MODE !== 1 || CTRL === 'phones');
+  const wantQr = ROLE === 'host' && (PAGE === 'solo' || PAGE === 'host') && !CAN_TILT && location.protocol !== 'file:' && (MODE !== 1 || CTRL === 'phones');
   $('bigQr').hidden = !wantQr;
   $('bqEyebrow').textContent = MODE === 1 ? (on ? 'Phone connected' : 'Play with your phone') : MODE === 2 ? 'Join the party' : 'Join the team';
   $('bqDesc').textContent = MODE === 1 ? (on ? 'Tilt to steer, jump for real. Press Start on your phone or here.' : "Point your phone's camera here. Your phone becomes the controller.")
@@ -4169,8 +4160,8 @@ function seatFor(L){
   if (same >= 0) return moveSeat(same, L);
   if (state !== 'menu'){
     // someone who dropped out mid-round gets their seat back
-    const i = SEATS.findIndex(st => st.gone && st.kind === L.kind && st.name === L.name);
-    const j = i >= 0 ? i : SEATS.findIndex(st => st.gone && st.kind === L.kind);
+    const i = SEATS.findIndex(st => st.gone && !st.removed && st.kind === L.kind && st.name === L.name);
+    const j = i >= 0 ? i : SEATS.findIndex(st => st.gone && !st.removed && st.kind === L.kind);
     if (j >= 0 && j < PL.length){
       SEATS[j].link = L; SEATS[j].gone = false;
       // back in time: their snake returns with the lives it had
@@ -4181,9 +4172,51 @@ function seatFor(L){
     }
   }
   if (SEATS.length >= 8){ linkSend(L, {t: 'full'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400); return; }
-  SEATS.push({kind: L.kind, link: L, name: L.name, snake, device: L.device});
-  if (L.kind === 'screen') linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
+  SEATS.push({kind: L.kind, link: L, name: L.name || freshSnakeName(), snake, device: L.device});
+  if (L.kind === 'screen'){
+    linkSend(L, {t: 'hi', seat: SEATS.length - 1, playing: state !== 'menu'});
+    // a round is already going: this screen watches it live until the next one starts
+    if (G && (state === 'play' || state === 'paused' || state === 'dying')) sendStart(L, -1, true);
+  }
   seatsChanged();
+}
+// the host removes a player: between rounds their seat goes; mid-round their snake leaves the field for good this
+// round. A phone or screen is told, and stops reconnecting (it can join again later if it wants)
+function removeSeat(st){
+  const i = SEATS.indexOf(st);
+  if (ROLE !== 'host' || i < 0) return;
+  const L = st.link;
+  if (L){
+    LINK.links = LINK.links.filter(x => x !== L);
+    linkSend(L, {t: 'removed'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400);
+  }
+  if (state === 'menu') SEATS.splice(i, 1);
+  else {
+    if (PL[i]){ PL[i].alive = false; PL[i].lives = 0; }
+    st.link = null; st.gone = true; st.removed = true; st.goneAt = performance.now(); st.device = ''; st.savedLives = 0;
+  }
+  seatsChanged(); syncPhone(true); renderPauseSeats();
+}
+function removeBtn(st){
+  const x = document.createElement('button'); x.className = 'x'; x.textContent = '×';
+  x.title = 'Remove from this game'; x.setAttribute('aria-label', `Remove ${st.name || 'this player'}`);
+  x.addEventListener('click', () => removeSeat(st));
+  return x;
+}
+// paused mid-round in a party or tag team: the host sees everyone and can take out a snake nobody is steering
+function renderPauseSeats(){
+  const box = $('pauseSeatsBox'), on = ROLE === 'host' && MODE !== 1 && state === 'paused';
+  box.hidden = !on; if (!on) return;
+  const ol = $('pauseSeats'); ol.innerHTML = '';
+  SEATS.forEach((st, i) => {
+    if (st.removed) return;
+    const li = document.createElement('li'), p = PL[i];
+    li.innerHTML = `<span class="sw" style="background:${p ? p.look.color : seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
+    li.querySelector('b').textContent = p ? playerName(i) : st.name || 'Player ' + (i + 1);
+    li.querySelector('small').textContent = st.gone ? 'Disconnected' : !p ? 'Watching, joins next round' : p.lives <= 0 && !p.alive ? 'Out of lives' : seatKindText(st, i);
+    li.appendChild(removeBtn(st));
+    ol.appendChild(li);
+  });
 }
 // a player who left mid-round: their snake leaves the field (no one is steering it), their lives kept for a return
 function takeOut(i){
@@ -4205,7 +4238,7 @@ setInterval(() => {
     try { L.conn.close(); } catch(_) {}
     linkGone(L);
   }
-  if (state === 'play' || state === 'paused') SEATS.forEach((st, i) => { if (st.gone && now - st.goneAt > GONE_OUT_MS) takeOut(i); });
+  if (state === 'play' || state === 'paused') SEATS.forEach((st, i) => { if (st.gone && !st.removed && now - st.goneAt > GONE_OUT_MS) takeOut(i); });
 }, 1000);
 function linkGone(L){
   const i = seatOf(L);
@@ -4224,13 +4257,13 @@ function linkGone(L){
 function seatsChanged(){
   // real players always take the first spots, computer snakes after them (only reshuffled between rounds)
   if (state === 'menu') SEATS.sort((a, b) => (a.kind === 'cpu') - (b.kind === 'cpu'));
-  renderSeats(); sendLobby(); setPhoneUI(); renderSheet();
+  renderSeats(); sendLobby(); setPhoneUI(); renderSheet(); if (state === 'paused') renderPauseSeats();
   if (state === 'menu' && ROLE === 'host' && MODE !== 1) refreshMenu();
 }
 function addLocalSeat(kind){
   if (SEATS.length >= 8) return;
   if (kind === 'device') enableTilt();
-  SEATS.push({kind, link: null, name: '', snake: kind === 'cpu' ? randomSnake() : snake});
+  SEATS.push({kind, link: null, name: kind === 'cpu' ? '' : freshSnakeName(), snake: kind === 'cpu' ? randomSnake() : snake});
   seatsChanged();
 }
 const seatKindText = (st, i) => {
@@ -4249,7 +4282,7 @@ function renderSeats(){
   SEATS.forEach((st, i) => {
     const li = document.createElement('li');
     li.innerHTML = `<span class="sw" style="background:${seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
-    li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1) + (st.gone ? ' (dropped)' : '');
+    li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer ' : 'Player ') + (i + 1)) + (st.gone ? ' (dropped)' : '');
     li.querySelector('small').textContent = seatKindText(st, i) + (st.kind === 'cpu' ? ' · ' + SNAKES[seatSnake(st)].name : '');
     if (st.kind !== 'cpu'){
       // everyone playing picks their own snake: one icon button per snake
@@ -4268,11 +4301,7 @@ function renderSeats(){
       vb.addEventListener('click', () => toggleSeatView(i));
       li.appendChild(vb);
     } else { const ic = document.createElement('span'); ic.className = 'snakeBtns cpuIc'; ic.innerHTML = snakeIcon(seatSnake(st)); ic.title = SNAKES[seatSnake(st)].name; li.appendChild(ic); }
-    if (['cpu', 'keys', 'device'].includes(st.kind) || st.gone){
-      const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remove'); x.textContent = '×';
-      x.addEventListener('click', () => { if (state !== 'menu') return; SEATS.splice(SEATS.indexOf(st), 1); seatsChanged(); });
-      li.appendChild(x);
-    }
+    li.appendChild(removeBtn(st));
     ol.appendChild(li);
   });
   if (!SEATS.length) ol.innerHTML = '<li class="empty">Nobody yet. Use one of the ways above.</li>';
@@ -4396,7 +4425,7 @@ function onLink(L, m){
 }
 function onScreenMsg(L, m){
   const i = seatOf(L);
-  if (m.t === 'name'){ if (i >= 0){ SEATS[i].name = cleanName(m.name); if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } return; }
+  if (m.t === 'name'){ if (i >= 0){ SEATS[i].name = cleanName(m.name) || SEATS[i].name; if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } return; }
   if (m.t === 'pause'){ togglePause(); return; }
   if (m.t === 'snake'){ if (i >= 0 && SNAKES[m.k] && state === 'menu'){ SEATS[i].snake = m.k; seatsChanged(); } return; }
   if (i < 0 || i >= PL.length || state === 'menu' || !G) return;
@@ -4434,8 +4463,7 @@ function onPhone(L, m){
   else if (m.t === 'pause') togglePause();
   else if (m.t === 'view'){ const i = seatOf(L); if (MODE !== 1 && i >= 0) toggleSeatView(i); else cycleView(); }
   else if (m.t === 'name'){
-    if (MODE === 1) saveName(m.name);
-    else { const i = seatOf(L); if (i >= 0){ SEATS[i].name = cleanName(m.name); if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } }
+    if (MODE !== 1){ const i = seatOf(L); if (i >= 0){ SEATS[i].name = cleanName(m.name) || SEATS[i].name; if (PL[i] && state !== 'menu') PL[i].name = SEATS[i].name; seatsChanged(); } }
   }
 }
 const lastPhone = new Map();
@@ -4449,16 +4477,15 @@ function syncPhone(force){
   // while the game is waiting on something, the phones' Start button says what
   const wait = waitingText();
   if (go && wait && state !== 'paused') go = wait.split(' (')[0] + '…';
-  const ask = MODE === 1 && pending ? {rank: rankFor(pending.diff, pending.score) + 1, score: pending.score, name: store.get('name') || ''} : null;
   const K = SNAKES[snake];
   for (const L of ls){
     let msg;
     if (MODE === 1){
-      msg = {t: 'state', state, go, view, mode: 1, ask, extra: phones()[0] !== L, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
+      msg = {t: 'state', state, go, view, mode: 1, extra: phones()[0] !== L, score: state === 'menu' ? 0 : score(), lives: RUN.lives,
          level: G.idx + 1, name: G.S.name, gems: Math.min(G.gems, G.S.goal), goal: G.S.goal};
     } else {
       const i = seatOf(L), p = i >= 0 && i < PL.length && state !== 'menu' ? PL[i] : null;
-      msg = {t: 'state', state, go, view: viewOf(Math.max(0, i)), mode: MODE, player: i + 1, color: p ? p.look.color : (seatColors(SEATS)[Math.max(0, i)] || [K.color])[0],
+      msg = {t: 'state', state, go, view: viewOf(Math.max(0, i)), mode: MODE, player: i + 1, pname: (SEATS[i] || {}).name || '', color: p ? p.look.color : (seatColors(SEATS)[Math.max(0, i)] || [K.color])[0],
         score: p ? pScore(p) : 0, lives: p ? Math.max(0, p.lives) : LIVES, maxLives: LIVES,
         level: G.idx + 1, name: G.S.name, gems: MODE === 3 ? G.teamGems : p ? p.gems : 0, goal: MODE === 3 ? G.goal : null,
         left: MODE === 2 ? Math.max(0, Math.ceil(G.left)) : null, alive: p ? p.alive : true};
@@ -4489,9 +4516,8 @@ function netSend(m){ if (CL.conn && CL.conn.open) try { CL.conn.send(m); } catch
 setInterval(() => { if (ROLE === 'client') netSend({t: 'ping'}); }, 1000);
 addEventListener('pagehide', () => { if (ROLE === 'client' && CL.conn) try { CL.conn.close(); } catch(_) {} });
 function showJoin(msg){
-  hideOverlays(); $('joinOv').hidden = false;
-  $('joinMsg').textContent = msg || '';
-  setTimeout(() => $('joinCode').focus({preventScroll: true}), 50);
+  hideOverlays(); $('menu').hidden = false; goPage('join');
+  $('joinErr').textContent = msg || '';
 }
 async function joinGame(code){
   code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
@@ -4536,7 +4562,8 @@ function hostLost(){
   showClient('Lost the connection to the game. Reconnecting…');
   setTimeout(() => { if (!CL.conn && CL.peer && !CL.peer.destroyed) dialHost(); }, 2000);
 }
-function leaveGame(){ history.replaceState(null, '', location.pathname + location.search); location.reload(); }
+function leaveGame(){ if (!CL.lobby) try { sessionStorage.setItem('serpentine-page', 'join'); } catch(_) {}
+  history.replaceState(null, '', location.pathname + location.search); location.reload(); }
 function showClient(msg, stuck){
   if (msg !== undefined){ CL.msg = msg; CL.stuck = !!stuck; }
   if (state !== 'menu') return;
@@ -4547,7 +4574,7 @@ function renderClientLobby(){
   const L = CL.lobby, me = L && L.seats[ME];
   $('cEyebrow').textContent = CL.code ? `Game ${CL.code}` : 'Joining';
   $('cTitle').textContent = me ? `You're player ${ME + 1}` : 'Serpentine';
-  $('cMsg').textContent = L && L.mode === 1 ? 'That screen switched to solo. Ask the host to pick Party or Tag team.'
+  $('cMsg').textContent = CL.moved ? CL.msg : L && L.mode === 1 ? 'That screen switched to solo. Ask the host to pick Party or Tag team.'
     : L ? `${L.mode === 2 ? 'Party' : 'Tag team'} on ${L.where}. ${CL.msg}` : CL.msg;
   $('cSwatch').style.background = me ? me.color : 'transparent';
   $('cYouBox').hidden = !me;
@@ -4557,11 +4584,13 @@ function renderClientLobby(){
     if (!$('cSnake').options.length) for (const k in SNAKES){ const o = document.createElement('option'); o.value = k; o.textContent = SNAKES[k].name; $('cSnake').appendChild(o); }
     $('cSnake').value = me.snake || 'classic';
   }
+  if (me && document.activeElement !== $('cName')) $('cName').value = me.name || '';
   const ol = $('cSeats'); ol.innerHTML = '';
   (L ? L.seats : []).forEach((st, i) => {
     const li = document.createElement('li');
     li.innerHTML = `<span class="sw" style="background:${st.color}"></span><span class="n"><b></b><small></small></span>`;
-    li.querySelector('b').textContent = (i === ME ? 'You' : st.name || (st.kind === 'cpu' ? 'Computer' : 'Player')) + ' ' + (i + 1);
+    const nm = st.name || (st.kind === 'cpu' ? 'Computer ' : 'Player ') + (i + 1);
+    li.querySelector('b').textContent = i === ME ? `You (${nm})` : nm;
     li.querySelector('small').textContent = st.kind === 'screen' ? 'Own screen' : st.kind === 'phone' ? 'Phone controller' : st.kind === 'cpu' ? 'Computer' : 'On the host screen';
     if (i === ME) li.className = 'me';
     ol.appendChild(li);
@@ -4578,6 +4607,7 @@ function onHost(m){
   if (m.t === 'hi'){ ME = m.seat; showClient(m.playing ? "A round is under way. You'll join the next one." : 'Waiting for the host to start…'); }
   else if (m.t === 'lobby'){ CL.lobby = m; if (m.you >= 0) ME = m.you; if (state === 'menu') renderClientLobby(); }
   else if (m.t === 'full') showClient('This game is full (8 players).', true);
+  else if (m.t === 'removed'){ CL.moved = true; if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); } showClient('The host removed you from this game. Reload this page to join again.', true); }
   else if (m.t === 'moved'){ CL.moved = true; if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); } showClient("You're playing from your other device now. Reload this page to play here again.", true); }
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Tag team and you'll join.");
   else if (m.t === 'start') clientStart(m);
@@ -4697,7 +4727,8 @@ function localHumansOut(){
 function updateHUD(){
   if (MODE !== 1){
     const left = Math.max(0, Math.ceil(G.left)), vs = viewers();
-    const watching = ROLE === 'host' && !vs.length && (state === 'play' || state === 'paused');
+    const watching = !vs.length && (state === 'play' || state === 'paused');
+    if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     $('mpOut').hidden = !localHumansOut();
     const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME]);
@@ -4766,10 +4797,10 @@ function buildSeg(boxId, name, items, onPick){
     box.appendChild(lab);
   }
 }
-buildSeg('modePick', 'mode', [{value: 1, html: '<b>Solo</b><small>Just you</small>'}, {value: 2, html: '<b>Party</b><small>Up to 8</small>'}, {value: 3, html: '<b>Tag team</b><small>2 to 4 together</small>'}], v => setMode(+v));
-$('modePick').style.setProperty('--n', 3);
+buildSeg('modePick', 'mode', [{value: 2, html: '<b>Party</b><small>Up to 8</small>'}, {value: 3, html: '<b>Tag team</b><small>2 to 4 together</small>'}], v => setMode(+v));
+$('modePick').style.setProperty('--n', 2);
 function setMode(m){
-  MODE = m; store.set('players', m);
+  MODE = m; store.set('players', m); if (m !== 1) store.set('hostMode', m);
   // switching to party or tag team: everyone already connected (phones and screens that joined during solo) takes a seat
   if (m !== 1 && ROLE === 'host' && state === 'menu') for (const L of LINK.links.slice()) if (seatOf(L) < 0) seatFor(L);
   // solo keeps its unlock order; a party can play any course
@@ -4850,7 +4881,7 @@ function updateMenuUI(){
   }
   $('snake-' + playSnake()).checked = true;
   $('diff-' + diff).checked = true;
-  $('mode-' + MODE).checked = true;
+  const mi = $('mode-' + MODE); if (mi) mi.checked = true;
   $('modeDesc').innerHTML = MODE === 2
     ? '<b>Party.</b> Up to 8 snakes in one arena, everyone for themselves. Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins. The arena grows with the number of players.'
     : MODE === 3 ? '<b>Tag team.</b> 2 to 4 snakes working together. Every gem anyone eats counts toward the team’s goal, and you share a pool of lives. Teammates pass right through each other.'
@@ -4869,8 +4900,6 @@ function updateMenuUI(){
   $('courseDesc').innerHTML = `<b>${Cc.name}.</b> Music: ${musicName(Cc.music)}. ${Cc.movers ? 'Sliding pillars. ' : ''}${Cc.gates ? 'Beat gates. ' : ''}${partyTime(Math.max(2, SEATS.length))}-second round.`;
   $('snakeDesc').textContent = SNAKES[playSnake()].desc + (MODE === 1 ? ' ' + Object.keys(SNAKE_UNLOCK).filter(k => !snakeOpen(k)).map(k => `${SNAKES[k].name}: ${unlockText(k).toLowerCase()}`).join(' ') : '');
   $('diffDesc').textContent = DIFFS[diff].desc;
-  $('menuBoardLabel').textContent = DIFFS[diff].name;
-  renderBoard($('menuBoard'), diff, lastEntry);
   for (const k in bests) $('best-' + k).textContent = 'Best ' + bests[k];
   const wait = waitingText();
   $('startBtn').textContent = wait ? wait.split(' (')[0] + '…'
@@ -4881,7 +4910,6 @@ function updateMenuUI(){
   $('courseBox').hidden = MODE !== 2;
   $('stageBox').hidden = MODE === 2;
   $('ctrlBox').hidden = MODE !== 1;
-  $('boardBox').hidden = MODE !== 1;   // the leaderboard is for solo runs
   const vt = $('view-top'); if (vt){ vt.closest('label').hidden = MODE !== 1; $('viewPick').style.setProperty('--n', MODE !== 1 ? 2 : 3); }
   $('viewLabel').textContent = MODE !== 1 ? 'View (keyboard players; everyone can change their own)' : 'View';
   $('ctrl-' + CTRL).checked = true;
@@ -4925,7 +4953,7 @@ function refreshMenu(){
 
 // ---- flow ----
 const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
-function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'joinOv', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
+function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'clientOv', 'unlock', 'confirm']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
   res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
@@ -4976,63 +5004,23 @@ function saveBest(sc){
   if (isBest){ bests[RUN.diff] = sc; store.set('best-' + RUN.diff, sc); }
   return isBest;
 }
-// ---- leaderboard: top 10 per difficulty, kept in this browser ----
-// (ask the browser to keep this site's storage instead of clearing it when space runs low or the site sits unused)
-try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(_) {}
-const BOARD_N = 10;
-const boards = {};
-for (const k in DIFFS){ try { boards[k] = JSON.parse(store.get('board-' + k)) || []; } catch(_) { boards[k] = []; } }
-let pending = null, lastEntry = null;   // pending: a qualifying run waiting for a name
 const cleanName = n => String(n || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 12);
-const rankFor = (diff, sc) => { const b = boards[diff]; let i = 0; while (i < b.length && b[i].score >= sc) i++; return i; };
-function renderBoard(el, diff, mark){
-  const b = boards[diff];
-  if (!b.length){ el.innerHTML = '<div class="board-empty">No scores yet. Be the first.</div>'; return; }
-  const ol = document.createElement('ol'); ol.className = 'board';
-  b.forEach((e, i) => {
-    const li = document.createElement('li');
-    if (e === mark) li.className = 'me';
-    li.innerHTML = `<span class="r">${i + 1}</span>${snakeIcon(SNAKES[e.snake] ? e.snake : 'classic')}<span class="n"></span><span class="s">${e.score}</span>`;
-    const n = li.querySelector('.n'); n.textContent = e.name;
-    const sm = document.createElement('small'); sm.textContent = e.won ? 'cleared all' : 'L' + e.level; n.appendChild(sm);
-    ol.appendChild(li);
-  });
-  el.replaceChildren(ol);
-}
-// a run saved without a name gets a random snake name (12 letters at most, to fit the board)
+// random snake names (12 letters at most), for every player who hasn't typed one, so nobody is just "P2"
 const SNAKE_ADJ = ['Sly', 'Swift', 'Silent', 'Golden', 'Lucky', 'Velvet', 'Midnight', 'Sneaky', 'Dizzy', 'Sunny', 'Jazzy', 'Cosmic', 'Mellow', 'Turbo', 'Noodle'];
 const SNAKE_KIND = ['Mamba', 'Cobra', 'Viper', 'Python', 'Boa', 'Asp', 'Adder', 'Krait', 'Taipan', 'Racer', 'Garter', 'Rattler', 'Kingsnake', 'Sidewinder', 'Noodle'];
+function freshSnakeName(){
+  const used = new Set(SEATS.map(st => st.name));
+  for (let k = 0; k < 50; k++){ const n = randomSnakeName(); if (!used.has(n)) return n; }
+  return randomSnakeName();
+}
 function randomSnakeName(){
   for (;;){
     const a = SNAKE_ADJ[Math.floor(Math.random()*SNAKE_ADJ.length)], k = SNAKE_KIND[Math.floor(Math.random()*SNAKE_KIND.length)];
     if (a !== k && (a + ' ' + k).length <= 12) return a + ' ' + k;
   }
 }
-function saveName(name){
-  if (!pending) return;
-  const typed = cleanName(name);
-  name = typed || randomSnakeName();
-  const e = {...pending, name, at: Date.now()}, b = boards[e.diff];
-  b.splice(rankFor(e.diff, e.score), 0, e); b.length = Math.min(b.length, BOARD_N);
-  store.set('board-' + e.diff, JSON.stringify(b)); if (typed) store.set('name', typed);   // only a name someone typed is remembered for next time
-  pending = null; lastEntry = e;
-  $('entry').hidden = true;
-  renderBoard($('overBoard'), e.diff, e); updateMenuUI(); syncPhone(true);
-  if (state === 'over') $('againBtn').focus({preventScroll: true});
-}
 function showOver(won){
   const sc = score(), isBest = saveBest(sc);
-  const qual = sc > 0 && (boards[RUN.diff].length < BOARD_N || sc > boards[RUN.diff][boards[RUN.diff].length - 1].score);
-  pending = qual ? {score: sc, diff: RUN.diff, snake: RUN.snake, level: G.idx + 1, gems: RUN.gems + (G.done ? 0 : G.gems), won} : null;
-  lastEntry = null;
-  $('entry').hidden = !qual;
-  if (qual){
-    $('entryRank').textContent = `You made the board at #${rankFor(RUN.diff, sc) + 1}`;
-    $('entryHint').textContent = phoneOn() ? 'Type your name here or on your phone.' : 'Type your name and press Enter.';
-    $('nameIn').value = store.get('name') || '';
-  }
-  $('overBoardLabel').textContent = DIFFS[RUN.diff].name + ' leaderboard';
-  renderBoard($('overBoard'), RUN.diff, null);
   RUN.won = won;
   const firstWin = won && store.get('beat') !== '1';
   if (won) store.set('beat', '1');
@@ -5047,7 +5035,7 @@ function showOver(won){
   hideOverlays(); $('over').hidden = false;
   state = 'over'; keepAwake(false);
   updateMenuUI();
-  setTimeout(() => (qual ? $('nameIn') : $('againBtn')).focus({preventScroll: true}), 50);
+  setTimeout(() => $('againBtn').focus({preventScroll: true}), 50);
 }
 function showClear(){
   if (G.idx + 1 >= STAGES.length){ if (MODE === 1) return showOver(true); if (ROLE === 'host') endTeam(true); return; }
@@ -5119,7 +5107,6 @@ function begin(){
 function start(idx){
   if (ROLE !== 'host') return;
   if (!readyToPlay()) return nudgeWaiting();
-  if (pending) saveName('');
   initAudio();
   RUN = newRunState();
   if (MODE !== 1){ SEATS = SEATS.filter(st => !st.gone); renderSeats(); }
@@ -5141,16 +5128,30 @@ function nextStage(){
   if (MODE !== 1) sendStarts();
   begin();
 }
+function goPage(p){
+  if (p === 'host' && !R3) p = 'doors';   // party and tag team need the 3D views
+  PAGE = p; $('menu').dataset.page = p;
+  if (p === 'solo' && MODE !== 1) setMode(1);
+  if (p === 'host' && MODE === 1) setMode(+store.get('hostMode') === 3 ? 3 : 2);
+  if (p === 'solo' || p === 'host') store.set('door', p);
+  $('pageName').textContent = p === 'solo' ? 'Solo' : p === 'host' ? 'Host a party' : "Join a friend's game";
+  const last = store.get('door');
+  for (const d of document.querySelectorAll('.door')) d.classList.toggle('last', d.dataset.door === last);
+  $('doorHost').disabled = !R3;
+  if (p !== 'join') $('joinErr').textContent = '';
+  setPhoneUI(); updateMenuUI(); $('menu').scrollTop = 0;
+  if ($('menu').hidden) return;
+  const f = p === 'doors' ? (document.querySelector('.door.last:not(:disabled)') || $('doorSolo')) : p === 'join' ? $('joinInline') : $('startBtn');
+  setTimeout(() => f.focus({preventScroll: true}), 30);
+}
 function toMenu(){
   if (ROLE === 'client') return leaveGame();
-  if (pending) saveName('');
   state = 'menu'; stopMusic(); keepAwake(false);
   SEATS = SEATS.filter(st => !st.gone);
   toScreens({t: 'phase', state: 'menu'});
   RUN = newRunState(); loadStage(MODE === 2 ? course : stage);
   hideOverlays(); $('menu').hidden = false; $('pauseBtn').hidden = true;
-  renderSeats(); updateMenuUI();
-  $('startBtn').focus({preventScroll: true});
+  renderSeats(); goPage(MODE === 1 ? 'solo' : 'host');
 }
 function pause(){
   if (state !== 'play') return;
@@ -5158,7 +5159,7 @@ function pause(){
   $('pause').hidden = false; $('pauseBtn').hidden = true; $('setBtn').hidden = true;
   $('resumeBtn').textContent = ROLE === 'client' ? 'Resume for everyone' : 'Resume';
   $('pauseMenuBtn').textContent = ROLE === 'client' ? 'Leave the game' : 'Main menu';
-  updatePauseNote();
+  updatePauseNote(); renderPauseSeats();
   toScreens({t: 'phase', state: 'paused'});
   $('resumeBtn').focus({preventScroll: true});
 }
@@ -5192,9 +5193,9 @@ $('cCtlBtn').addEventListener('click', () => { if (CL.code) location.href = cont
 $('joinInlineGo').addEventListener('click', () => { initAudio(); joinGame($('joinInline').value); });
 $('joinInline').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); $('joinInlineGo').click(); } });
 $('joinInline').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
-$('joinGo').addEventListener('click', () => { initAudio(); joinGame($('joinCode').value); });
-$('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('joinGo').click(); } });
-$('joinBack').addEventListener('click', () => { hideOverlays(); $('menu').hidden = false; });
+$('joinInline').addEventListener('input', () => { $('joinErr').textContent = ''; });
+for (const d of document.querySelectorAll('.door')) d.addEventListener('click', () => goPage(d.dataset.door));
+$('pageBack').addEventListener('click', () => goPage('doors'));
 $('addLocal').addEventListener('click', () => addLocalSeat(CAN_TILT ? 'device' : 'keys'));
 $('addCpu').addEventListener('click', () => addLocalSeat('cpu'));
 $('cpuView').checked = CPU_VIEW;
@@ -5204,8 +5205,6 @@ $('cTiltBtn').addEventListener('click', () => { initAudio(); enableTilt(); setTi
 $('cSnake').addEventListener('change', () => { netSend({t: 'snake', k: $('cSnake').value}); $('cSnake').blur(); });
 $('cName').addEventListener('change', () => { const n = cleanName($('cName').value); store.set('name', n); netSend({t: 'name', name: n}); });
 $('cName').value = store.get('name') || '';
-$('nameBtn').addEventListener('click', () => saveName($('nameIn').value));
-$('nameIn').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); e.stopPropagation(); saveName($('nameIn').value); } });
 $('pauseBtn').addEventListener('click', pauseAction);
 $('setBtn').addEventListener('click', openSettings);
 $('recenterBtn').addEventListener('click', recenter);
@@ -5284,7 +5283,7 @@ const DUO_KEYS = {a: {p: 0, a: 'L'}, A: {p: 0, a: 'L'}, d: {p: 0, a: 'R'}, D: {p
 addEventListener('keydown', e => {
   const k = e.key, onControl = e.target && (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SUMMARY');
   const go = k === ' ' || k === 'Enter';
-  const typing = e.target && e.target.tagName === 'INPUT' && e.target.type === 'text' || e.target === $('nameIn');
+  const typing = e.target && e.target.tagName === 'INPUT' && e.target.type === 'text';
   if (typing) return;
   if (!$('confirm').hidden){ if (k === 'Escape'){ e.preventDefault(); $('confirm').hidden = true; } return; }
   if ((k === 'c' || k === 'C') && !e.repeat && !e.metaKey && !e.ctrlKey){
@@ -5301,11 +5300,13 @@ addEventListener('keydown', e => {
     else if (k in KEYS){ e.preventDefault(); aimAt(Math.atan2(DIRS[KEYS[k]][1], DIRS[KEYS[k]][0])); }
     else if (k === ' '){ e.preventDefault(); if (!e.repeat) jumpFor(myI()); }
     else if (k === 'Escape' || k === 'p' || k === 'P') pauseAction();
+  } else if (state === 'menu' && k === 'Escape' && ROLE === 'host' && !$('menu').hidden && PAGE !== 'doors' && $('sheet').hidden && e.target.id !== 'joinInline'){
+    e.preventDefault(); goPage('doors');
   } else if (ROLE === 'client'){
     return;
   } else if (onControl) {
     return;
-  } else if (state === 'menu' && go && !$('menu').hidden){ e.preventDefault(); start(MODE === 2 ? course : stage); }
+  } else if (state === 'menu' && go && !$('menu').hidden && (PAGE === 'solo' || PAGE === 'host')){ e.preventDefault(); start(MODE === 2 ? course : stage); }
   else if (state === 'over' && go){ e.preventDefault(); goAction(); }
   else if (state === 'lost' && go){ e.preventDefault(); retryLevel(); }
   else if (state === 'clear' && go){ e.preventDefault(); if (!$('unlock').hidden) $('unUse').click(); else nextStage(); }
@@ -5392,9 +5393,10 @@ buildTiltRows($('menuTilt')); buildTiltRows($('sTilt')); buildTiltRows($('cTilt'
 renderSeats();
 // opened from an invite (…#join=CODE): join that game on this screen; otherwise set up to host
 const joinHash = /^#join=([A-Za-z0-9]{4})$/.exec(location.hash);
+let bootPage = 'doors'; try { if (sessionStorage.getItem('serpentine-page') === 'join') bootPage = 'join'; sessionStorage.removeItem('serpentine-page'); } catch(_) {}
+goPage(bootPage);
 if (joinHash) joinGame(joinHash[1]); else startPhoneLink();
 $('how').open = !store.get('played');
-$('boardBox').open = false;   // the leaderboard starts folded; it's a tap away
 requestAnimationFrame(frame);
 window.__booted = true;
 })().catch(e => window.__bootFail && window.__bootFail(e));
