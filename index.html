@@ -368,6 +368,10 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .cpuIc{padding:0 4px}
 .csnake{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:.72rem;color:var(--muted)}
 .csnake .snakeSel{font:inherit;font-size:.8rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:8px 10px}
+.swapBtn{justify-self:start;background:none;border:0;padding:4px 0 0;color:var(--cyan);font:inherit;font-size:.62rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.swapBtn:hover{color:var(--cream)}
+.bigqr.flash{animation:qrflash .5s 3}
+@keyframes qrflash{50%{box-shadow:0 0 0 6px var(--cyan)}}
 .seats .x{width:30px;height:30px;border:1px solid var(--rule);background:#000;color:var(--cream);font-size:1rem;cursor:pointer;padding:0}
 .addrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .need{font-size:.78rem;line-height:1.5;padding:9px 12px;border:1.5px solid var(--lime);color:var(--lime)}
@@ -4179,8 +4183,9 @@ function setPhoneUI(note){
   // the big QR beside the menu: shown on computers whenever a phone is part of the plan
   const wantQr = ROLE === 'host' && (PAGE === 'solo' || PAGE === 'host') && !CAN_TILT && location.protocol !== 'file:' && (MODE !== 1 || CTRL === 'phones');
   $('bigQr').hidden = !wantQr;
-  $('bqEyebrow').textContent = MODE === 1 ? (on ? 'Phone connected' : 'Play with your phone') : MODE === 2 ? 'Join the party' : 'Join the team';
-  $('bqDesc').textContent = MODE === 1 ? (on ? 'Tilt to steer, jump for real. Press Start on your phone or here.' : "Point your phone's camera here. Your phone becomes the controller.")
+  const waiting = MODE !== 1 && SEATS.find(st => st.awaitPhone);
+  $('bqEyebrow').textContent = waiting ? 'Switch to your phone' : MODE === 1 ? (on ? 'Phone connected' : 'Play with your phone') : MODE === 2 ? 'Join the party' : 'Join the team';
+  $('bqDesc').textContent = waiting ? `Scan with your phone. It takes over ${waiting.name || 'your snake'}, so nothing doubles up.` : MODE === 1 ? (on ? 'Tilt to steer, jump for real. Press Start on your phone or here.' : "Point your phone's camera here. Your phone becomes the controller.")
     : `Scan with your phone to join. You'll steer your snake here, or you can play it on your phone. Laptops and tablets: open ${siteName()} and type this code under Joining a friend's game?`;
   const url = controllerURL(LINK.code);
   const local = location.protocol === 'file:';
@@ -4267,6 +4272,8 @@ function seatFor(L){
   // the same device is already in this game (it switched between controller and its own screen): move its seat over
   const same = L.device ? SEATS.findIndex(st => st.device === L.device && st.link !== L) : -1;
   if (same >= 0) return moveSeat(same, L);
+  const wait = SEATS.findIndex(st => st.awaitPhone);
+  if (wait >= 0){ const st = SEATS[wait]; st.awaitPhone = false; st.device = L.device; if (L.name) st.name = L.name; return moveSeat(wait, L); }
   if (state !== 'menu'){
     // someone who dropped out mid-round gets their seat back
     const i = SEATS.findIndex(st => st.gone && !st.removed && st.kind === L.kind && st.name === L.name);
@@ -4306,6 +4313,28 @@ function removeSeat(st, why){
   }
   seatsChanged(); syncPhone(true); renderPauseSeats();
 }
+function swapLabel(st){
+  if (CAN_TILT || st.gone) return '';
+  if (st.kind === 'keys') return st.awaitPhone ? 'Cancel: stay on the keyboard' : 'Switch to my phone';
+  if ((st.kind === 'phone' || st.kind === 'screen') && SEATS.filter(x => x.kind === 'keys').length < 2) return 'Switch to this keyboard';
+  return '';
+}
+function swapSeat(st){
+  const i = SEATS.indexOf(st); if (i < 0) return;
+  if (st.kind === 'keys'){
+    // wait for a phone: the next phone or screen that joins takes over this snake instead of adding another
+    for (const x of SEATS) if (x !== st) x.awaitPhone = false;
+    st.awaitPhone = !st.awaitPhone;
+    if (st.awaitPhone){ const q = $('bigQr'); if (q && !q.hidden){ q.classList.remove('flash'); void q.offsetWidth; q.classList.add('flash'); } }
+  } else {
+    // a phone or joined screen hands its snake back to this keyboard; that device is told it's playing elsewhere now
+    const L = st.link;
+    if (L){ LINK.links = LINK.links.filter(x => x !== L); linkSend(L, {t: 'moved'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400); }
+    st.link = null; st.kind = 'keys'; st.device = ''; st.gone = false; delete st.goneAt;
+    const p = PL[i]; if (state !== 'menu' && p && i < PL.length){ p.kind = 'keys'; p.local = true; }
+  }
+  seatsChanged(); syncPhone(true); setPhoneUI();
+}
 function removeBtn(st){
   const x = document.createElement('button'); x.className = 'x'; x.textContent = '×';
   x.title = 'Remove from this game'; x.setAttribute('aria-label', `Remove ${st.name || 'this player'}`);
@@ -4323,6 +4352,8 @@ function renderPauseSeats(){
     li.innerHTML = `<span class="sw" style="background:${p ? p.look.color : seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
     li.querySelector('b').textContent = p ? playerName(i) : st.name || 'Player ' + (i + 1);
     li.querySelector('small').textContent = st.gone ? 'Disconnected' : !p ? 'Watching, joins next round' : p.lives <= 0 && !p.alive ? 'Out of lives' : seatKindText(st, i);
+    const swap = swapLabel(st);
+    if (swap){ const sb = document.createElement('button'); sb.className = 'swapBtn'; sb.textContent = swap; sb.addEventListener('click', () => swapSeat(st)); li.querySelector('.n').appendChild(sb); }
     li.appendChild(removeBtn(st));
     ol.appendChild(li);
   });
@@ -4377,6 +4408,7 @@ function addLocalSeat(kind){
   seatsChanged();
 }
 const seatKindText = (st, i) => {
+  if (st.awaitPhone) return 'Scan the code with your phone: it takes over this snake';
   if (st.kind === 'phone') return 'Phone controller, on this screen';
   if (st.kind === 'screen') return 'Playing on their own screen';
   if (st.kind === 'device') return 'This screen: tilt to steer, tap to jump';
@@ -4411,6 +4443,14 @@ function renderSeats(){
       vb.addEventListener('click', () => toggleSeatView(i));
       li.appendChild(vb);
     } else { const ic = document.createElement('span'); ic.className = 'snakeBtns cpuIc'; ic.innerHTML = snakeIcon(seatSnake(st)); ic.title = SNAKES[seatSnake(st)].name; li.appendChild(ic); }
+    // switching how you play keeps your snake: keyboard to a phone (the next phone or screen to join takes it over),
+    // or a phone back to this keyboard
+    const swap = swapLabel(st);
+    if (swap){
+      const sb = document.createElement('button'); sb.className = 'swapBtn'; sb.textContent = swap;
+      sb.addEventListener('click', () => swapSeat(st));
+      li.querySelector('.n').appendChild(sb);
+    }
     li.appendChild(removeBtn(st));
     ol.appendChild(li);
   });
@@ -4425,7 +4465,7 @@ function renderSeats(){
   const keysN = SEATS.filter(x => x.kind === 'keys').length, devN = SEATS.filter(x => x.kind === 'device').length;
   $('addLocal').textContent = CAN_TILT ? '+ Me, on this screen' : keysN ? '+ A second keyboard player' : '+ Me, on this keyboard';
   $('addHint').textContent = CAN_TILT ? 'Play on this screen yourself (tilt to steer, tap to jump), or add computer snakes.'
-    : 'Play on this keyboard yourself (two people can share it), or add computer snakes to fill out the field.';
+    : 'Play on this keyboard yourself (two people can share it), or add computer snakes to fill out the field. Switching to your phone later? Use “Switch to my phone” on your row so you keep your snake.';
   $('addLocal').disabled = SEATS.length >= 8 || (CAN_TILT ? devN >= 1 : keysN >= 2);
   $('addCpu').disabled = SEATS.length >= hi;
   $('cpuViewRow').hidden = CAN_TILT;
