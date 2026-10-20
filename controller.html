@@ -290,7 +290,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-19a</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -442,6 +442,8 @@ function onGame(m){
     const duo = m.mode >= 2;
     $('me').classList.toggle('on', duo); $('me').textContent = 'P' + (m.player || 1);
     if (duo && m.color) $('me').style.background = m.color;
+    // in a party or tag team each player has their own view on the big screen
+    $('viewBtn').textContent = m.mode >= 2 ? `My view: ${m.view === 'eye' ? 'Eye' : 'Chase'} (tap to switch)` : "Change the big screen's view";
     $('lvl').textContent = m.mode === 2
       ? (m.state === 'play' ? `Player ${m.player}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `Player ${m.player}, party on ${m.name}`)
       : m.mode === 3 ? `Player ${m.player}, team level ${m.level} / ${m.name}${m.alive === false ? ', respawning' : ''}`
