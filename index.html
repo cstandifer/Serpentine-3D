@@ -2567,6 +2567,33 @@ function stopTrack(){
   trackGain.gain.cancelScheduledValues(now); trackGain.gain.setValueAtTime(Math.max(0.0001, trackGain.gain.value), now); trackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
   trackSrc.stop(now + 0.3); trackSrc = null; trackGain = null;
 }
+// multiplayer: the host sends where it is in the song, and a joined screen playing music too keeps itself there
+// (it jumps to the host's spot, with a quick crossfade, whenever it drifts more than a few hundredths of a second)
+function songPos(){
+  if (!AC || !trackSrc) return null;
+  const d = trackSrc.buffer.duration;
+  return Math.round((((AC.currentTime - trackT0) % d + d) % d)*1000)/1000;
+}
+let songSeekAt = 0;
+function syncSong(hostPos){
+  const T = trackOf();
+  if (!T || typeof hostPos !== 'number') return;
+  const lag = 0.05;   // about how long the message took to get here
+  if (!trackSrc){ trackFor = T.src; trackPos = hostPos + lag; return; }   // the next start begins at the host's spot
+  if (!AC || trackFor !== T.src) return;
+  const d = trackSrc.buffer.duration, mine = ((AC.currentTime - trackT0) % d + d) % d, target = (hostPos + lag) % d;
+  let diff = target - mine; if (diff > d/2) diff -= d; if (diff < -d/2) diff += d;
+  const now = AC.currentTime;
+  if (Math.abs(diff) < 0.06 || now - songSeekAt < 2) return;
+  songSeekAt = now;
+  const old = trackSrc, oldG = trackGain, src = AC.createBufferSource(), gain = AC.createGain(), from = ((target % d) + d) % d;
+  src.buffer = old.buffer; src.loop = true;
+  gain.gain.setValueAtTime(0.0001, now); gain.gain.exponentialRampToValueAtTime(1, now + 0.12);
+  src.connect(gain).connect(musicBus); src.start(now, from);
+  oldG.gain.cancelScheduledValues(now); oldG.gain.setValueAtTime(Math.max(0.0001, oldG.gain.value), now); oldG.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+  old.stop(now + 0.15);
+  trackSrc = src; trackGain = gain; trackT0 = now - from;
+}
 // the built-in songs also pick up where they stopped after a pause or a lost life
 let synthFor = null, synthPos = 0;
 function startMusic(){
@@ -4719,6 +4746,7 @@ function clientStart(m){
   begin();
 }
 function applyWorld(m){
+  if (m.mp != null) syncSong(m.mp);
   if (Math.abs(G.t - m.tt) > 0.3) G.t = m.tt; else G.t += (m.tt - G.t)*0.1;
   if (MODE === 2 && typeof m.left === 'number') G.left = m.left;
   if (MODE === 3){ G.teamLives = m.tl; G.teamGems = m.tg; }
@@ -4767,7 +4795,7 @@ function netTick(now){
     return;
   }
   if (MODE === 1 || state === 'menu' || !G || !screens().length) return;
-  toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems,
+  toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems, mp: songPos(),
     ps: PL.map(p => p.local ? posOf(p) : p.netRaw || null), gm: PL.map(p => p.gems)});
 }
 
@@ -5340,7 +5368,7 @@ $('resumeBtn').addEventListener('click', resume);
 $('rematchBtn').addEventListener('click', () => start(MODE === 3 ? stage : G.idx));
 $('duelMenuBtn').addEventListener('click', toMenu);
 $('cMusic').checked = store.get('clientMusic') === '1';
-$('cMusic').addEventListener('change', e => { store.set('clientMusic', e.target.checked ? '1' : '0'); });
+$('cMusic').addEventListener('change', e => { store.set('clientMusic', e.target.checked ? '1' : '0'); initAudio(); if (state === 'play'){ if (e.target.checked) startMusic(); else stopMusic(); } });
 $('cCtlBtn').addEventListener('click', () => { if (CL.code) location.href = controllerURL(CL.code); });
 $('joinInlineGo').addEventListener('click', () => { initAudio(); joinGame($('joinInline').value); });
 $('joinInline').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter'){ e.preventDefault(); $('joinInlineGo').click(); } });
