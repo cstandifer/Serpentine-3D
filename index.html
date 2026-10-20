@@ -4153,7 +4153,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20e';
+const CTRL_BUILD = '2026-10-20f';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -4212,7 +4212,7 @@ async function startPhoneLink(){
     peer.on('open', () => { store.set('phone', code); drawQR(); setPhoneUI(); });
     peer.on('connection', conn => {
       const meta = conn.metadata || {};
-      const L = {conn, kind: meta.kind === 'screen' ? 'screen' : 'phone', seen: performance.now(), name: cleanName(meta.name), device: String(meta.device || '').slice(0, 16)};
+      const L = {conn, kind: meta.kind === 'screen' ? 'screen' : 'phone', seen: performance.now(), input: performance.now(), name: cleanName(meta.name), device: String(meta.device || '').slice(0, 16)};
       conn.on('open', () => {
         if (ROLE !== 'host'){ conn.close(); return; }
         L.seen = performance.now();
@@ -4222,7 +4222,7 @@ async function startPhoneLink(){
         setPhoneUI(); lastPhone.delete(L); lastLobby = ''; sendLobby(); syncPhone(true);
         if (L.kind === 'phone') linkSend(L, {t: 'buzz', p: 30});
       });
-      conn.on('data', m => { L.seen = performance.now(); onLink(L, m); });
+      conn.on('data', m => { L.seen = performance.now(); noteInput(L, m); onLink(L, m); });
       conn.on('close', () => { LINK.links = LINK.links.filter(x => x !== L); linkGone(L); });
     });
     peer.on('error', err => {
@@ -4291,13 +4291,13 @@ function seatFor(L){
 }
 // the host removes a player: between rounds their seat goes; mid-round their snake leaves the field for good this
 // round. A phone or screen is told, and stops reconnecting (it can join again later if it wants)
-function removeSeat(st){
+function removeSeat(st, why){
   const i = SEATS.indexOf(st);
   if (ROLE !== 'host' || i < 0) return;
   const L = st.link;
   if (L){
     LINK.links = LINK.links.filter(x => x !== L);
-    linkSend(L, {t: 'removed'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400);
+    linkSend(L, {t: 'removed', why: why || 'host'}); setTimeout(() => { try { L.conn.close(); } catch(_) {} }, 400);
   }
   if (state === 'menu') SEATS.splice(i, 1);
   else {
@@ -4341,7 +4341,8 @@ setInterval(() => {
   const now = performance.now(), stalled = now - watchLast > 2500; watchLast = now;
   if (ROLE !== 'host' || !LINK.links) return;
   // if this screen itself was stalled (busy, asleep, a background tab), the quiet was ours, not theirs: start over
-  if (stalled){ for (const L of LINK.links) L.seen = now; for (const st of SEATS) if (st.gone) st.goneAt = now; return; }
+  if (stalled){ for (const L of LINK.links){ L.seen = now; L.input = now; if (L.away) L.away = now; } for (const st of SEATS) if (st.gone) st.goneAt = now; return; }
+  if (MODE !== 1) idleCheck(now);
   for (const L of LINK.links.slice()) if (now - L.seen > LINK_QUIET_DROP_MS){
     LINK.links = LINK.links.filter(x => x !== L);
     try { L.conn.close(); } catch(_) {}
@@ -4528,6 +4529,33 @@ addEventListener('orientationchange', () => { TILT.cal = true; });
 // ask for motion on the first button press (Start, Resume and the like) while tilt is the control
 addEventListener('click', e => { if (CAN_TILT && (CTRL === 'device' || ROLE === 'client') && e.target.closest && e.target.closest('button')) enableTilt(); }, true);
 
+// is the person actually there? Anything they do counts: a button, a jump, steering (a phone that's being held moves;
+// one left on a table doesn't), and from a joined screen its snake turning or jumping. A page that goes into the
+// background (another app, a locked phone, a different tab) says so.
+const IDLE_PLAY_MS = 20000, IDLE_LOBBY_MS = 90000, AWAY_MS = 8000;
+function noteInput(L, m){
+  if (!m || typeof m !== 'object') return;
+  const now = performance.now();
+  if (m.t === 'away'){ L.away = L.away || now; return; }
+  if (m.t === 'back'){ L.away = 0; L.input = now; return; }
+  if (m.t === 'ping' || m.t === 'claim' || m.t === 'died') return;
+  if (m.t === 'steer'){ const v = +m.v || 0; if (L.lastV == null || Math.abs(v - L.lastV) >= 0.03){ L.lastV = v; L.input = now; } return; }
+  if (m.t === 'pos'){ const tu = +m.tu || 0, a = !!m.a; if (L.lastTu == null || Math.abs(tu - L.lastTu) > 0.05 || a !== L.lastA){ L.lastTu = tu; L.lastA = a; L.input = now; } return; }
+  L.input = now;
+}
+// left a page open somewhere and wandered off (often to play on another screen): after a while they're let go, so
+// no snake sits in the game with nobody steering it. Coming back to that page puts them back in.
+function idleCheck(now){
+  for (const L of LINK.links.slice()){
+    const i = seatOf(L); if (i < 0) continue;
+    const st = SEATS[i], p = state !== 'menu' && i < PL.length ? PL[i] : null;
+    const counting = state === 'play' ? !!p && (p.alive || p.lives > 0) : state === 'menu' && L.kind === 'phone';
+    if (!counting && !L.away){ L.input = now; continue; }
+    const limit = state === 'play' ? IDLE_PLAY_MS : IDLE_LOBBY_MS;
+    if (L.away && now - L.away > AWAY_MS) removeSeat(st, 'away');
+    else if (counting && now - L.input > limit) removeSeat(st, 'idle');
+  }
+}
 function onLink(L, m){
   if (!m || typeof m !== 'object') return;
   if (L.kind === 'screen') onScreenMsg(L, m); else onPhone(L, m);
@@ -4624,6 +4652,11 @@ const CL = {peer: null, conn: null, code: '', lobby: null, msg: '', stuck: false
 function netSend(m){ if (CL.conn && CL.conn.open) try { CL.conn.send(m); } catch(_) {} }
 setInterval(() => { if (ROLE === 'client') netSend({t: 'ping'}); }, 1000);
 addEventListener('pagehide', () => { if (ROLE === 'client' && CL.conn) try { CL.conn.close(); } catch(_) {} });
+// a joined screen tells the host when it's put away (another tab or app) and when it's back
+document.addEventListener('visibilitychange', () => { if (ROLE === 'client') netSend({t: document.hidden ? 'away' : 'back'}); });
+// let go for being away or idle: any tap brings this screen back into the game
+addEventListener('pointerdown', () => { if (ROLE === 'client' && CL.moved && CL.removedWhy && CL.removedWhy !== 'host') location.reload(); }, true);
+addEventListener('keydown', () => { if (ROLE === 'client' && CL.moved && CL.removedWhy && CL.removedWhy !== 'host') location.reload(); }, true);
 function showJoin(msg){
   hideOverlays(); $('menu').hidden = false; goPage('join');
   $('joinErr').textContent = msg || '';
@@ -4718,7 +4751,12 @@ function onHost(m){
   if (m.t === 'hi'){ ME = m.seat; showClient(m.playing ? "A round is under way. You'll join the next one." : 'Waiting for the host to start…'); }
   else if (m.t === 'lobby'){ CL.lobby = m; if (m.you >= 0) ME = m.you; if (state === 'menu') renderClientLobby(); }
   else if (m.t === 'full') showClient('This game is full (8 players).', true);
-  else if (m.t === 'removed'){ CL.moved = true; if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); } showClient('The host removed you from this game. Reload this page to join again.', true); }
+  else if (m.t === 'removed'){
+    CL.moved = true; CL.removedWhy = m.why || 'host';
+    if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); }
+    showClient(m.why === 'host' || !m.why ? 'The host removed you from this game. Reload this page to join again.'
+      : "You stepped away, so your snake left the game. Tap anywhere to jump back in.", true);
+  }
   else if (m.t === 'moved'){ CL.moved = true; if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); } showClient("You're playing from your other device now. Reload this page to play here again.", true); }
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Tag team and you'll join.");
   else if (m.t === 'start') clientStart(m);
@@ -4825,7 +4863,8 @@ function viewers(){
   if (MODE === 1) return [0];
   if (ROLE === 'client') return PL[ME] ? [ME] : [];
   if (CAN_TILT){ const i = PL.findIndex(p => p.kind === 'device'); return i >= 0 ? [i] : []; }
-  const vs = PL.map((p, i) => ['phone', 'keys', 'device'].includes(p.kind) || (p.kind === 'cpu' && CPU_VIEW) ? i : -1).filter(i => i >= 0);
+  // a player who was let go (removed, or left idle) gives their share of the screen back right away
+  const vs = PL.map((p, i) => (['phone', 'keys', 'device'].includes(p.kind) || (p.kind === 'cpu' && CPU_VIEW)) && !(SEATS[i] && SEATS[i].removed) ? i : -1).filter(i => i >= 0);
   // tag team: players already out when this level started give their share of the screen to the ones still in
   // (if everyone on this screen is out, keep their views so it still shows the team)
   const still = vs.filter(i => !PL[i].outAtStart);

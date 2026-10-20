@@ -281,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20e</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20f</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -448,6 +448,14 @@ function dial(){
 }
 // leaving this page (to play on a screen instead, or closing the tab): hang up right away so the game frees the seat
 addEventListener('pagehide', () => { try { if (conn) conn.close(); } catch(_) {} });
+// tell the screen when this page is put away (locked, another app) and when it's back; let go for that, or for
+// leaving the phone idle, any tap (or coming back to the page) rejoins
+let removedWhy = '';
+document.addEventListener('visibilitychange', () => {
+  if (removedWhy && removedWhy !== 'host'){ if (!document.hidden) location.reload(); return; }
+  send({t: document.hidden ? 'away' : 'back'});
+});
+addEventListener('pointerdown', () => { if (removedWhy && removedWhy !== 'host') location.reload(); }, true);
 function scheduleRetry(){ clearTimeout(retry); retry = setTimeout(() => { if (!connected() && code) connect(code); }, 2500); }
 
 // ---- messages from the game ----
@@ -460,7 +468,12 @@ function onGame(m){
   // the game is hosted on a phone or tablet, which only shows its own player's view: play on this phone instead
   else if (m.t === 'useScreen') location.href = screenURL();
   // this player's seat moved to another device (they're playing on their own screen now): stop, and say so
-  else if (m.t === 'removed'){ movedAway = true; pill('Removed', 'bad'); $('ctlHint').textContent = 'The host removed you from this game. Reload this page to join again.'; }
+  else if (m.t === 'removed'){
+    movedAway = true; removedWhy = m.why || 'host';
+    pill(removedWhy === 'host' ? 'Removed' : 'Left the game', 'bad');
+    $('ctlHint').textContent = removedWhy === 'host' ? 'The host removed you from this game. Reload this page to join again.'
+      : 'You stepped away, so your snake left the game. Tap anywhere to jump back in.';
+  }
   else if (m.t === 'moved'){ movedAway = true; pill('Playing elsewhere', 'bad'); $('ctlHint').textContent = "You're playing from your other device now. Reload this page to steer from here again."; }
   else if (m.t === 'state'){
     // a run just started: fold the settings away and shrink the gauges
