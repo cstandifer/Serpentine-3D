@@ -1903,9 +1903,11 @@ function posOf(p){
 //   greed  chance it goes for the best gem rather than one of the next few
 const isCPU = i => !!(PL[i] && PL[i].kind === 'cpu');
 const AI_SKILL = {
-  easy:   {speed: 0.8,  look: 2.2, think: 0.16, wobble: 0.5,  steer: 0.75, jump: 0.9,  greed: 0.45},
-  normal: {speed: 0.9,  look: 2.8, think: 0.11, wobble: 0.3,  steer: 0.9,  jump: 0.96, greed: 0.75},
-  hard:   {speed: 0.92, look: 3.6, think: 0.06, wobble: 0.12, steer: 1,    jump: 0.99, greed: 1}
+  // blunder: the chance, each time it thinks, that it doesn't look where it's going; flee: how close It gets in tag
+  // before it notices and runs
+  easy:   {speed: 0.76, look: 1.8, think: 0.22, wobble: 0.65, steer: 0.68, jump: 0.82, greed: 0.3,  blunder: 0.14, flee: 5},
+  normal: {speed: 0.85, look: 2.3, think: 0.16, wobble: 0.45, steer: 0.8,  jump: 0.9,  greed: 0.55, blunder: 0.07, flee: 7},
+  hard:   {speed: 0.92, look: 3.6, think: 0.06, wobble: 0.12, steer: 1,    jump: 0.99, greed: 1,    blunder: 0.01, flee: 9}
 };
 const aiSkill = () => AI_SKILL[RUN.diff] || AI_SKILL.normal;
 function aiNear(x, y, fn){
@@ -1969,6 +1971,8 @@ function aiThink(p, dt){
   }
   let tgt = p.aiGem ? Math.atan2(p.aiGem.y - G.y, p.aiGem.x - G.x) : G.th;
   const rt = aiRuleTarget(p, sk); if (rt != null) tgt = rt;
+  // now and then it just doesn't look ahead, like a person would
+  if (Math.random() < (sk.blunder || 0)){ p.aiSteer = clamp1(angDiff(tgt, G.th)*2)*sk.steer; return; }
   const L = sk.look + G.speed*0.45;   // faster means looking further ahead
   let pick = G.th, top = -Infinity;
   for (let k = -4; k <= 4; k++){
@@ -1999,7 +2003,7 @@ function aiRuleTarget(p, sk){
     }
     // not It: when It is close, run away from it; otherwise wander for gems
     const d = Math.hypot(it.x - G.x, it.y - G.y);
-    if (it.alive && d < 9) return Math.atan2(G.y - it.y, G.x - it.x) + (Math.random() - 0.5)*0.6;
+    if (it.alive && d < (sk.flee || 9)) return Math.atan2(G.y - it.y, G.x - it.x) + (Math.random() - 0.5)*0.6;
     return null;
   }
   if (G.rule === 'shrink'){
