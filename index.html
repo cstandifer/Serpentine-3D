@@ -356,6 +356,10 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 @media (prefers-reduced-motion:reduce){.vbig,.itframe{animation:none}}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
 .cd{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(5rem,18vw,13rem);line-height:1;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 24px rgba(0,0,0,.6))}
+.coach.wait{display:grid;gap:8px;top:max(84px,11%);padding:22px 28px;max-width:min(92vw,620px);text-transform:none;font-family:var(--mono);font-weight:400;font-size:clamp(.85rem,1.8vw,1.05rem)}
+.coach.wait small{font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.coach.wait b{font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(1.3rem,3.4vw,2.2rem);text-transform:uppercase;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
+.coach.wait em{font-style:normal;font-size:.75rem;color:var(--cyan);margin-top:4px}
 .coach{position:fixed;left:50%;top:max(84px,14%);transform:translateX(-50%);z-index:5;pointer-events:none;max-width:min(92vw,720px);text-align:center;padding:12px 20px;background:rgba(0,0,0,.72);border:1.5px solid transparent;border-image:var(--holo) 1;font-family:var(--wide);font-stretch:115%;font-weight:800;font-size:clamp(.9rem,2.2vw,1.35rem);text-transform:uppercase;color:var(--cream)}
 .rulenote{display:inline-flex;align-items:center;gap:8px;margin-left:14px;padding:4px 10px;background:rgba(0,0,0,.6);font-family:var(--wide);font-stretch:115%;font-weight:800;font-size:.8rem;text-transform:uppercase;color:#ffe94d}
 .rulenote.it{color:#ff4fd8}
@@ -1017,10 +1021,8 @@ const STAGES = [
 // party courses: each has its own colors, music and layout. Walls are drawn for a given arena size,
 // because the arena grows with the number of players.
 // the first-timer warm-up: a small open floor where each move gets its own moment
-// a walled lane runs from the start through a low bar and past a tall block, so you meet each one in order, then
-// it opens onto the floor for the last few gems
-const WARMUP = {name: 'Warm-up', goal: 4, half: 20, music: 'lofi', ...lv('#ffffff', 20), clutter: 0,
-  walls: [block(-9, -4, 26, 1), block(-9, 3, 26, 1)]};
+// an open floor with nothing on it: each step of the warm-up puts out only the one thing it's teaching
+const WARMUP = {name: 'Warm-up', goal: 4, half: 14, music: 'lofi', ...lv('#ffffff', 20), clutter: 0, walls: []};
 const COURSES = [
   {name: 'Neon Bowl', base: 18, music: 'synthwave', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),
    walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
@@ -1360,11 +1362,8 @@ function loadWorld(cfg){
   }); }
   load(PL[0]);
   if (cfg.warm){
-    // the warm-up: a gem straight ahead, a low bar to jump, a tall block to steer around, then a few gems to finish
-    addThing('obs', shapeObs({x: 9, y: -3, w: 0.6, h: 6, tall: false}));      // a low bar right across the lane
-    addThing('obs', shapeObs({x: 13.6, y: -0.7, w: 1.4, h: 1.4, tall: true})); // a tall block in the middle of it
   } else if (cfg.idx === 0 && cfg.mode === 1) addThing('obs', {x: 10.2, y: -1, w: 0.6, h: 3, tall: false}); // teaches the jump
-  if (!party) addThing('gems', {x: 6.5, y: 0.5, taken: false});
+  if (!party && !cfg.warm) addThing('gems', {x: 6.5, y: 0.5, taken: false});
   // the field is finite, so build all of it up front and count its gems
   for (let cx = Math.floor(ARENA.x0/CH); cx <= Math.floor((ARENA.x1 - 1)/CH); cx++)
     for (let cy = Math.floor(ARENA.y0/CH); cy <= Math.floor((ARENA.y1 - 1)/CH); cy++) ensureChunk(cx, cy);
@@ -1463,7 +1462,7 @@ function ensureChunk(cx, cy){
       c.scaf.push(r); break;
     }
   }
-  const nGem = G.rule === 'tag' || G.rule === 'shrink' ? 0 : 1 + (rnd() < .45 ? 1 : 0);   // tag and shrink have no gems to chase
+  const nGem = G.rule === 'tag' || G.rule === 'shrink' || G.warm ? 0 : 1 + (rnd() < .45 ? 1 : 0);   // tag and shrink have no gems to chase
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
     const gx = 1 + Math.floor(rnd()*(CH-2)), gy = 1 + Math.floor(rnd()*(CH-2));
     if (fits({x: ox+gx, y: oy+gy, w: 1, h: 1}, 0.3)) { c.gems.push(regGem({x: ox+gx+.5, y: oy+gy+.5, taken: false})); break; }
@@ -2244,6 +2243,7 @@ const score = () => RUN.banked + (G.done ? 0 : Math.floor(G.dist) + G.gems*10);
 function die(cause){
   if (state !== 'play') return;
   if (MODE !== 1) return dieP(CUR, cause);
+  if (G.warm) return warmRetry(cause);
   state = 'dying'; G.cause = cause; G.deadT = 0; G.shake = 0.6;
   burst(G.x, G.y, C.ribbon, 26, 6); burst(G.x, G.y, C.pillar, 10, 5);
   if (!G.warm) RUN.lives--;   // the warm-up never costs a life
@@ -4819,6 +4819,7 @@ function onPhone(L, m){
   if (extra && m.t !== 'view') return;
   if (MODE === 1) pi = 0;
   else { const i = seatOf(L); if (i >= 0 && i < PL.length && PL[i].kind === 'phone' && state !== 'menu') pi = i; }
+  if ((m.t === 'jump' || m.t === 'go') && warmGo()) return;
   if (m.t === 'steer'){ if (pi >= 0){ STEERS[pi].phone = clamp1(+m.v || 0); STEERS[pi].phoneAt = performance.now(); } }
   else if (m.t === 'jump'){ if (pi >= 0) jumpFor(pi); }
   else if (m.t === 'go'){ if (MODE === 1 || seatOf(L) === 0) goAction(); }
@@ -5565,7 +5566,7 @@ function tickCountdown(){
 }
 function begin(){
   state = 'play';
-  startCountdown();
+  if (G && G.warm){ CD = null; $('cd').hidden = true; } else startCountdown();
   TILT.cal = true;   // however the screen is held right now counts as straight ahead
   hideOverlays(); $('pauseBtn').hidden = false;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -5580,20 +5581,63 @@ function startWarmup(){
   MODE = 1; RUN = newRunState();
   const cfg = makeCfg(0); cfg.warm = true; loadWorld(cfg);
   store.set('warmed', 1);
+  G.warmObs = []; warmStep(0);
   begin();
+}
+// The warm-up goes one step at a time. Each step pauses with a short card (the game holds still while you read),
+// then puts out just the thing it's teaching once you're ready, and moves on when you've done it.
+// A crash just runs that step again; the warm-up never costs a life.
+const warmTouch = () => CAN_TILT || (MODE === 1 && CTRL === 'phones' && phoneOn());
+const WARM_STEPS = [
+  {title: 'You’re the snake', how: () => warmTouch() ? 'It always moves forward. Tilt to steer.' : 'It always moves forward. Hold ← → to steer.',
+   go: 'Steer into the gem', setup(){ warmGem(4.5, -2.4); }, done: () => G.gems >= 1},
+  {title: 'Low bars can be jumped', how: () => warmTouch() ? 'Tap the screen to jump.' : 'Press Space to jump.',
+   go: 'Jump the bar!', obs: true, setup(){ warmObs({x: 2, y: -3, w: 0.6, h: 6, tall: false}); }, done: () => G.x > 3.2 && !G.air},
+  {title: 'Tall blocks can’t be jumped', how: () => 'Steer around them instead.',
+   go: 'Steer around the block', obs: true, setup(){ warmObs({x: 2.4, y: -0.8, w: 1.6, h: 1.6, tall: true}); }, done: () => G.x > 4.8},
+  {title: 'Last one', how: () => 'Eat 3 gems to finish the warm-up.',
+   go: 'Eat the gems', setup(){ warmGem(4, -3); warmGem(8.5, 2.5); warmGem(3, 6); }, done: () => false}
+];
+function warmGem(x, y){ addThing('gems', {x, y, taken: false}); }
+function warmObs(o){ const ob = shapeObs(o); addThing('obs', ob); G.warmObs.push(ob); }
+// set up a step: clear the last step's pieces, put the snake back at the start, put out this step's piece
+function warmStep(k, again){
+  const st = WARM_STEPS[k]; if (!st) return;
+  for (const o of G.warmObs || []) for (const c of G.chunks.values()){ const i = c.obs.indexOf(o); if (i >= 0) c.obs.splice(i, 1); }
+  G.warmObs = [];
+  const p = PL[0]; load(p);
+  Object.assign(G, {x: -6, y: 0, th: 0, turn: 0, prevTurn: 0, air: false, airT: 0, jumpBuf: 0, tailLen: 7, trail: [{x: -9, y: 0, air: false}], sinceP: 0});
+  save(p);
+  // a step's gems stay put when it runs again; its bar or block is put back
+  if (!again || st.obs) st.setup();
+  if (R3){ R3.build(); R3.snap(0); }
+  G.coach = {step: k, wait: true, again: !!again};
+}
+function warmGo(){
+  if (!G || !G.warm || !G.coach || !G.coach.wait || state !== 'play') return false;
+  G.coach.wait = false; TILT.cal = true;
+  if (AC) sfx(t => tone('sine', 880, t, 0.12, 0.12, sfxBus));
+  return true;
+}
+// a crash in the warm-up: run that step again
+function warmRetry(cause){
+  burst(G.x, G.y, C.ribbon, 20, 5); sfxCrash(); buzz(CRASH_BUZZ);
+  const k = G.coach.step; G.warmCause = {hurdle: 'You clipped the bar', pillar: 'You hit the block', wall: 'You ran into the wall', tail: 'You bit your own tail'}[cause] || 'You crashed';
+  warmStep(k, true);
 }
 function warmupCoach(){
   const el = $('coach');
   if (!G || !G.warm || state !== 'play'){ if (!el.hidden) el.hidden = true; return; }
-  const c = G.coach, touch = CAN_TILT || (MODE === 1 && CTRL === 'phones' && phoneOn());
-  // the lane means the snake meets the bar, then the block, in order; each line shows up as it gets close
-  if (G.x > 9.8) c.bar = true;
-  if (G.x > 15.2 || Math.abs(G.y) > 4) c.block = c.bar = true;
-  const txt = CD ? 'Warm-up: one move at a time'
-    : !c.bar ? (G.x < 3.5 ? (touch ? 'Tilt to steer. Eat the gem ahead.' : 'Hold ← → to steer. Eat the gem ahead.') : (touch ? 'Low bar ahead: tap to jump it!' : 'Low bar ahead: press Space to jump it!'))
-    : !c.block ? 'Tall block ahead: those can’t be jumped. Steer around it.'
-    : `Nice. Eat ${G.S.goal} gems to finish: ${Math.min(G.gems, G.S.goal)}/${G.S.goal}`;
-  if (el.textContent !== txt) el.textContent = txt;
+  const c = G.coach, st = WARM_STEPS[c.step];
+  if (!c.wait && st.done()){ warmStep(c.step + 1); return; }
+  const key = c.step + (c.wait ? 'w' : 'g') + (c.again ? 'a' : '') + warmTouch();
+  if (el.dataset.key !== key){
+    el.dataset.key = key;
+    el.classList.toggle('wait', c.wait);
+    el.innerHTML = c.wait
+      ? `<small>Warm-up · ${c.step + 1} of ${WARM_STEPS.length}</small><b>${c.again ? 'Try that again' : st.title}</b><span>${c.again ? esc(G.warmCause || '') + '. ' : ''}${st.how()}</span><em>${warmTouch() ? 'Tap when you’re ready' : 'Press any key when you’re ready'}</em>`
+      : esc(st.go);
+  }
   el.hidden = false;
 }
 function start(idx){
@@ -5877,6 +5921,9 @@ addEventListener('keydown', e => {
   else if (state === 'paused' && (go || k === 'Escape')){ e.preventDefault(); resume(); }
 });
 
+// the warm-up's cards: any key or tap carries on
+addEventListener('keydown', e => { if (G && G.warm && G.coach && G.coach.wait && state === 'play' && !e.repeat && !['Escape', 'p', 'P'].includes(e.key)){ if (warmGo()){ e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
+addEventListener('pointerdown', e => { if (G && G.warm && G.coach && G.coach.wait && state === 'play' && !(e.target.closest && e.target.closest('button'))){ if (warmGo()){ e.preventDefault(); e.stopImmediatePropagation(); } } }, true);
 // ---- playing on this phone or tablet ----
 // When the steering comes from this screen (tilt or drag), the corner map gives way to a jump zone at the
 // bottom, and the top bar adds Settings and Recenter next to Pause.
@@ -5919,7 +5966,7 @@ function frame(now){
   warmupCoach();
   if (state === 'play'){
     tickCountdown();
-    if (!CD || countdownLeft() <= 0) update(dt);
+    if ((!CD || countdownLeft() <= 0) && !(G.warm && G.coach && G.coach.wait)) update(dt);
     if (MODE === 1){
       const v = [Math.cos(G.th), Math.sin(G.th)], look = 2.4 + G.speed*0.25, k = 1 - Math.exp(-dt*3.2);
       const lx = PORTRAIT() ? 1.25 : 1, ly = PORTRAIT() ? 1 : 0.8;
