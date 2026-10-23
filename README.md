@@ -10,15 +10,19 @@ It grew out of [Serpentine](https://github.com/cstandifer/Serpentine), a browser
 ## Getting started
 
 1. Open the game on the big screen and pick **Play solo**, **Host a party** or **Join a friend's game**.
-2. Hosting: choose **Party** or **Tag team**. Friends scan the QR code with their phone (or open `/controller.html` and type the 4-letter code). To play on the computer itself, use **+ Me, on this keyboard**.
+2. Hosting: choose **Party** or **Team**. Friends scan the QR code with their phone (or open `/controller.html` and type the 4-letter code). To play on the computer itself, use **+ Me, on this keyboard**.
 3. Joining from a laptop or tablet: pick **Join a friend's game** and type the code from the host's screen.
 4. Pick your snake, then start.
 
 ## Modes
 
-- **Solo**: ten levels in order. Eat gems to reach each level's goal; you have 3 lives per run. Clearing a level unlocks the next one, and your best score is kept for each difficulty.
-- **Party (2 to 8 players)**: everyone in one arena on a timer (60 seconds for 2 players, longer for bigger groups). Crash into anything, including another snake, and you lose a life and respawn. Highest score wins. Pick any of the four party rooms. If every real player is out, **Skip to results** finishes the round instantly.
-- **Tag team (2 to 4 players)**: work through the solo levels together. Every gem anyone eats counts toward a shared goal, teammates pass through each other, and each player has their own lives. A player who runs out stays out until the next run, and their split view goes to the players still in.
+- **Solo**: ten levels in order, with a 30-second warm-up for first-timers. Eat gems to reach each level's goal; you have 3 lives per run. Clearing a level unlocks the next one, and your best score is kept for each difficulty.
+- **Party (2 to 8 players)**: everyone in one arena on a timer (60 seconds for 2 players, longer for bigger groups). Pick what you play for:
+  - **Gems**: crash into anything, including another snake, and you lose a life and respawn. Highest score wins.
+  - **Tag**: one snake is It, with a pink marker overhead. Snakes pass through each other, and whoever It touches becomes It (no instant tag-backs). Every second you're not It scores.
+  - **King of the hill**: a glowing ring on the floor, shown on the map too. Circle inside it to score every second; every 8 bars of the song it jumps somewhere new.
+  Pick any of the four party rooms. If every real player is out, **Skip to results** finishes the round instantly.
+- **Team (2 to 4 players)**: work through the solo levels together. Every gem anyone eats counts toward a shared goal, teammates pass through each other, and each player has their own lives. A player who runs out stays out until the next run, and their split view goes to the players still in.
 
 Everyone gets a random snake name (like Velvet Viper) unless they type their own. A phone can switch between steering the big screen and playing on its own screen at any time, and keeps its snake when it does. Someone who joins mid-round watches it live and plays from the next one. The host can remove any player from the lobby, or from the pause screen mid-round (handy for a snake nobody is steering).
 

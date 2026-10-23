@@ -203,7 +203,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
       <button class="btn btn-ghost" id="buttonsBtn">Use buttons instead</button>
       <div class="desc" style="text-align:center;margin-top:-6px">You can switch any time under Controls.</div>
       <a class="btn btn-ghost" id="screenBtn" href="index.html">Play on this phone instead</a>
-      <div class="desc" style="text-align:center;margin-top:-6px">In a Party or Tag team game, play with your own view on this phone instead of watching the big screen.</div>
+      <div class="desc" style="text-align:center;margin-top:-6px">In a Party or Team game, play with your own view on this phone instead of watching the big screen.</div>
       <div class="hint" id="setupHint"></div>
     </div>
   </section>
@@ -281,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-22a</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-23a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -488,7 +488,7 @@ function onGame(m){
     gameState = m.state;
     $('ctl').classList.toggle('playing', m.state === 'play');
     // solo with another phone already steering: say so, instead of leaving buttons that do nothing
-    const EXTRA = "Another phone is already steering this solo game. If the big screen switches to Party or Tag team, you'll get your own snake.";
+    const EXTRA = "Another phone is already steering this solo game. If the big screen switches to Party or Team, you'll get your own snake.";
     if (m.extra) $('ctlHint').textContent = EXTRA; else if ($('ctlHint').textContent === EXTRA) $('ctlHint').textContent = '';
     if (m.extra){ $('goBtn').hidden = true; }
     // party and tag team: the option to play on this phone instead lives under Controls too
@@ -501,7 +501,7 @@ function onGame(m){
     $('viewBtn').textContent = m.mode >= 2 ? `My view: ${m.view === 'eye' ? 'Eye' : 'Chase'} (tap to switch)` : "Change the big screen's view";
     const who = m.pname || `Player ${m.player}`;
     $('lvl').textContent = m.mode === 2
-      ? (m.state === 'play' ? `${who}, ${m.left}s left${m.alive ? '' : ', respawning'}` : `${who}, party on ${m.name}`)
+      ? (m.state === 'play' ? (m.it ? `You’re it! Tag someone · ${m.left}s left` : `${who}, ${m.left}s left${m.alive ? '' : ', respawning'}`) : `${who}, ${m.rule === 'tag' ? 'Tag' : m.rule === 'hill' ? 'King of the hill' : 'party'} on ${m.name}`)
       : m.mode === 3 ? `${who}, team level ${m.level} / ${m.name}${m.alive === false ? ', respawning' : ''}`
       : `Level ${m.level} / ${m.name}`;
     $('score').textContent = m.score;
