@@ -1356,6 +1356,7 @@ function loadWorld(cfg){
     // tag team lines up on the runway like solo; a party is spread around the arena below
     const p = newPlayer(i, -2.5 + (i + 0.5)*6.5/n, lookFor(S, ...cols[i]));
     p.kind = pp.kind; p.name = pp.name; p.ep = 0; p.K = SNAKES[pp.snake] || K; p.pts = 0;
+    if (party && cfg.rule === 'shrink') p.tailLen = SHRINK_TAIL;
     if (cfg.lives){ p.lives = cfg.lives[i]; if (p.lives <= 0){ p.alive = false; p.outAtStart = true; } }
     p.local = ROLE === 'host' ? pp.kind !== 'screen' : i === ME;
     return p;
@@ -1710,14 +1711,16 @@ function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus,
 // shrink: the floor is a square, the same shape as the room, that closes in a step every 4 bars of the song (gliding
 // in over one bar), from the room's own walls down to a small square near the end of the round. Outside it, you
 // crash. Every screen works out the same size from the shared clock. zoneR is half the square's side.
-const ZONE_MIN = 3;
+// the smallest it gets scales with the number of snakes, so a big group still has room for a real showdown
+const zoneMin = () => 2.5 + 1.2*PL.length;
+const SHRINK_TAIL = 4;   // shorter snakes in shrink, so the crowded middle isn't mostly tails
 const zoneC = () => ({x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2});
 function zoneR(t){
   const half = (ARENA.x1 - ARENA.x0)/2, r0 = half, start = 5, end = Math.max(start + 10, (G.roundT || 60) - 8);
   const step = 16*beatPeriod(), steps = Math.max(1, Math.round((end - start)/step));
   const s = Math.max(0, t - start)/step, whole = Math.floor(s), glide = Math.min(1, (s - whole)*4);
   const k = Math.min(1, (whole + glide)/steps);
-  return r0 + (ZONE_MIN - r0)*k;
+  return r0 + (Math.min(r0, zoneMin()) - r0)*k;
 }
 const zoneD = (x, y) => { const c = zoneC(); return Math.max(Math.abs(x - c.x), Math.abs(y - c.y)); };   // how far out, square-wise
 const outsideZone = (x, y, pad, ahead) => zoneD(x, y) > zoneR(G.t + (ahead || 0)) - (pad || 0);
@@ -2165,7 +2168,7 @@ function respawn(p){
   const sp = findSpot(p);
   if (!sp){ p.respawnT = 0.3; return; }   // nowhere clear right now; try again in a moment
   placeAt(p, sp);
-  Object.assign(p, {turn: 0, prevTurn: 0, aim: null, air: false, airT: 0, jumpBuf: 0, tailLen: 7, alive: true, grace: 1.2, aiGem: null});
+  Object.assign(p, {turn: 0, prevTurn: 0, aim: null, air: false, airT: 0, jumpBuf: 0, tailLen: G.rule === 'shrink' ? SHRINK_TAIL : 7, alive: true, grace: 1.2, aiGem: null});
   // hold still where it'll start for a 3-2-1, so the player can see where they are before it moves; GO lands on a beat
   { const bp = beatPeriod(), b = beatClock(G.t); p.hold = Math.max(3*bp*0.8, (Math.ceil(b + 3 - 0.35) - b)*bp); }
   p.ep = (p.ep || 0) + 1;
