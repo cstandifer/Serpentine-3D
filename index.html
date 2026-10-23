@@ -1708,19 +1708,20 @@ function itMoment(from, to){
   lastHud = '';
 }
 function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus, 1040); tone('sine', 1040, t + 0.08, 0.12, 0.18, sfxBus); }); }
-// shrink: the floor is a circle that closes in, a step every 4 bars of the song (gliding in over one bar), from
-// covering the whole room down to a small ring near the end of the round. Outside it, you crash. Every screen
-// works out the same size from the shared clock.
+// shrink: the floor is a square, the same shape as the room, that closes in a step every 4 bars of the song (gliding
+// in over one bar), from the room's own walls down to a small square near the end of the round. Outside it, you
+// crash. Every screen works out the same size from the shared clock. zoneR is half the square's side.
 const ZONE_MIN = 3;
 const zoneC = () => ({x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2});
 function zoneR(t){
-  const half = (ARENA.x1 - ARENA.x0)/2, r0 = half*1.45, start = 5, end = Math.max(start + 10, (G.roundT || 60) - 8);
+  const half = (ARENA.x1 - ARENA.x0)/2, r0 = half, start = 5, end = Math.max(start + 10, (G.roundT || 60) - 8);
   const step = 16*beatPeriod(), steps = Math.max(1, Math.round((end - start)/step));
   const s = Math.max(0, t - start)/step, whole = Math.floor(s), glide = Math.min(1, (s - whole)*4);
   const k = Math.min(1, (whole + glide)/steps);
   return r0 + (ZONE_MIN - r0)*k;
 }
-const outsideZone = (x, y, pad, ahead) => { const c = zoneC(); return Math.hypot(x - c.x, y - c.y) > zoneR(G.t + (ahead || 0)) - (pad || 0); };
+const zoneD = (x, y) => { const c = zoneC(); return Math.max(Math.abs(x - c.x), Math.abs(y - c.y)); };   // how far out, square-wise
+const outsideZone = (x, y, pad, ahead) => zoneD(x, y) > zoneR(G.t + (ahead || 0)) - (pad || 0);
 // the host keeps score: seconds not being It, or seconds survived
 function ruleTick(dt){
   if (ROLE !== 'host' || !G.rule || G.rule === 'gems') return;
@@ -1994,7 +1995,7 @@ function aiRuleTarget(p, sk){
   }
   if (G.rule === 'shrink'){
     // keep well inside the closing ring: head for the middle once the edge gets close
-    const c = zoneC(), d = Math.hypot(c.x - G.x, c.y - G.y), r = zoneR(G.t + 2);
+    const c = zoneC(), d = zoneD(G.x, G.y), r = zoneR(G.t + 2);
     if (d > r*0.55) return Math.atan2(c.y - G.y, c.x - G.x) + (Math.random() - 0.5)*0.5;
     return null;
   }
@@ -3008,9 +3009,9 @@ function render(clock){
   if (G.rule === 'shrink'){
     const c = zoneC(), [zx, zy] = w2s(c.x, c.y), zr = zoneR(G.t)*S;
     ctx.save(); ctx.fillStyle = 'rgba(10,0,20,0.6)';
-    ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); ctx.arc(zx, zy, zr, 0, Math.PI*2, true); ctx.fill();
+    ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); ctx.rect(zx - zr, zy - zr, 2*zr, 2*zr); ctx.fill('evenodd');
     ctx.strokeStyle = `rgba(255,79,216,${0.7 + 0.3*beat})`; ctx.lineWidth = Math.max(2, S*0.15);
-    ctx.beginPath(); ctx.arc(zx, zy, zr, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+    ctx.strokeRect(zx - zr, zy - zr, 2*zr, 2*zr); ctx.restore();
   }
 
   for (const p of live){
@@ -3190,10 +3191,11 @@ function makeR3(){
   let GFX = [], floorMesh = null, floorWash = null, wallEdges = null, BEAT = 0;
   // shrink: a glowing ring wall that closes in, with the floor outside it darkened
   const zone = new THREE.Group();
-  const zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.2, 128, 1, true), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending}));
+  const SQ = Math.SQRT2;
+  const zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(SQ, SQ, 2.2, 4, 1, true).rotateY(Math.PI/4), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending}));
   zoneWall.position.y = 1.1; zone.add(zoneWall);
-  const zoneEdge = new THREE.Mesh(new THREE.RingGeometry(0.985, 1, 128), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false}));
-  const zoneOut = new THREE.Mesh(new THREE.RingGeometry(1, 14, 128), new THREE.MeshBasicMaterial({color: 0x07000f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false}));
+  const zoneEdge = new THREE.Mesh(new THREE.RingGeometry(SQ*0.985, SQ, 4).rotateZ(Math.PI/4), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false}));
+  const zoneOut = new THREE.Mesh(new THREE.RingGeometry(SQ, SQ*14, 4).rotateZ(Math.PI/4), new THREE.MeshBasicMaterial({color: 0x07000f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false}));
   for (const m of [zoneEdge, zoneOut]){ m.rotation.x = -Math.PI/2; m.position.y = 0.04; zone.add(m); }
   zone.visible = false; scene.add(zone);
   function makeGfx(){
@@ -5215,7 +5217,7 @@ buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>$
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
   tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Walls and obstacles still knock you back for a moment.',
-  shrink: '<b>Shrink.</b> The floor closes in, a step every few bars of the song. Get caught outside the ring and you lose a life; three and you’re out. Last snake standing wins.',
+  shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
   MODE = m; store.set('players', m); if (m !== 1) store.set('hostMode', m);
@@ -5377,7 +5379,7 @@ function refreshMenu(){
 }
 
 // ---- flow ----
-const CAUSES = {zone: 'The floor closed in on you', tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
+const CAUSES = {zone: 'The walls closed in on you', tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
 function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'clientOv', 'unlock', 'confirm', 'howOv']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
