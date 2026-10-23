@@ -1813,6 +1813,7 @@ function update(dt){
     if (!p.local){ puppetStep(p, dt); continue; }
     if (p.kind === 'preview') continue;
     if (!p.alive){ if (MODE !== 1 && canRespawn(p) && (p.respawnT -= dt) <= 0) respawn(p); continue; }
+    if (p.hold > 0){ p.hold -= dt; if (p.hold <= 0 && AC && viewers().includes(p.i)) sfx(t => tone('sine', 1320, t, 0.18, 0.12, sfxBus)); continue; }
     load(p); SIM = true;
     if (p.grace > 0) p.grace -= dt;
     G.scrapeCue -= dt;
@@ -1843,7 +1844,7 @@ function puppetStep(p, dt){
   const n = p.net;
   if (!n || !p.alive) return;
   load(p);
-  const age = Math.min(0.3, (performance.now() - n.at)/1000), sp = G.speed*(n.sp || 1);
+  const age = n.hold ? 0 : Math.min(0.3, (performance.now() - n.at)/1000), sp = G.speed*(n.sp || 1);
   const rate = Math.min(TURN_MAX, G.speed/(TURN_R*(G.K.turnR || 1)))*n.turn;
   const th = n.th + rate*age, tx = n.x + Math.cos(th)*sp*age, ty = n.y + Math.sin(th)*sp*age;
   const k = 1 - Math.exp(-dt*14), ox = G.x, oy = G.y;
@@ -1861,7 +1862,7 @@ function applyPos(i, m){
   const p = PL[i];
   if (!p || p.local) return;
   p.netRaw = m;
-  p.net = {x: m.x, y: m.y, th: m.th, turn: m.tu || 0, air: !!m.a, airT: m.at, airDur: m.ad, sp: m.sp || 1, at: performance.now()};
+  p.net = {x: m.x, y: m.y, th: m.th, turn: m.tu || 0, air: !!m.a, airT: m.at, airDur: m.ad, sp: m.sp || 1, hold: !!m.h, at: performance.now()};
   p.tailLen = m.tl; p.grace = m.gr || 0; p.cause = m.c || '';
   p.lives = m.l;
   if ((m.ep || 0) !== (p.ep || 0)){
@@ -1876,7 +1877,7 @@ function applyPos(i, m){
 const r2 = v => Math.round(v*100)/100;
 function posOf(p){
   return {x: r2(p.x), y: r2(p.y), th: r2(p.th), tu: r2(p.turn), a: p.air ? 1 : 0, at: r2(p.airT), ad: r2(p.airDur), tl: r2(p.tailLen),
-    l: p.lives, al: p.alive ? 1 : 0, gr: r2(Math.max(0, p.grace)), ep: p.ep || 0, c: p.cause || '', sp: (isCPU(p.i) ? aiSkill().speed : 1)*((p.K && p.K.speed) || 1)};
+    l: p.lives, al: p.alive ? 1 : 0, gr: r2(Math.max(0, p.grace)), ep: p.ep || 0, c: p.cause || '', h: p.hold > 0 ? 1 : 0, sp: (isCPU(p.i) ? aiSkill().speed : 1)*((p.K && p.K.speed) || 1)};
 }
 // ---- computer opponent (versus) ----
 // A few times a second it picks a gem to chase (usually a near one, favoring ones ahead), fans out nine
@@ -2088,7 +2089,7 @@ function dieP(p, cause){
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
   p.alive = false; p.cause = cause;
   if (endless()) p.lives++;   // tag and the hill: a crash costs time, never a life
-  { const bp = beatPeriod(), b = beatClock(G.t); p.respawnT = Math.max(1.2, (Math.ceil(b + 0.8/bp + 3) - b)*bp); }
+  p.respawnT = 0.9;   // a moment to see the crash, then the snake reappears at its new spot and counts down there
   p.lives--;
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
   if (viewers().includes(p.i)) G.shake = Math.max(G.shake, 0.35);
@@ -2126,6 +2127,8 @@ function respawn(p){
   if (!sp){ p.respawnT = 0.3; return; }   // nowhere clear right now; try again in a moment
   placeAt(p, sp);
   Object.assign(p, {turn: 0, prevTurn: 0, aim: null, air: false, airT: 0, jumpBuf: 0, tailLen: 7, alive: true, grace: 1.2, aiGem: null});
+  // hold still where it'll start for a 3-2-1, so the player can see where they are before it moves; GO lands on a beat
+  { const bp = beatPeriod(), b = beatClock(G.t); p.hold = Math.max(3*bp*0.8, (Math.ceil(b + 3 - 0.35) - b)*bp); }
   p.ep = (p.ep || 0) + 1;
   if (R3) R3.snap(p.i);
   phoneSend({t: 'buzz', p: [15, 40, 15]}, p.i);
@@ -5079,7 +5082,7 @@ function updateHUD(){
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     $('mpOut').hidden = !localHumansOut();
-    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'hill' ? Math.ceil(hillEvery() - (G.t % hillEvery())) : 0]);
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'hill' ? Math.ceil(hillEvery() - (G.t % hillEvery())) : 0]);
     if (key === lastHud) return;
     lastHud = key;
     if (MODE === 2){
@@ -5107,7 +5110,7 @@ function updateHUD(){
       const p = PL[i], r = rects[k];
       const w = watchFor(i), lv = SEATS[i] && SEATS[i].leaving, bp = beatPeriod();
       const msg = lv ? (lv.why === 'away' ? `Left · out in ${lv.secs}` : `Still there? ${lv.secs}`)
-        : state !== 'play' || p.alive ? '' : canRespawn(p) ? (p.respawnT <= 3*bp ? String(Math.min(3, Math.ceil(p.respawnT/bp))) : 'Respawning…') : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
+        : state !== 'play' ? '' : p.alive ? (p.hold > 0 ? String(Math.max(1, Math.min(3, Math.ceil(p.hold/bp)))) : '') : canRespawn(p) ? '' : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
       // the tag sits on the outer side of its view, clear of the map in the middle
       const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
       return (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
