@@ -20,7 +20,7 @@ It grew out of [Serpentine](https://github.com/cstandifer/Serpentine), a browser
 - **Party (2 to 8 players)**: everyone in one arena on a timer (60 seconds for 2 players, longer for bigger groups). Pick what you play for:
   - **Gems**: crash into anything, including another snake, and you lose a life and respawn. Highest score wins.
   - **Tag**: one snake is It, with a pink marker overhead. Snakes pass through each other, and whoever It touches becomes It (no instant tag-backs). Every second you're not It scores.
-  - **King of the hill**: a glowing ring on the floor, shown on the map too. Circle inside it to score every second; every 8 bars of the song it jumps somewhere new.
+  - **Shrink**: the floor is a ring that closes in, a step every few bars of the song. Get caught outside it and you lose a life; last snake standing wins.
   Pick any of the four party rooms. If every real player is out, **Skip to results** finishes the round instantly.
 - **Team (2 to 4 players)**: work through the solo levels together. Every gem anyone eats counts toward a shared goal, teammates pass through each other, and each player has their own lives. A player who runs out stays out until the next run, and their split view goes to the players still in.
 

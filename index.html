@@ -1121,9 +1121,9 @@ let ME = 0;           // on a client: which snake is this screen's own
 let CD = null;   // the 3-2-1 before play starts or picks back up: {until (ms), bp (seconds per beat)}
 let SEATS = [];       // on the host: everyone in the party or team, in player order
 let course = Math.min(3, Math.max(0, +store.get('course') || 0));
-// what a party plays for: gems (the classic), tag (don't be it) or the hill (king of the hill)
-let RULE = ['gems', 'tag', 'hill'].includes(store.get('rule')) ? store.get('rule') : 'gems';
-const RULES = {gems: {name: 'Gems', sub: 'Classic party'}, tag: {name: 'Tag', sub: 'Don’t be it'}, hill: {name: 'Hill', sub: 'King of the hill'}};
+// what a party plays for: gems (the classic), tag (don't be it) or shrink (the floor closes in: last snake standing)
+let RULE = ['gems', 'tag', 'shrink'].includes(store.get('rule')) ? store.get('rule') : 'gems';
+const RULES = {gems: {name: 'Gems', sub: 'Classic party'}, tag: {name: 'Tag', sub: 'Don’t be it'}, shrink: {name: 'Shrink', sub: 'Last one standing'}};
 let CPU_VIEW = store.get('cpuView') === '1';   // whether computer snakes get their own view on the big screen
 // a phone or tablet running the game can also steer by tilting itself (and tap to jump)
 const CAN_TILT = typeof window.matchMedia === 'function' && matchMedia('(pointer:coarse)').matches && 'DeviceOrientationEvent' in window;
@@ -1304,8 +1304,8 @@ function load(p){
   const L = p.look; C.ribbon = L.color; C['ribbon-side'] = L.side; RIB = L.rib; RIB_RGB = L.ribRGB; GLOW_RIB = L.glow;
 }
 function save(p){ for (const k of SNAKE_FIELDS) p[k] = G[k]; }
-const pScore = p => G && (G.rule === 'tag' || G.rule === 'hill') ? Math.floor(p.pts || 0) : Math.floor(p.dist) + p.gems*10;
-const endless = () => G && (G.rule === 'tag' || G.rule === 'hill');   // tag and the hill: crashes cost time, not lives
+const pScore = p => G && (G.rule === 'tag' || G.rule === 'shrink') ? Math.floor(p.pts || 0) : Math.floor(p.dist) + p.gems*10;
+const endless = () => G && G.rule === 'tag';   // tag: crashes cost time, not lives
 
 // A round is described by a small config, so every screen in a multiplayer game builds the identical world
 // from it: mode, level (or course), difficulty, snake, random seed, and the players with their start spots.
@@ -1339,9 +1339,9 @@ function loadWorld(cfg){
     idx: cfg.idx, S, D, K,
     seed: cfg.seed, chunks: new Map(), walls: [], movers: [], gates: [], gemById: new Map(), gid: 0, runway: !party,
     base, speed: base, max: (D.max + lvl*0.3)*sp,
-    t: 0, done: false, clearT: 0, left: party ? partyTime(n) : 0,
+    t: 0, done: false, clearT: 0, left: party ? partyTime(n) : 0, roundT: party ? partyTime(n) : 0,
     goal: cfg.mode === 3 ? teamGoal(S.goal, n) : (S.goal || 0), teamGems: 0, teamLives: LIVES + n - 1,
-    minGems: party && (cfg.rule === 'tag' || cfg.rule === 'hill') ? 0 : Math.round(MIN_GEMS*Math.max(1, n/2)),
+    minGems: party && (cfg.rule === 'tag' || cfg.rule === 'shrink') ? 0 : Math.round(MIN_GEMS*Math.max(1, n/2)),
     particles: [], shake: 0, deadT: 0, cause: '',
     rule: party ? cfg.rule || 'gems' : '', it: party && cfg.rule === 'tag' ? cfg.seed % n : -1, itAt: -9, warm: !!cfg.warm, coach: {}
   };
@@ -1409,7 +1409,7 @@ function ensureChunk(cx, cy){
     for (const p of placed) if (overlaps(r, p, pad)) return false;
     placed.push(r); return true;
   };
-  const clutter = (G.S.clutter ?? 1)*(G.rule === 'tag' ? 0.45 : G.rule === 'hill' ? 0.6 : 1);   // a level can ask for fewer loose obstacles; tag and the hill keep the floor open
+  const clutter = (G.S.clutter ?? 1)*(G.rule === 'tag' ? 0.45 : G.rule === 'shrink' ? 0.5 : 1);   // a level can ask for fewer loose obstacles; tag and shrink keep the floor open
   const nHurdle = Math.round((1 + rnd()*(1.6 + 2.4*d))*G.D.hurdles*clutter);
   for (let i = 0; i < nHurdle; i++) for (let a = 0; a < 6; a++){
     const L = 2 + Math.floor(rnd()*3), vert = rnd() < .5;
@@ -1460,7 +1460,7 @@ function ensureChunk(cx, cy){
       c.scaf.push(r); break;
     }
   }
-  const nGem = G.rule === 'tag' || G.rule === 'hill' ? 0 : 1 + (rnd() < .45 ? 1 : 0);   // tag and the hill have no gems to chase
+  const nGem = G.rule === 'tag' || G.rule === 'shrink' ? 0 : 1 + (rnd() < .45 ? 1 : 0);   // tag and shrink have no gems to chase
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
     const gx = 1 + Math.floor(rnd()*(CH-2)), gy = 1 + Math.floor(rnd()*(CH-2));
     if (fits({x: ox+gx, y: oy+gy, w: 1, h: 1}, 0.3)) { c.gems.push(regGem({x: ox+gx+.5, y: oy+gy+.5, taken: false})); break; }
@@ -1654,6 +1654,7 @@ function collide(){
   if (G.y - R_HEAD < ARENA.y0 && scrape(0, 1, G.x, ARENA.y0, 'wall')) return;
   if (G.y + R_HEAD > ARENA.y1 && scrape(0, -1, G.x, ARENA.y1, 'wall')) return;
   for (const w of G.walls) if (touchRect(w, 'wall')) return;
+  if (G.rule === 'shrink' && state === 'play' && CUR.alive && outsideZone(G.x, G.y, R_HEAD)) return die('zone');
   let crashed = false;
   nearbyChunks(c => {
     for (const o of c.obs){
@@ -1704,41 +1705,28 @@ function itMoment(from, to){
   lastHud = '';
 }
 function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus, 1040); tone('sine', 1040, t + 0.08, 0.12, 0.18, sfxBus); }); }
-// the hill: one ring on the floor that jumps somewhere new every 8 bars of the song. Every screen works out the same
-// spot from the round's seed and the shared clock.
-const HILL_R = 3;
-const hillEvery = () => 32*beatPeriod();
-function hillAt(t){
-  const k = Math.floor(Math.max(0, t)/hillEvery());
-  if (G.hill && G.hill.k === k) return G.hill;
-  const rr = mulberry(G.seed ^ (k*7919 + 0x51ab)), m = HILL_R + 1.5;
-  let best = null;
-  for (let a = 0; a < 60; a++){
-    const x = ARENA.x0 + m + rr()*(ARENA.x1 - ARENA.x0 - 2*m), y = ARENA.y0 + m + rr()*(ARENA.y1 - ARENA.y0 - 2*m);
-    const box = {x: x - HILL_R, y: y - HILL_R, w: 2*HILL_R, h: 2*HILL_R};
-    if (G.walls.some(w => overlaps(box, w, 0.4))) continue;
-    let tall = false;
-    for (const c of G.chunks.values()) for (const o of c.obs) if (o.tall && overlaps(box, o, 0.2)) tall = true;
-    if (tall) continue;
-    // somewhere new: not right where the last one was
-    if (G.hill && Math.hypot(x - G.hill.x, y - G.hill.y) < 8 && a < 40) continue;
-    best = {x, y}; break;
-  }
-  if (!best) best = {x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2};
-  const moved = !!G.hill;
-  G.hill = {k, x: best.x, y: best.y, at: G.t};
-  if (moved && state === 'play' && AC) sfx(t => { tone('triangle', 392, t, 0.1, 0.25, sfxBus); tone('triangle', 784, t + 0.1, 0.1, 0.3, sfxBus); });
-  return G.hill;
+// shrink: the floor is a circle that closes in, a step every 4 bars of the song (gliding in over one bar), from
+// covering the whole room down to a small ring near the end of the round. Outside it, you crash. Every screen
+// works out the same size from the shared clock.
+const ZONE_MIN = 3;
+const zoneC = () => ({x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2});
+function zoneR(t){
+  const half = (ARENA.x1 - ARENA.x0)/2, r0 = half*1.45, start = 5, end = Math.max(start + 10, (G.roundT || 60) - 8);
+  const step = 16*beatPeriod(), steps = Math.max(1, Math.round((end - start)/step));
+  const s = Math.max(0, t - start)/step, whole = Math.floor(s), glide = Math.min(1, (s - whole)*4);
+  const k = Math.min(1, (whole + glide)/steps);
+  return r0 + (ZONE_MIN - r0)*k;
 }
-// the host keeps score: seconds not being It, or seconds with your head on the hill
+const outsideZone = (x, y, pad, ahead) => { const c = zoneC(); return Math.hypot(x - c.x, y - c.y) > zoneR(G.t + (ahead || 0)) - (pad || 0); };
+// the host keeps score: seconds not being It, or seconds survived
 function ruleTick(dt){
   if (ROLE !== 'host' || !G.rule || G.rule === 'gems') return;
-  const h = G.rule === 'hill' ? hillAt(G.t) : null;
   for (const p of PL){
-    if (!p.alive) continue;
-    if (G.rule === 'tag' && p.i !== G.it) p.pts += dt;
-    if (h && Math.hypot(p.x - h.x, p.y - h.y) < HILL_R) p.pts += dt;
+    if (G.rule === 'tag' && p.alive && p.i !== G.it) p.pts += dt;
+    if (G.rule === 'shrink' && (p.alive || p.lives > 0)) p.pts += dt;   // still in it, even mid-respawn
   }
+  // shrink: the round ends when one snake is left standing
+  if (G.rule === 'shrink' && PL.length > 1 && state === 'play' && PL.filter(p => p.alive || p.lives > 0).length <= 1){ G.lastStanding = true; endDuel(); }
 }
 function hitsBody(q){
   const T = q.trail;
@@ -1915,6 +1903,7 @@ function aiNear(x, y, fn){
 function aiBlocked(x, y, self){
   const m = 0.45 + G.speed*0.04, hit = o => x > o.x - m && x < o.x + o.w + m && y > o.y - m && y < o.y + o.h + m;
   if (x < ARENA.x0 + m || x > ARENA.x1 - m || y < ARENA.y0 + m || y > ARENA.y1 - m) return true;
+  if (G.rule === 'shrink' && outsideZone(x, y, m + 0.6, 1)) return true;
   if (G.walls.some(hit)) return true;
   if (aiNear(x, y, c => c.obs.some(o => o.tall && hit(o)))) return true;
   for (const q of PL){
@@ -1978,7 +1967,7 @@ function aiThink(p, dt){
   }
   p.aiSteer = clamp1(angDiff(pick, G.th)*2.2)*sk.steer;
 }
-// tag and the hill give computer snakes something better to do than gems: chase, run, or hold the ring
+// tag and shrink give computer snakes something better to do than gems: chase, run, or stay inside the ring
 function aiRuleTarget(p, sk){
   if (G.rule === 'tag'){
     const it = PL[G.it];
@@ -2000,12 +1989,11 @@ function aiRuleTarget(p, sk){
     if (it.alive && d < 9) return Math.atan2(G.y - it.y, G.x - it.x) + (Math.random() - 0.5)*0.6;
     return null;
   }
-  if (G.rule === 'hill'){
-    const h = hillAt(G.t), d = Math.hypot(h.x - G.x, h.y - G.y), toC = Math.atan2(h.y - G.y, h.x - G.x);
-    if (d > HILL_R*0.85) return toC;   // race to the hill
-    // on it: circle inside, leaning inward more the closer to the edge
-    const side = Math.abs(angDiff(toC + Math.PI/2, G.th)) < Math.abs(angDiff(toC - Math.PI/2, G.th)) ? 1 : -1;
-    return toC + side*(Math.PI/2 - 0.9*(d/HILL_R));
+  if (G.rule === 'shrink'){
+    // keep well inside the closing ring: head for the middle once the edge gets close
+    const c = zoneC(), d = Math.hypot(c.x - G.x, c.y - G.y), r = zoneR(G.t + 2);
+    if (d > r*0.55) return Math.atan2(c.y - G.y, c.x - G.x) + (Math.random() - 0.5)*0.5;
+    return null;
   }
   return null;
 }
@@ -2135,7 +2123,7 @@ function dieP(p, cause){
   if (!p.alive) return;
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
   p.alive = false; p.cause = cause;
-  if (endless()) p.lives++;   // tag and the hill: a crash costs time, never a life
+  if (endless()) p.lives++;   // tag: a crash costs time, never a life
   p.respawnT = 0.9;   // a moment to see the crash, then the snake reappears at its new spot and counts down there
   p.lives--;
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
@@ -2149,6 +2137,7 @@ function findSpot(self, spots){
   const cx = (ARENA.x0 + ARENA.x1)/2, cy = (ARENA.y0 + ARENA.y1)/2;
   const blocked = (px, py) => {
     if (px < ARENA.x0 + 2 || px > ARENA.x1 - 2 || py < ARENA.y0 + 2 || py > ARENA.y1 - 2) return true;
+    if (G.rule === 'shrink' && outsideZone(px, py, 1.5, 4)) return true;
     if (G.walls.some(w => circleRect(px, py, 0.9, w))) return true;
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
       if (ensureChunk(Math.floor(px/CH) + i, Math.floor(py/CH) + j).obs.some(o => circleRect(px, py, o.mover ? 1.8 : 0.9, o))) return true;
@@ -2197,9 +2186,9 @@ function endDuel(){
   stopMusic(); sfxClear(); keepAwake(false);
   $('pauseBtn').hidden = true;
   const res = PL.map((p, i) => ({name: playerName(i), color: p.look.color, score: pScore(p), gems: p.gems, lives: p.lives, i,
-      note: G.rule === 'tag' ? `${pScore(p)}s free` : G.rule === 'hill' ? `${pScore(p)}s on the hill` : ''}))
+      note: G.rule === 'tag' ? `${pScore(p)}s free` : G.rule === 'shrink' ? `${pScore(p)}s survived` : ''}))
     .filter(r => !(SEATS[r.i] && SEATS[r.i].removed)).sort((a, b) => b.score - a.score);
-  const why = G.left <= 0 ? 'time' : 'lives';
+  const why = G.lastStanding ? 'last' : G.left <= 0 ? 'time' : 'lives';
   toScreens({t: 'phase', state: 'over', res, why});
   showDuel(res, why);
 }
@@ -3012,11 +3001,13 @@ function render(clock){
       }
     }
   for (const o of G.walls) if (inView(o)){ rectW(o.x + 0.25, o.y + 0.15, o.w, o.h, 0); }
-  // the hill, on the map too, so you can see where to race
-  if (G.rule === 'hill'){
-    const h = hillAt(G.t), [hx, hy] = w2s(h.x, h.y);
-    ctx.fillStyle = `rgba(255,233,77,${0.22 + 0.15*beat})`; ctx.strokeStyle = '#ffe94d'; ctx.lineWidth = Math.max(2, S*0.12);
-    ctx.beginPath(); ctx.arc(hx, hy, HILL_R*S, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  // shrink: the ring on the map too, with everything outside it dimmed
+  if (G.rule === 'shrink'){
+    const c = zoneC(), [zx, zy] = w2s(c.x, c.y), zr = zoneR(G.t)*S;
+    ctx.save(); ctx.fillStyle = 'rgba(10,0,20,0.6)';
+    ctx.beginPath(); ctx.rect(-1e4, -1e4, 2e4, 2e4); ctx.arc(zx, zy, zr, 0, Math.PI*2, true); ctx.fill();
+    ctx.strokeStyle = `rgba(255,79,216,${0.7 + 0.3*beat})`; ctx.lineWidth = Math.max(2, S*0.15);
+    ctx.beginPath(); ctx.arc(zx, zy, zr, 0, Math.PI*2); ctx.stroke(); ctx.restore();
   }
 
   for (const p of live){
@@ -3194,14 +3185,14 @@ function makeR3(){
   for (let i = 0; i < MAX_PARTS; i++) parts.setColorAt(i, tmpC.setRGB(1, 1, 1));
   parts.count = 0; parts.frustumCulled = false; scene.add(parts);
   let GFX = [], floorMesh = null, floorWash = null, wallEdges = null, BEAT = 0;
-  // the hill: a glowing ring on the floor, a soft disc inside it and a tall beam so you can find it from anywhere
-  const hill = new THREE.Group();
-  const hillRing = new THREE.Mesh(new THREE.RingGeometry(HILL_R - 0.4, HILL_R, 72), new THREE.MeshBasicMaterial({color: 0xffe94d, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false}));
-  const hillDisc = new THREE.Mesh(new THREE.CircleGeometry(HILL_R - 0.4, 72), new THREE.MeshBasicMaterial({color: 0xffe94d, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false}));
-  for (const m of [hillRing, hillDisc]){ m.rotation.x = -Math.PI/2; m.position.y = 0.03; hill.add(m); }
-  const hillBeam = new THREE.Mesh(new THREE.CylinderGeometry(HILL_R*0.9, HILL_R*0.9, 14, 48, 1, true), new THREE.MeshBasicMaterial({color: 0xffe94d, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending}));
-  hillBeam.position.y = 7; hill.add(hillBeam);
-  hill.visible = false; scene.add(hill);
+  // shrink: a glowing ring wall that closes in, with the floor outside it darkened
+  const zone = new THREE.Group();
+  const zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.2, 128, 1, true), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending}));
+  zoneWall.position.y = 1.1; zone.add(zoneWall);
+  const zoneEdge = new THREE.Mesh(new THREE.RingGeometry(0.985, 1, 128), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false}));
+  const zoneOut = new THREE.Mesh(new THREE.RingGeometry(1, 14, 128), new THREE.MeshBasicMaterial({color: 0x07000f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false}));
+  for (const m of [zoneEdge, zoneOut]){ m.rotation.x = -Math.PI/2; m.position.y = 0.04; zone.add(m); }
+  zone.visible = false; scene.add(zone);
   function makeGfx(){
     // built while the player is loaded, so C.ribbon / RIB are that snake's colors
     const g = {ringReady: -1, RIB3: RIB.map(c => col(c)), yaw: G.th, snap: true, camPos: new THREE.Vector3(), headShow: true,
@@ -4220,12 +4211,11 @@ function makeR3(){
 
     const dying = state === 'dying' || state === 'over' || state === 'lost';
     const sh = G.shake > 0 && !REDUCED ? G.shake : 0;
-    hill.visible = G.rule === 'hill';
-    if (hill.visible){
-      const h = hillAt(G.t), fresh = Math.max(0, 1 - (G.t - h.at)/0.8);
-      hill.position.set(h.x, 0, h.y);
-      hillRing.material.opacity = 0.75 + 0.25*beat; hillDisc.material.opacity = 0.2 + 0.1*beat + 0.3*fresh;
-      hillBeam.material.opacity = 0.12 + 0.06*beat + 0.25*fresh;
+    zone.visible = G.rule === 'shrink';
+    if (zone.visible){
+      const c = zoneC(), r = zoneR(G.t), closing = zoneR(G.t + 0.2) < r - 0.001;
+      zone.position.set(c.x, 0, c.y); zone.scale.set(r, 1, r);
+      zoneWall.material.opacity = (closing ? 0.4 : 0.2) + 0.15*beat; zoneEdge.material.opacity = 0.75 + 0.25*beat;
     }
     PL.forEach((p, i) => {
       const g = GFX[i]; if (!g) return;
@@ -4343,7 +4333,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-23a';
+const CTRL_BUILD = '2026-10-23b';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -5140,14 +5130,14 @@ function updateHUD(){
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     $('mpOut').hidden = !localHumansOut();
-    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'hill' ? Math.ceil(hillEvery() - (G.t % hillEvery())) : 0]);
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
     if (key === lastHud) return;
     lastHud = key;
     if (MODE === 2){
       const clock = `<span class="clock${left <= 10 && state === 'play' ? ' hurry' : ''}">${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}</span>`;
       let extra = '';
       if (G.rule === 'tag' && PL[G.it]){ const me = ROLE === 'client' ? G.it === ME : vs.length === 1 && vs[0] === G.it; extra = `<span class="rulenote it"><span class="sw" style="background:${PL[G.it].look.color}"></span>${me ? 'You’re it! Tag someone' : esc(playerName(G.it)) + ' is it'}</span>`; }
-      if (G.rule === 'hill'){ const h = hillAt(G.t), soon = Math.ceil(hillEvery() - (G.t % hillEvery())); extra = `<span class="rulenote">King of the hill${soon <= 3 && state === 'play' ? ` · moves in ${soon}` : ''}</span>`; }
+      if (G.rule === 'shrink'){ const left2 = PL.filter(p => p.alive || p.lives > 0).length, closing = zoneR(G.t + 0.2) < zoneR(G.t) - 0.001; extra = `<span class="rulenote it">${closing ? 'Closing in · ' : ''}${left2} left</span>`; }
       $('mpTop').innerHTML = clock + extra;
     } else {
       const got = Math.min(G.teamGems, G.goal);
@@ -5158,7 +5148,7 @@ function updateHUD(){
     if (MODE === 2) order.sort((a, b) => pScore(PL[b]) - pScore(PL[a]));
     $('mpBoard').innerHTML = order.map(i => {
       const p = PL[i], mine = ROLE === 'client' ? i === ME : vs.includes(i) && vs.length === 1;
-      const tail = G.rule === 'tag' ? (i === G.it ? '<small class="itTag">IT</small>' : '') : G.rule === 'hill' ? '<small>sec</small>'
+      const tail = G.rule === 'tag' ? (i === G.it ? '<small class="itTag">IT</small>' : '') : false ? ''
         : `<span class="hearts">${heartsN(Math.max(0, p.lives), LIVES)}</span>` + (MODE === 3 ? `<small>${p.gems} gems</small>` : '');
       return `<li class="${mine ? 'me' : ''}${p.alive ? '' : ' out'}"><span class="sw" style="background:${p.look.color}"></span><span class="nm">${esc(playerName(i))}</span><span class="sc">${pScore(p)}</span>${tail}</li>`;
     }).join('');
@@ -5222,7 +5212,7 @@ buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>$
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
   tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Walls and obstacles still knock you back for a moment.',
-  hill: '<b>King of the hill.</b> A glowing ring sits on the floor. Circle inside it to score every second; every 8 bars of the song it jumps somewhere new and everyone races over.'
+  shrink: '<b>Shrink.</b> The floor closes in, a step every few bars of the song. Get caught outside the ring and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
   MODE = m; store.set('players', m); if (m !== 1) store.set('hostMode', m);
@@ -5331,7 +5321,7 @@ function updateMenuUI(){
     : MODE === 2 ? `Start the party (${SEATS.length} players)` : MODE === 3 ? `Start level ${stage + 1} as a team` : `Start level ${stage + 1}`;
   $('startBtn').classList.toggle('waiting', !!wait);
   if (MODE === 1 && !wait && wantsWarmup()) $('startBtn').textContent = 'Start with a 30-second warm-up';
-  if (MODE === 2 && !wait && RULE !== 'gems') $('startBtn').textContent = `Start ${RULE === 'tag' ? 'Tag' : 'King of the hill'} (${SEATS.length} players)`;
+  if (MODE === 2 && !wait && RULE !== 'gems') $('startBtn').textContent = `Start ${RULE === 'tag' ? 'Tag' : 'Shrink'} (${SEATS.length} players)`;
   $('warmLink').textContent = wantsWarmup() ? 'Skip the warm-up' : 'Play the 30-second warm-up';
   $('warmLink').hidden = MODE !== 1;
   $('lobbyBox').hidden = MODE === 1;
@@ -5384,13 +5374,13 @@ function refreshMenu(){
 }
 
 // ---- flow ----
-const CAUSES = {tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
+const CAUSES = {zone: 'The floor closed in on you', tail: 'You bit your own tail', hurdle: 'You clipped a hurdle. Tap to jump it', pillar: 'You hit a pillar', wall: 'You ran into a wall'};
 function hideOverlays(){ for (const id of ['menu', 'clear', 'lost', 'over', 'pause', 'duel', 'settings', 'clientOv', 'unlock', 'confirm', 'howOv']) $(id).hidden = true;  for (const id of ['sheet', 'sheetScrim']){ $(id).hidden = true; $(id).classList.remove('open'); } }
 // party results (ranked) and tag team results share one card
 function showDuel(res, why){
   res = res.map(r => ROLE === 'client' && r.i === ME ? {...r, name: 'You'} : r);
   const w = res.length > 1 && res[0].score === res[1].score ? null : res[0];
-  $('duelEyebrow').textContent = why === 'lives' ? 'Everyone is out of lives' : "Time's up";
+  $('duelEyebrow').textContent = why === 'last' ? 'Last snake standing' : why === 'lives' ? 'Everyone is out of lives' : "Time's up";
   $('duelTitle').textContent = !w ? "It's a tie" : ROLE === 'client' && w.i === ME ? 'You win' : `${w.name} wins`;
   $('duelTitle').style.color = w ? w.color : '';
   $('resList').innerHTML = res.map((r, k) => `<li class="${ROLE === 'client' && r.i === ME ? 'me' : ''}"><span class="r">${k + 1}</span><span class="sw" style="background:${r.color}"></span><span class="nm">${esc(r.name)}</span><small>${r.note || `${r.gems} ${r.gems === 1 ? 'gem' : 'gems'}`}</small><span class="sc">${r.score}</span></li>`).join('');
