@@ -1017,7 +1017,10 @@ const STAGES = [
 // party courses: each has its own colors, music and layout. Walls are drawn for a given arena size,
 // because the arena grows with the number of players.
 // the first-timer warm-up: a small open floor where each move gets its own moment
-const WARMUP = {name: 'Warm-up', goal: 4, half: 12, music: 'lofi', ...lv('#ffffff', 20), clutter: 0, walls: []};
+// a walled lane runs from the start through a low bar and past a tall block, so you meet each one in order, then
+// it opens onto the floor for the last few gems
+const WARMUP = {name: 'Warm-up', goal: 4, half: 20, music: 'lofi', ...lv('#ffffff', 20), clutter: 0,
+  walls: [block(-9, -4, 26, 1), block(-9, 3, 26, 1)]};
 const COURSES = [
   {name: 'Neon Bowl', base: 18, music: 'synthwave', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),
    walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
@@ -1358,8 +1361,8 @@ function loadWorld(cfg){
   load(PL[0]);
   if (cfg.warm){
     // the warm-up: a gem straight ahead, a low bar to jump, a tall block to steer around, then a few gems to finish
-    addThing('obs', shapeObs({x: 13, y: -1.5, w: 0.6, h: 3, tall: false}));
-    addThing('obs', shapeObs({x: 21, y: -0.9, w: 1.4, h: 1.8, tall: true}));
+    addThing('obs', shapeObs({x: 9, y: -3, w: 0.6, h: 6, tall: false}));      // a low bar right across the lane
+    addThing('obs', shapeObs({x: 13.6, y: -0.7, w: 1.4, h: 1.4, tall: true})); // a tall block in the middle of it
   } else if (cfg.idx === 0 && cfg.mode === 1) addThing('obs', {x: 10.2, y: -1, w: 0.6, h: 3, tall: false}); // teaches the jump
   if (!party) addThing('gems', {x: 6.5, y: 0.5, taken: false});
   // the field is finite, so build all of it up front and count its gems
@@ -5581,11 +5584,12 @@ function warmupCoach(){
   const el = $('coach');
   if (!G || !G.warm || state !== 'play'){ if (!el.hidden) el.hidden = true; return; }
   const c = G.coach, touch = CAN_TILT || (MODE === 1 && CTRL === 'phones' && phoneOn());
-  if (G.x > 13.6) c.bar = true;
-  if (G.x > 22.4) c.block = true;
+  // the lane means the snake meets the bar, then the block, in order; each line shows up as it gets close
+  if (G.x > 9.8) c.bar = true;
+  if (G.x > 15.2 || Math.abs(G.y) > 4) c.block = c.bar = true;
   const txt = CD ? 'Warm-up: one move at a time'
-    : !c.bar ? (G.t < 3 ? (touch ? 'Tilt to steer. Eat the gem ahead.' : 'Hold ← → to steer. Eat the gem ahead.') : (touch ? 'Low bar ahead: tap to jump it' : 'Low bar ahead: press Space to jump it'))
-    : !c.block ? 'Tall block: those can’t be jumped. Steer around it.'
+    : !c.bar ? (G.x < 3.5 ? (touch ? 'Tilt to steer. Eat the gem ahead.' : 'Hold ← → to steer. Eat the gem ahead.') : (touch ? 'Low bar ahead: tap to jump it!' : 'Low bar ahead: press Space to jump it!'))
+    : !c.block ? 'Tall block ahead: those can’t be jumped. Steer around it.'
     : `Nice. Eat ${G.S.goal} gems to finish: ${Math.min(G.gems, G.S.goal)}/${G.S.goal}`;
   if (el.textContent !== txt) el.textContent = txt;
   el.hidden = false;
