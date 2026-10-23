@@ -348,6 +348,12 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .mp-board small{white-space:nowrap}
 .sw{display:inline-block;width:10px;height:10px;flex:none}
 .sw.big{width:30px;height:30px}
+.itframe{position:absolute;pointer-events:none;box-shadow:inset 0 0 0 4px #ff4fd8,inset 0 0 60px rgba(255,79,216,.45);animation:itpulse 1.1s ease-in-out infinite}
+@keyframes itpulse{50%{box-shadow:inset 0 0 0 4px #ff4fd8,inset 0 0 100px rgba(255,79,216,.25)}}
+.vbig{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(2rem,6.5vw,5rem);text-transform:uppercase;color:var(--cream);text-shadow:0 4px 24px rgba(0,0,0,.7);animation:vbig .5s cubic-bezier(.2,1.6,.4,1)}
+.vbig.it{color:#ff4fd8}
+@keyframes vbig{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.vbig,.itframe{animation:none}}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
 .cd{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(5rem,18vw,13rem);line-height:1;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 24px rgba(0,0,0,.6))}
 .coach{position:fixed;left:50%;top:max(84px,14%);transform:translateX(-50%);z-index:5;pointer-events:none;max-width:min(92vw,720px);text-align:center;padding:12px 20px;background:rgba(0,0,0,.72);border:1.5px solid transparent;border-image:var(--holo) 1;font-family:var(--wide);font-stretch:115%;font-weight:800;font-size:clamp(.9rem,2.2vw,1.35rem);text-transform:uppercase;color:var(--cream)}
@@ -1335,7 +1341,7 @@ function loadWorld(cfg){
     base, speed: base, max: (D.max + lvl*0.3)*sp,
     t: 0, done: false, clearT: 0, left: party ? partyTime(n) : 0,
     goal: cfg.mode === 3 ? teamGoal(S.goal, n) : (S.goal || 0), teamGems: 0, teamLives: LIVES + n - 1,
-    minGems: Math.round(MIN_GEMS*Math.max(1, n/2)),
+    minGems: party && (cfg.rule === 'tag' || cfg.rule === 'hill') ? 0 : Math.round(MIN_GEMS*Math.max(1, n/2)),
     particles: [], shake: 0, deadT: 0, cause: '',
     rule: party ? cfg.rule || 'gems' : '', it: party && cfg.rule === 'tag' ? cfg.seed % n : -1, itAt: -9, warm: !!cfg.warm, coach: {}
   };
@@ -1403,7 +1409,7 @@ function ensureChunk(cx, cy){
     for (const p of placed) if (overlaps(r, p, pad)) return false;
     placed.push(r); return true;
   };
-  const clutter = G.S.clutter || 1;   // a level can ask for fewer loose obstacles
+  const clutter = (G.S.clutter ?? 1)*(G.rule === 'tag' ? 0.45 : G.rule === 'hill' ? 0.6 : 1);   // a level can ask for fewer loose obstacles; tag and the hill keep the floor open
   const nHurdle = Math.round((1 + rnd()*(1.6 + 2.4*d))*G.D.hurdles*clutter);
   for (let i = 0; i < nHurdle; i++) for (let a = 0; a < 6; a++){
     const L = 2 + Math.floor(rnd()*3), vert = rnd() < .5;
@@ -1454,7 +1460,7 @@ function ensureChunk(cx, cy){
       c.scaf.push(r); break;
     }
   }
-  const nGem = 1 + (rnd() < .45 ? 1 : 0);
+  const nGem = G.rule === 'tag' || G.rule === 'hill' ? 0 : 1 + (rnd() < .45 ? 1 : 0);   // tag and the hill have no gems to chase
   for (let i = 0; i < nGem; i++) for (let a = 0; a < 6; a++){
     const gx = 1 + Math.floor(rnd()*(CH-2)), gy = 1 + Math.floor(rnd()*(CH-2));
     if (fits({x: ox+gx, y: oy+gy, w: 1, h: 1}, 0.3)) { c.gems.push(regGem({x: ox+gx+.5, y: oy+gy+.5, taken: false})); break; }
@@ -1685,10 +1691,17 @@ function requestTag(to){
 function doTag(to){
   if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || G.t - G.itAt < TAG_COOL) return;
   const from = G.it; G.it = to; G.itAt = G.t;
-  const p = PL[to]; burst(p.x, p.y, '#ff4fd8', 24, 5); sfxTag();
+  const p = PL[to]; itMoment(from, to); sfxTag();
   phoneSend({t: 'buzz', p: [60, 40, 60]}, to); phoneSend({t: 'buzz', p: 20}, from);
   if (ownSnake(p)) haptic([60, 40, 60]);
   toScreens({t: 'it', it: to, at: G.itAt});
+}
+// a tag: a pink shockwave where it happened, and big words on both players' views
+function itMoment(from, to){
+  const p = PL[to], q = PL[from], now = performance.now();
+  if (p){ p.banner = {txt: 'You’re it!', it: true, until: now + 1800}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
+  if (q && q !== p) q.banner = {txt: 'Not it!', it: false, until: now + 1400};
+  lastHud = '';
 }
 function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus, 1040); tone('sine', 1040, t + 0.08, 0.12, 0.18, sfxBus); }); }
 // the hill: one ring on the floor that jumps somewhere new every 8 bars of the song. Every screen works out the same
@@ -4295,7 +4308,18 @@ function makeR3(){
   function snap(i){ if (GFX[i]) GFX[i].snap = true; }
   function resize(){ renderer.setSize(innerWidth, innerHeight, false); }
   resize();
-  return {build, render, resize, snap};
+  // tag: a pink ring that bursts outward from where it happened
+  const shockMesh = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64), new THREE.MeshBasicMaterial({color: 0xff4fd8, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false}));
+  shockMesh.rotation.x = -Math.PI/2; shockMesh.visible = false; scene.add(shockMesh);
+  let shockAt = -9;
+  function shock(x, y){ shockMesh.position.set(x, 0.05, y); shockAt = performance.now(); shockMesh.visible = true; }
+  function tickShock(){
+    if (!shockMesh.visible) return;
+    const k = (performance.now() - shockAt)/700;
+    if (k >= 1){ shockMesh.visible = false; return; }
+    shockMesh.scale.setScalar(0.5 + 7*k); shockMesh.material.opacity = 0.9*(1 - k);
+  }
+  return {build, render: (c, d) => { tickShock(); render(c, d); }, resize, snap, shock};
 }
 
 // ---- linking screens and phones ----
@@ -4987,7 +5011,7 @@ function onHost(m){
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Team and you'll join.");
   else if (m.t === 'start') clientStart(m);
   else if (m.t === 'w'){ if (G && state !== 'menu') applyWorld(m); }
-  else if (m.t === 'it'){ if (G && G.rule === 'tag'){ const was = G.it; G.it = m.it; G.itAt = G.t; const p = PL[m.it]; if (p) burst(p.x, p.y, '#ff4fd8', 24, 5); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
+  else if (m.t === 'it'){ if (G && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
   else if (m.t === 'gem'){ if (G && state !== 'menu') applyGem(m); }
   else if (m.t === 'phase') applyPhase(m);
 }
@@ -5011,7 +5035,7 @@ function clientStart(m){
   begin();
 }
 function applyWorld(m){
-  if (typeof m.it === 'number' && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } }
+  if (typeof m.it === 'number' && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } }
   if (m.pt) m.pt.forEach((v, i) => { if (PL[i]) PL[i].pts = v; });
   if (typeof m.cd === 'number' && state === 'play'){
     if (m.cd > 0){ if (!CD) startCountdown(); CD.aligned = true; CD.until = performance.now() + m.cd*1000; }
@@ -5116,7 +5140,7 @@ function updateHUD(){
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     $('mpOut').hidden = !localHumansOut();
-    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0]), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'hill' ? Math.ceil(hillEvery() - (G.t % hillEvery())) : 0]);
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'hill' ? Math.ceil(hillEvery() - (G.t % hillEvery())) : 0]);
     if (key === lastHud) return;
     lastHud = key;
     if (MODE === 2){
@@ -5147,7 +5171,10 @@ function updateHUD(){
         : state !== 'play' ? '' : p.alive ? (p.hold > 0 ? String(Math.max(1, Math.min(3, Math.ceil(p.hold/bp)))) : '') : canRespawn(p) ? '' : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
       // the tag sits on the outer side of its view, clear of the map in the middle
       const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
-      return (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
+      const bn = p.banner && performance.now() < p.banner.until ? p.banner : null;
+      const frame = G.rule === 'tag' && i === G.it && state === 'play' ? `<div class="itframe" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>` : '';
+      const big = bn ? `<div class="vbig${bn.it ? ' it' : ''}" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.3}px">${bn.txt}</div>` : '';
+      return frame + big + (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
         (msg ? `<div class="vmsg" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.42}px">${msg}</div>` : '');
     }).join('');
     return;
