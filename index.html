@@ -1351,6 +1351,12 @@ function loadWorld(cfg){
     rule: party ? cfg.rule || 'gems' : '', it: party && cfg.rule === 'tag' ? cfg.seed % n : -1, itAt: -9, warm: !!cfg.warm, coach: {}
   };
   G.walls = (typeof S.walls === 'function' ? S.walls(half) : S.walls).map(clipWall).filter(Boolean);
+  // shrink closes in on the middle of the room, so the middle (where the last snakes end up) is kept clear
+  if (party && cfg.rule === 'shrink'){
+    const c = {x: (ARENA.x0 + ARENA.x1)/2, y: (ARENA.y0 + ARENA.y1)/2}, h = 2.5 + 1.2*n + 2;
+    G.clearMid = {x: c.x - h, y: c.y - h, w: 2*h, h: 2*h};
+    G.walls = G.walls.filter(w => !overlaps(w, G.clearMid, 0));
+  }
   if (!multi){ PL = [newPlayer(0, 0.5, lookFor(S, K.color, K.side))]; PL[0].kind = 'solo'; PL[0].local = true; PL[0].K = K; }
   else { const cols = seatColors(cfg.players.map(pp => ({snake: pp.snake || cfg.snake}))); PL = cfg.players.map((pp, i) => {
     // tag team lines up on the runway like solo; a party is spread around the arena below
@@ -1409,6 +1415,7 @@ function ensureChunk(cx, cy){
     if (G.runway && r.x < 14 && r.x + r.w > -10 && r.y < 4 && r.y + r.h > -3) return false; // starting runway, from behind the spawn point
     if (r.x < ARENA.x0 + 1 || r.y < ARENA.y0 + 1 || r.x + r.w > ARENA.x1 - 1 || r.y + r.h > ARENA.y1 - 1) return false; // lane along the walls
     for (const w of G.walls) if (overlaps(r, w, pad)) return false;
+    if (G.clearMid && overlaps(r, G.clearMid, 0)) return false;
     for (const p of placed) if (overlaps(r, p, pad)) return false;
     placed.push(r); return true;
   };
