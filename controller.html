@@ -281,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-20f</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-22a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -377,7 +377,7 @@ async function setPlayMode(k){
 
 // ---- screens ----
 const show = id => { for (const s of ['join', 'setup', 'ctl']) $(s).hidden = s !== id; };
-function pill(text, kind){ $('pillTxt').textContent = text; $('pill').className = 'pill' + (kind ? ' ' + kind : ''); }
+function pill(text, kind){ if (kind === 'on') pill.last = text; $('pillTxt').textContent = text; $('pill').className = 'pill' + (kind ? ' ' + kind : ''); }
 
 // ---- link to the big screen ----
 // The STUN servers and the optional TURN relay live in ice.js, shared with the big screen.
@@ -450,7 +450,9 @@ function dial(){
 addEventListener('pagehide', () => { try { if (conn) conn.close(); } catch(_) {} });
 // tell the screen when this page is put away (locked, another app) and when it's back; let go for that, or for
 // leaving the phone idle, any tap (or coming back to the page) rejoins
-let removedWhy = '';
+let removedWhy = '', stillAsked = false;
+// asked "still there?": any tap says yes
+addEventListener('pointerdown', () => { if (stillAsked){ stillAsked = false; send({t: 'here'}); } }, true);
 document.addEventListener('visibilitychange', () => {
   if (removedWhy && removedWhy !== 'host'){ if (!document.hidden) location.reload(); return; }
   send({t: document.hidden ? 'away' : 'back'});
@@ -468,6 +470,11 @@ function onGame(m){
   // the game is hosted on a phone or tablet, which only shows its own player's view: play on this phone instead
   else if (m.t === 'useScreen') location.href = screenURL();
   // this player's seat moved to another device (they're playing on their own screen now): stop, and say so
+  else if (m.t === 'still'){
+    stillAsked = m.s > 0;
+    if (stillAsked){ pill('Still there?', 'bad'); $('ctlHint').textContent = `Still there? Tap anywhere to stay in the game (${m.s}).`; buzz([20, 40, 20]); }
+    else { pill(pill.last || 'Connected', 'on'); $('ctlHint').textContent = ''; }
+  }
   else if (m.t === 'removed'){
     movedAway = true; removedWhy = m.why || 'host';
     pill(removedWhy === 'host' ? 'Removed' : 'Left the game', 'bad');

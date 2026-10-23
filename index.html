@@ -349,6 +349,10 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .sw{display:inline-block;width:10px;height:10px;flex:none}
 .sw.big{width:30px;height:30px}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
+.cd{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(5rem,18vw,13rem);line-height:1;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 24px rgba(0,0,0,.6))}
+.cd.pop{animation:cdpop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes cdpop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.cd.pop{animation:none}}
 .vmsg{position:absolute;transform:translateX(-50%);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(1.3rem,3.2vw,2.4rem);text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px var(--cream);white-space:nowrap}
 .seats{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .seats li{display:grid;grid-template-columns:14px minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--rule-soft)}
@@ -368,6 +372,8 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 .cpuIc{padding:0 4px}
 .csnake{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:.72rem;color:var(--muted)}
 .csnake .snakeSel{font:inherit;font-size:.8rem;background:#000;color:var(--cream);border:1px solid var(--rule);padding:8px 10px}
+.seats li.leaving{border-color:var(--pink)}
+.seats li.leaving small{color:var(--pink)}
 .swapBtn{justify-self:start;background:none;border:0;padding:4px 0 0;color:var(--cyan);font:inherit;font-size:.62rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .swapBtn:hover{color:var(--cream)}
 .bigqr.flash{animation:qrflash .5s 3}
@@ -515,6 +521,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 <canvas id="stage" aria-label="Serpentine map"></canvas>
 
 <div class="split" id="split" hidden></div>
+<div class="cd" id="cd" hidden aria-live="assertive"></div>
 <div class="mp" id="mp" hidden>
   <div class="mp-top" id="mpTop"></div>
   <ol class="mp-board" id="mpBoard"></ol>
@@ -1091,6 +1098,7 @@ let MODE = [1, 2, 3].includes(+store.get('players')) ? +store.get('players') : 1
 let PAGE = 'doors';
 let ROLE = 'host';    // 'client' once this screen joins a game that another screen is hosting
 let ME = 0;           // on a client: which snake is this screen's own
+let CD = null;   // the 3-2-1 before play starts or picks back up: {until (ms), bp (seconds per beat)}
 let SEATS = [];       // on the host: everyone in the party or team, in player order
 let course = Math.min(3, Math.max(0, +store.get('course') || 0));
 let CPU_VIEW = store.get('cpuView') === '1';   // whether computer snakes get their own view on the big screen
@@ -1992,7 +2000,8 @@ function updatePauseNote(){
 function dieP(p, cause){
   if (!p.alive) return;
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
-  p.alive = false; p.cause = cause; p.respawnT = 1.4;
+  p.alive = false; p.cause = cause;
+  { const bp = beatPeriod(), b = beatClock(G.t); p.respawnT = Math.max(1.2, (Math.ceil(b + 0.8/bp + 3) - b)*bp); }
   p.lives--;
   burst(x, y, p.look.color, 26, 6); burst(x, y, C.pillar, 10, 5);
   if (viewers().includes(p.i)) G.shake = Math.max(G.shake, 0.35);
@@ -4157,7 +4166,7 @@ const PHONE_QUIET_MS = 3000;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length: 4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
 // the ?v= tag changes with each controller update so a phone never reuses a stale saved copy
-const CTRL_BUILD = '2026-10-20f';
+const CTRL_BUILD = '2026-10-22a';
 const controllerURL = code => { const u = new URL('controller.html', location.href); u.search = 'v=' + CTRL_BUILD; u.hash = code; return u.href; };
 const siteName = () => location.host || 'this site';
 const linkLive = L => !!(L && L.conn && L.conn.open && performance.now() - L.seen < PHONE_QUIET_MS);
@@ -4351,7 +4360,7 @@ function renderPauseSeats(){
     const li = document.createElement('li'), p = PL[i];
     li.innerHTML = `<span class="sw" style="background:${p ? p.look.color : seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
     li.querySelector('b').textContent = p ? playerName(i) : st.name || 'Player ' + (i + 1);
-    li.querySelector('small').textContent = st.gone ? 'Disconnected' : !p ? 'Watching, joins next round' : p.lives <= 0 && !p.alive ? 'Out of lives' : seatKindText(st, i);
+    li.querySelector('small').textContent = st.leaving ? leavingText(st.leaving) : st.gone ? 'Disconnected' : !p ? 'Watching, joins next round' : p.lives <= 0 && !p.alive ? 'Out of lives' : seatKindText(st, i);
     const swap = swapLabel(st);
     if (swap){ const sb = document.createElement('button'); sb.className = 'swapBtn'; sb.textContent = swap; sb.addEventListener('click', () => swapSeat(st)); li.querySelector('.n').appendChild(sb); }
     li.appendChild(removeBtn(st));
@@ -4425,7 +4434,8 @@ function renderSeats(){
     const li = document.createElement('li');
     li.innerHTML = `<span class="sw" style="background:${seatColors(SEATS)[i][0]}"></span><span class="n"><b></b><small></small></span>`;
     li.querySelector('b').textContent = (st.name || (st.kind === 'cpu' ? 'Computer ' : 'Player ') + (i + 1)) + (st.gone ? ' (dropped)' : '');
-    li.querySelector('small').textContent = seatKindText(st, i) + (st.kind === 'cpu' ? ' · ' + SNAKES[seatSnake(st)].name : '');
+    li.querySelector('small').textContent = st.leaving ? leavingText(st.leaving) : seatKindText(st, i) + (st.kind === 'cpu' ? ' · ' + SNAKES[seatSnake(st)].name : '');
+    if (st.leaving) li.classList.add('leaving');
     if (st.kind !== 'cpu'){
       // everyone playing picks their own snake: one icon button per snake
       const row = document.createElement('div'); row.className = 'snakeBtns'; row.setAttribute('role', 'radiogroup'); row.setAttribute('aria-label', `Player ${i + 1}'s snake`);
@@ -4572,7 +4582,7 @@ addEventListener('click', e => { if (CAN_TILT && (CTRL === 'device' || ROLE === 
 // is the person actually there? Anything they do counts: a button, a jump, steering (a phone that's being held moves;
 // one left on a table doesn't), and from a joined screen its snake turning or jumping. A page that goes into the
 // background (another app, a locked phone, a different tab) says so.
-const IDLE_PLAY_MS = 20000, IDLE_LOBBY_MS = 90000, AWAY_MS = 8000;
+const IDLE_PLAY_MS = 60000, IDLE_LOBBY_MS = 60000, AWAY_MS = 8000, AWAY_LOBBY_MS = 6000, WARN_MS = 10000;
 function noteInput(L, m){
   if (!m || typeof m !== 'object') return;
   const now = performance.now();
@@ -4585,17 +4595,35 @@ function noteInput(L, m){
 }
 // left a page open somewhere and wandered off (often to play on another screen): after a while they're let go, so
 // no snake sits in the game with nobody steering it. Coming back to that page puts them back in.
+// Before anyone is let go there's a visible countdown on their row in the lobby (and on their view mid-round), and
+// an idle phone is asked "still there?" so any tap keeps them in.
 function idleCheck(now){
+  let changed = false;
   for (const L of LINK.links.slice()){
     const i = seatOf(L); if (i < 0) continue;
     const st = SEATS[i], p = state !== 'menu' && i < PL.length ? PL[i] : null;
     const counting = state === 'play' ? !!p && (p.alive || p.lives > 0) : state === 'menu' && L.kind === 'phone';
-    if (!counting && !L.away){ L.input = now; continue; }
-    const limit = state === 'play' ? IDLE_PLAY_MS : IDLE_LOBBY_MS;
-    if (L.away && now - L.away > AWAY_MS) removeSeat(st, 'away');
-    else if (counting && now - L.input > limit) removeSeat(st, 'idle');
+    if (!counting && !L.away){ L.input = now; if (st.leaving){ st.leaving = null; changed = true; } continue; }
+    let leaving = null;
+    const awayFor = state === 'menu' ? AWAY_LOBBY_MS : AWAY_MS;
+    if (L.away){
+      const left = awayFor - (now - L.away);
+      if (left <= 0){ removeSeat(st, 'away'); continue; }
+      leaving = {why: 'away', secs: Math.ceil(left/1000)};
+    } else if (counting){
+      const limit = state === 'play' ? IDLE_PLAY_MS : IDLE_LOBBY_MS, left = limit - (now - L.input);
+      if (left <= 0){ removeSeat(st, 'idle'); continue; }
+      if (left <= WARN_MS){
+        leaving = {why: 'idle', secs: Math.ceil(left/1000)};
+        linkSend(L, {t: 'still', s: leaving.secs});
+      }
+    }
+    const was = st.leaving ? st.leaving.why + st.leaving.secs : '', now2 = leaving ? leaving.why + leaving.secs : '';
+    if (was !== now2){ st.leaving = leaving; changed = true; if (!leaving) linkSend(L, {t: 'still', s: 0}); }
   }
+  if (changed){ renderSeats(); renderSheet(); if (state === 'paused') renderPauseSeats(); }
 }
+const leavingText = lv => lv.why === 'away' ? `Left their screen · out in ${lv.secs}` : `Still there? Out in ${lv.secs} unless they tap`;
 function onLink(L, m){
   if (!m || typeof m !== 'object') return;
   if (L.kind === 'screen') onScreenMsg(L, m); else onPhone(L, m);
@@ -4697,6 +4725,8 @@ document.addEventListener('visibilitychange', () => { if (ROLE === 'client') net
 // let go for being away or idle: any tap brings this screen back into the game
 addEventListener('pointerdown', () => { if (ROLE === 'client' && CL.moved && CL.removedWhy && CL.removedWhy !== 'host') location.reload(); }, true);
 addEventListener('keydown', () => { if (ROLE === 'client' && CL.moved && CL.removedWhy && CL.removedWhy !== 'host') location.reload(); }, true);
+// asked "still there?": any tap or key says yes
+for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => { if (ROLE === 'client' && CL.still){ CL.still = 0; netSend({t: 'here'}); } }, true);
 function showJoin(msg){
   hideOverlays(); $('menu').hidden = false; goPage('join');
   $('joinErr').textContent = msg || '';
@@ -4791,6 +4821,7 @@ function onHost(m){
   if (m.t === 'hi'){ ME = m.seat; showClient(m.playing ? "A round is under way. You'll join the next one." : 'Waiting for the host to start…'); }
   else if (m.t === 'lobby'){ CL.lobby = m; if (m.you >= 0) ME = m.you; if (state === 'menu') renderClientLobby(); }
   else if (m.t === 'full') showClient('This game is full (8 players).', true);
+  else if (m.t === 'still'){ CL.still = m.s; if (m.s) showClient('Still there? Tap anywhere or press a key to stay in the game.'); else if (state === 'menu') showClient('Waiting for the host to start…'); }
   else if (m.t === 'removed'){
     CL.moved = true; CL.removedWhy = m.why || 'host';
     if (state !== 'menu'){ state = 'menu'; stopMusic(); keepAwake(false); }
@@ -4824,6 +4855,10 @@ function clientStart(m){
   begin();
 }
 function applyWorld(m){
+  if (typeof m.cd === 'number' && state === 'play'){
+    if (m.cd > 0){ if (!CD) startCountdown(); CD.aligned = true; CD.until = performance.now() + m.cd*1000; }
+    else if (CD && countdownLeft() > 0) CD.until = performance.now();
+  }
   if (m.mp != null) syncSong(m.mp);
   if (Math.abs(G.t - m.tt) > 0.3) G.t = m.tt; else G.t += (m.tt - G.t)*0.1;
   if (MODE === 2 && typeof m.left === 'number') G.left = m.left;
@@ -4873,7 +4908,7 @@ function netTick(now){
     return;
   }
   if (MODE === 1 || state === 'menu' || !G || !screens().length) return;
-  toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems, mp: songPos(),
+  toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems, mp: songPos(), cd: r2(countdownLeft()),
     ps: PL.map(p => p.local ? posOf(p) : p.netRaw || null), gm: PL.map(p => p.gems)});
 }
 
@@ -4943,7 +4978,9 @@ function updateHUD(){
     const rects = gridRects(vs.length, innerWidth, innerHeight);
     $('mpTags').innerHTML = vs.map((i, k) => {
       const p = PL[i], r = rects[k];
-      const w = watchFor(i), msg = state !== 'play' || p.alive ? '' : canRespawn(p) ? 'Respawning…' : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
+      const w = watchFor(i), lv = SEATS[i] && SEATS[i].leaving, bp = beatPeriod();
+      const msg = lv ? (lv.why === 'away' ? `Left · out in ${lv.secs}` : `Still there? ${lv.secs}`)
+        : state !== 'play' || p.alive ? '' : canRespawn(p) ? (p.respawnT <= 3*bp ? String(Math.min(3, Math.ceil(p.respawnT/bp))) : 'Respawning…') : w !== i ? `Out. Watching ${esc(playerName(w))}` : 'Out';
       // the tag sits on the outer side of its view, clear of the map in the middle
       const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
       return (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
@@ -5286,8 +5323,37 @@ function confirmQuit(){
   $('confirm').hidden = false;
   setTimeout(() => $('cfStay').focus({preventScroll: true}), 50);
 }
+// seconds per beat of this level's song
+function beatPeriod(){
+  const T = G && G.S && trackOf();
+  return 60/((T && T.bpm) || ((G && G.S && STYLES[G.S.music]) || STYLES.lofi).bpm || 120);
+}
+// 3, 2, 1 on the beats of the song, then GO on the next one. Everything holds still meanwhile.
+function startCountdown(){
+  const bp = beatPeriod();
+  CD = {until: performance.now() + 3*bp*1000 + 300, bp, shown: '', aligned: false};
+}
+function countdownLeft(){ return CD ? Math.max(0, (CD.until - performance.now())/1000) : 0; }
+function tickCountdown(){
+  if (!CD) return;
+  // once the song is actually playing, land GO exactly on one of its beats
+  if (!CD.aligned && AC && musicOn && trackSrc){
+    CD.aligned = true;
+    const b = beatClock(G.t), left = countdownLeft(), target = Math.ceil(b + left/CD.bp - 0.35);
+    CD.until = performance.now() + Math.max(0.2, (target - b)*CD.bp)*1000;
+  }
+  const left = countdownLeft(), el = $('cd');
+  const txt = left > 0 ? String(Math.max(1, Math.min(3, Math.ceil(left/CD.bp)))) : 'GO';
+  if (txt !== CD.shown){
+    CD.shown = txt; el.hidden = false; el.textContent = txt;
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+    if (AC) sfx(t => tone('sine', txt === 'GO' ? 1320 : 660, t, 0.18, 0.12, sfxBus));
+  }
+  if (left <= 0 && performance.now() > CD.until + CD.bp*700){ CD = null; el.hidden = true; }
+}
 function begin(){
   state = 'play';
+  startCountdown();
   TILT.cal = true;   // however the screen is held right now counts as straight ahead
   hideOverlays(); $('pauseBtn').hidden = false;
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -5404,6 +5470,7 @@ function goPage(p){
   setTimeout(() => f.focus({preventScroll: true}), 30);
 }
 function toMenu(){
+  CD = null; $('cd').hidden = true;
   if (ROLE === 'client') return leaveGame();
   state = 'menu'; stopMusic(); keepAwake(false);
   SEATS = SEATS.filter(st => !st.gone);
@@ -5612,7 +5679,8 @@ let last = performance.now();
 function frame(now){
   const dt = Math.min(0.05, (now - last)/1000); last = now;
   if (state === 'play'){
-    update(dt);
+    tickCountdown();
+    if (!CD || countdownLeft() <= 0) update(dt);
     if (MODE === 1){
       const v = [Math.cos(G.th), Math.sin(G.th)], look = 2.4 + G.speed*0.25, k = 1 - Math.exp(-dt*3.2);
       const lx = PORTRAIT() ? 1.25 : 1, ly = PORTRAIT() ? 1 : 0.8;
