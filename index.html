@@ -1906,6 +1906,8 @@ function aiBlocked(x, y, self){
   if (aiNear(x, y, c => c.obs.some(o => o.tall && hit(o)))) return true;
   for (const q of PL){
     if (!q.alive) continue;
+    // tag: snakes pass through each other, so only It is something to steer clear of (and It steers into people)
+    if (G.rule === 'tag' && q !== self && (q.i !== G.it || (self && self.i === G.it))) continue;
     const T = q.trail, hx = q === self ? G.x : q.x, hy = q === self ? G.y : q.y;
     let acc = 0, bx = hx, by = hy;
     for (let i = T.length - 1; i >= 0; i--){
@@ -1950,7 +1952,8 @@ function aiThink(p, dt){
     const pickI = Math.random() < sk.greed ? 0 : Math.floor(Math.random()*Math.min(4, ranked.length));
     p.aiGem = ranked.length ? ranked[pickI].g : null;
   }
-  const tgt = p.aiGem ? Math.atan2(p.aiGem.y - G.y, p.aiGem.x - G.x) : G.th;
+  let tgt = p.aiGem ? Math.atan2(p.aiGem.y - G.y, p.aiGem.x - G.x) : G.th;
+  const rt = aiRuleTarget(p, sk); if (rt != null) tgt = rt;
   const L = sk.look + G.speed*0.45;   // faster means looking further ahead
   let pick = G.th, top = -Infinity;
   for (let k = -4; k <= 4; k++){
@@ -1961,6 +1964,37 @@ function aiThink(p, dt){
     if (score > top){ top = score; pick = a; }
   }
   p.aiSteer = clamp1(angDiff(pick, G.th)*2.2)*sk.steer;
+}
+// tag and the hill give computer snakes something better to do than gems: chase, run, or hold the ring
+function aiRuleTarget(p, sk){
+  if (G.rule === 'tag'){
+    const it = PL[G.it];
+    if (!it) return null;
+    if (p.i === G.it){
+      // It: chase the nearest snake it's allowed to tag, aiming a little ahead of where it's going
+      let best = null, bd = Infinity;
+      for (const q of PL){
+        if (q === p || !q.alive || q.hold > 0) continue;
+        const d = Math.hypot(q.x - G.x, q.y - G.y);
+        if (d < bd){ bd = d; best = q; }
+      }
+      if (!best) return null;
+      const lead = Math.min(2.5, bd*0.25)*sk.greed;
+      return Math.atan2(best.y + Math.sin(best.th)*lead - G.y, best.x + Math.cos(best.th)*lead - G.x);
+    }
+    // not It: when It is close, run away from it; otherwise wander for gems
+    const d = Math.hypot(it.x - G.x, it.y - G.y);
+    if (it.alive && d < 9) return Math.atan2(G.y - it.y, G.x - it.x) + (Math.random() - 0.5)*0.6;
+    return null;
+  }
+  if (G.rule === 'hill'){
+    const h = hillAt(G.t), d = Math.hypot(h.x - G.x, h.y - G.y), toC = Math.atan2(h.y - G.y, h.x - G.x);
+    if (d > HILL_R*0.85) return toC;   // race to the hill
+    // on it: circle inside, leaning inward more the closer to the edge
+    const side = Math.abs(angDiff(toC + Math.PI/2, G.th)) < Math.abs(angDiff(toC - Math.PI/2, G.th)) ? 1 : -1;
+    return toC + side*(Math.PI/2 - 0.9*(d/HILL_R));
+  }
+  return null;
 }
 // checked every frame: a hurdle (or a lowered gate) just ahead means jump
 function aiJump(p, sk){
