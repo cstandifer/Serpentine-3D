@@ -992,7 +992,7 @@ const STAGES = [
   // movers (pink pillars that slide back and forth) and gates (bars that rise and fall with the beat)
   {name: 'Mirror Ball', goal: 26, half: 22, music: 'disco', ...lv('#ffffff', 45, ['#ff6b3d', '#ffb547', '#ffe94d', '#ff4fd8']), movers: 1.3,
    walls: [block(-3, -17, 6, 2), block(-3, 15, 6, 2)]},
-  {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, walls: []},
+  {name: 'Beat Gates', goal: 26, half: 22, music: 'electro', ...lv('#ffffff', 160, ['#7dff5a', '#5ff0ff', '#2b8cff']), gates: 1.5, tunnels: 0.4, walls: []},
   {name: 'Undertow', goal: 28, half: 23, music: 'dub', ...lv('#ffffff', 250, ['#2b8cff', '#8a7bff', '#c56bff', '#5ff0ff']), movers: 2.4, moverSpeed: 1.35, clutter: 1.4, gates: 1.8,
    walls: [block(-17, -16, 9, 2), block(8, -16, 9, 2), block(-17, 14, 9, 2), block(8, 14, 9, 2)]},
   // the construction site sits late: its scaffolding makes it a real step up
@@ -1405,7 +1405,7 @@ function ensureChunk(cx, cy){
   const k = cx + ',' + cy;
   let c = G.chunks.get(k);
   if (c) return c;
-  c = {obs: [], gems: [], scaf: [], ramps: []};
+  c = {obs: [], gems: [], scaf: [], ramps: [], tunnels: []};
   G.chunks.set(k, c);
   const rnd = mulberry(hash(cx, cy, G.seed));
   const ox = cx*CH, oy = cy*CH;
@@ -1419,6 +1419,23 @@ function ensureChunk(cx, cy){
     for (const p of placed) if (overlaps(r, p, pad)) return false;
     placed.push(r); return true;
   };
+  // tunnels (the neon city): a dark underpass a snake drives through. Only the two side walls are solid, the
+  // mouths at each end are kept clear so there's room to line up and drive in, and gems can turn up inside.
+  if (G.S.tunnels && !G.warm && rnd() < G.S.tunnels) for (let a = 0; a < 16; a++){
+    const horiz = rnd() < .5, L = 6 + Math.floor(rnd()*2), Wd = 2.8, T2 = 0.35;
+    const sw = horiz ? L : Wd, sh = horiz ? Wd : L;
+    const gx = 1 + Math.floor(rnd()*(CH - 2 - Math.ceil(sw) + 1)), gy = 1 + Math.floor(rnd()*(CH - 2 - Math.ceil(sh) + 1));
+    const r = {x: ox + gx, y: oy + gy, w: sw, h: sh, horiz};
+    const mouths = horiz ? [{x: r.x - 2.5, y: r.y, w: 2.5, h: Wd}, {x: r.x + L, y: r.y, w: 2.5, h: Wd}] : [{x: r.x, y: r.y - 2.5, w: Wd, h: 2.5}, {x: r.x, y: r.y + L, w: Wd, h: 2.5}];
+    if (mouths.some(m => m.x < ARENA.x0 + 0.5 || m.y < ARENA.y0 + 0.5 || m.x + m.w > ARENA.x1 - 0.5 || m.y + m.h > ARENA.y1 - 0.5)) continue;
+    if (G.runway && mouths.concat(r).some(m => m.x < 14 && m.x + m.w > -10 && m.y < 4 && m.y + m.h > -3)) continue;
+    if (!fits(r, 1.2)) continue;
+    placed.pop();   // the lane inside stays open; only the walls and the mouths take room
+    const walls = horiz ? [{x: r.x, y: r.y, w: L, h: T2}, {x: r.x, y: r.y + Wd - T2, w: L, h: T2}] : [{x: r.x, y: r.y, w: T2, h: L}, {x: r.x + Wd - T2, y: r.y, w: T2, h: L}];
+    for (const w of walls){ w.tall = true; w.tun = true; c.obs.push(w); placed.push(w); }
+    placed.push(...mouths);
+    c.tunnels.push(r); break;
+  }
   const clutter = (G.S.clutter ?? 1)*(G.rule === 'tag' ? 0.45 : G.rule === 'shrink' ? 0.5 : 1);   // a level can ask for fewer loose obstacles; tag and shrink keep the floor open
   const nHurdle = Math.round((1 + rnd()*(1.6 + 2.4*d))*G.D.hurdles*clutter);
   for (let i = 0; i < nHurdle; i++) for (let a = 0; a < 6; a++){
@@ -1556,7 +1573,7 @@ function steerTarget(i){
 }
 function jump(){
   if (state !== 'play') return;
-  if (G.air) { G.jumpBuf = 0.35; return; }   // a quick second jump queues up and fires on landing
+  if (G.air) { G.jumpBuf = 0.5; return; }   // a tap a little before landing queues up and fires as soon as the snake touches down
   G.air = true; G.airT = 0; G.airDur = G.D.jump*G.K.jump / G.speed; G.jumpBuf = 0;
   pushPoint(); sfxJump(); buzz(12);
 }
@@ -3361,7 +3378,7 @@ function makeR3(){
     const shapes = shapeKit(T);
     DYN = [];
     for (const c of G.chunks.values()) for (const o of c.obs){
-      if (o.leg) continue;   // drawn with its scaffold below
+      if (o.leg || o.tun) continue;   // drawn with its scaffold or tunnel below
       if (o.mover){ const b = shapes.pillar(o); level.add(b); DYN.push({o, b, base: true}); continue; }
       if (o.gate){
         // (in the library the gates are bookcases that rise out of the floor and sink back)
@@ -3375,6 +3392,8 @@ function makeR3(){
     }
     for (const c of G.chunks.values()) for (const r of c.scaf) level.add(scaffold(r));
     for (const c of G.chunks.values()) for (const r of (c.ramps || [])) level.add(rampMesh(r));
+    TUNS = [];
+    for (const c of G.chunks.values()) for (const r of (c.tunnels || [])) level.add(tunnelMesh(r, T));
     buildDecor(T);
     cLow.set(C.hurdle); cLowS.set(C['hurdle-side']); cTall.set(C.pillar); cTallS.set(C['pillar-side']);
 
@@ -3780,6 +3799,68 @@ function makeR3(){
   const steel = new THREE.MeshPhongMaterial({color: 0xb8bcc4, emissive: 0x2a2c30, shininess: 60, specular: 0x666666});
   const planks = new THREE.MeshPhongMaterial({color: 0x9c6b3c, emissive: 0x2a1a0c, flatShading: true, shininess: 10});
   const POLE = new THREE.CylinderGeometry(0.07, 0.07, 1, 8);
+  // a dark concrete underpass: two side walls and a roof slab with a street up top, neon framing the mouths,
+  // a sign over each end, amber strip lights inside and dark floor. When a snake is inside, the shell fades
+  // away so you can still see it driving through.
+  let TUNS = [];
+  function tunnelMesh(r, T){
+    const g = new THREE.Group(), L = r.horiz ? r.w : r.h, Wd = r.horiz ? r.h : r.w, T2 = 0.35, RH = TALL_H + 0.15, ST = 0.3;
+    g.position.set(r.x + r.w/2, 0, r.y + r.h/2); if (!r.horiz) g.rotation.y = Math.PI/2;
+    const fade = [], solid = (c, o = 1, keep = 0) => { const m = new THREE.MeshBasicMaterial({color: col(c), transparent: true, opacity: o}); fade.push({m, base: o, keep}); return m; };   // keep: how much stays when it fades
+    const box = (m, sx, sy, sz, x, y, z) => { const b = new THREE.Mesh(BOX, m); b.scale.set(sx, sy, sz); b.position.set(x, y, z); g.add(b); return b; };
+    const wallM = solid('#0d1426', 1, 0.92), roofM = solid('#111827');
+    for (const e of [-1, 1]) box(wallM, L, RH, T2, 0, RH/2, e*(Wd - T2)/2);
+    box(roofM, L + 0.3, ST, Wd + 0.3, 0, RH + ST/2, 0);
+    // the street on the roof: lane dashes and a curb light on each side
+    const dash = solid('#c9d6e8', 0.8);
+    for (let k = -L/2 + 0.6; k < L/2 - 0.4; k += 1.2) box(dash, 0.6, 0.02, 0.08, k, RH + ST + 0.01, 0);
+    const curb = solid(T.edge, 0.95);
+    for (const e of [-1, 1]) box(curb, L + 0.3, 0.05, 0.05, 0, RH + ST + 0.03, e*(Wd + 0.3)/2);
+    // neon frames around both mouths
+    const neon = ['#ff4fd8', '#ffb347', '#9d7bff', '#5ff0ff'][Math.abs(Math.round(r.x*3 + r.y*7)) % 4], frame = solid(neon, 1, 1);
+    for (const e of [-1, 1]){
+      const x = e*(L/2 + 0.02);
+      box(frame, 0.06, 0.08, Wd, x, RH - 0.02, 0);
+      for (const f of [-1, 1]) box(frame, 0.06, RH, 0.08, x, RH/2, f*(Wd/2 - 0.02));
+    }
+    // signs hung over each mouth with blocky made-up lettering
+    for (const e of [-1, 1]){
+      const c = document.createElement('canvas'); c.width = 128; c.height = 32; const sg = c.getContext('2d');
+      sg.fillStyle = '#05060c'; sg.fillRect(0, 0, 128, 32); sg.strokeStyle = neon; sg.lineWidth = 3; sg.strokeRect(2, 2, 124, 28); sg.fillStyle = neon;
+      for (let k = 0; k < 5; k++){ const bx = 12 + k*22, q = (k*5 + Math.round(r.x + r.y)) & 3; sg.fillRect(bx, 8, 14, 3); if (q & 1) sg.fillRect(bx, 8, 3, 16); if (q & 2) sg.fillRect(bx + 11, 13, 3, 11); sg.fillRect(bx, 21, 14, 3); }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.MeshBasicMaterial({map: t, transparent: true, side: THREE.DoubleSide}); fade.push({m, base: 1, keep: 0});
+      const pl = new THREE.Mesh(PLANE_GEO, m); pl.scale.set(Wd*0.8, Wd*0.2, 1); pl.position.set(e*(L/2 + 0.2), RH + ST + 0.35, 0); pl.rotation.y = Math.PI/2; g.add(pl);
+    }
+    // inside: a dark floor, amber strip lights along the ceiling and small lamps that chase down the tunnel
+    const dark = new THREE.Mesh(PLANE_GEO, new THREE.MeshBasicMaterial({color: 0x000000, transparent: true, opacity: 0.7, depthWrite: false}));
+    dark.rotation.x = -Math.PI/2; dark.scale.set(L, Wd - 2*T2, 1); dark.position.y = 0.008; g.add(dark);
+    const strip = new THREE.MeshBasicMaterial({color: col('#ffb347')});
+    for (const e of [-1, 1]) box(strip, L - 0.2, 0.05, 0.05, 0, RH - 0.06, e*(Wd/2 - T2 - 0.04));
+    // inside walls: concrete ribs and a neon guide strip low down each side, so the tunnel still reads with the roof faded
+    const rib = solid('#1f2a44', 1, 1), guide = solid(neon, 1, 1);
+    for (const e of [-1, 1]){
+      const z = e*(Wd/2 - T2 - 0.03);
+      box(guide, L, 0.05, 0.04, 0, 0.45, z);
+      for (let x = -L/2 + 0.75; x < L/2 - 0.5; x += 1.5) box(rib, 0.16, RH, 0.08, x, RH/2, z);
+    }
+    const lamps = [];
+    for (let k = 0, n = Math.round(L/0.9); k < n; k++){
+      const m = new THREE.MeshBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.4});
+      lamps.push(box(m, 0.18, 0.04, 0.5, -L/2 + (k + 0.5)*L/n, RH - 0.03, 0));
+    }
+    TUNS.push({r, fade, lamps, k: 1});
+    return g;
+  }
+  function tickTunnels(clock, dt, beat){
+    for (const t of TUNS){
+      const r = t.r, ax = r.horiz ? 3 : 0.6, ay = r.horiz ? 0.6 : 3, inside = PL.some(p => p.alive !== false && p.x > r.x - ax && p.x < r.x + r.w + ax && p.y > r.y - ay && p.y < r.y + r.h + ay);   // fades as a snake lines up at a mouth, too
+      t.k += ((inside ? 0.1 : 1) - t.k)*Math.min(1, dt*8);
+      for (const f of t.fade){ const o = f.base*Math.max(f.keep, t.k); f.m.opacity = o; f.m.depthWrite = o > 0.9; }
+      const n = t.lamps.length, run = (clock*5) % (n + 3);
+      t.lamps.forEach((l, k) => { l.material.opacity = 0.25 + 0.2*beat + (Math.abs(k - run) < 0.8 ? 0.75 : 0); });
+    }
+  }
   function scaffold(r, deckY = 2.7, legs = true){
     const g = new THREE.Group(), x0 = r.x, z0 = r.y, x1 = r.x + r.w, z1 = r.y + r.h;
     const pole = (x, z, y0, y1) => { const m = new THREE.Mesh(POLE, steel); m.scale.y = y1 - y0; m.position.set(x, (y0 + y1)/2, z); g.add(m); };
@@ -4085,13 +4166,15 @@ function makeR3(){
         g.fillStyle = '#02050c'; g.fillRect(0, 0, 128, 256);
         const lit = ['#ffb347', '#ffcf7a', '#5ff0ff', '#7fb6ff', '#ff6bd5'];
         for (let y = 4; y < 256; y += 8) for (let x = 4; x < 128; x += 8){
-          const r = rnd(); if (r > 0.34) continue;
-          g.globalAlpha = 0.35 + rnd()*0.65; g.fillStyle = lit[r < 0.2 ? 0 : r < 0.26 ? 1 : r < 0.3 ? 2 : r < 0.32 ? 3 : 4]; g.fillRect(x, y, 4, 4);
+          const r = rnd(); if (r > 0.16) continue;
+          g.globalAlpha = 0.35 + rnd()*0.65; g.fillStyle = lit[r < 0.07 ? 0 : r < 0.1 ? 1 : r < 0.13 ? 2 : r < 0.145 ? 3 : 4]; g.fillRect(x, y, 4, 4);
         }
         g.globalAlpha = 1;
         const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
       })();
-      const edge = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.55, fog: false});
+      const edge = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.95, fog: false});
+      const edgeAlt = ['#ff4fd8', '#9d7bff', '#2b8cff'].map(c => new THREE.LineBasicMaterial({color: col(c), transparent: true, opacity: 0.9, fog: false}));
+      const band = new THREE.MeshBasicMaterial({color: col('#0066ff'), fog: false});
       const towerMat = (bw, bh) => { const t = winTex.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(bw/3)), Math.max(1, Math.round(bh/6))); t.offset.set(rnd(), rnd()); return new THREE.MeshBasicMaterial({map: t, fog: false}); };
       const towers = [];
       // three rings: near (tall, detailed), middle, and a far hazy wall of silhouettes
@@ -4100,7 +4183,10 @@ function makeR3(){
           const a = i/n*Math.PI*2 + rnd()*0.07, dist = d0 + rnd()*(d1 - d0), bh = h0 + rnd()*(h1 - h0), bw = 3 + rnd()*6;
           const mat = fogged ? new THREE.MeshBasicMaterial({color: 0x050a18, fog: false}) : towerMat(bw, bh);
           const b = new THREE.Mesh(BOX, mat); b.scale.set(bw, bh, bw); b.position.set(cx + Math.cos(a)*dist, bh/2, cz + Math.sin(a)*dist); b.rotation.y = -a;
-          if (!fogged && rnd() < 0.5) b.add(new THREE.LineSegments(EDGES, edge));
+          if (!fogged){
+            b.add(new THREE.LineSegments(EDGES, rnd() < 0.7 ? edge : edgeAlt[Math.floor(rnd()*edgeAlt.length)]));
+            for (let k = 0, nb = rnd() < 0.6 ? 1 + Math.floor(rnd()*3) : 0; k < nb; k++){ const st = new THREE.Mesh(BOX, band); st.scale.set(bw*1.01, 0.25, bw*1.01); st.position.set(b.position.x, bh*(0.25 + rnd()*0.65), b.position.z); st.rotation.y = -a; decor.add(st); }
+          }
           decor.add(b); towers.push({b, a, dist, bh, bw});
           // a stepped crown on some near towers
           if (!fogged && rnd() < 0.35){ const cr = new THREE.Mesh(BOX, mat); cr.scale.set(bw*0.6, bh*0.18, bw*0.6); cr.position.set(b.position.x, bh + bh*0.09, b.position.z); cr.rotation.y = -a; decor.add(cr); }
@@ -4152,12 +4238,26 @@ function makeR3(){
         const geo = new THREE.CylinderGeometry(0.4, 1.6, 80, 16, 1, true); geo.translate(0, 40, 0);
         const bm = new THREE.Mesh(geo, m); bm.position.set(cx + sx*(R + 12), 0, cz + sz*(R + 12)); decor.add(bm); DECOR.items.push({beam: bm, ph: rnd()*6});
       }
-      // rain: short falling streaks over the whole arena
-      const NR = 1400, rp = new Float32Array(NR*6), span = R + 8;
-      for (let i = 0; i < NR; i++){ const x = cx + (rnd()*2 - 1)*span, z = cz + (rnd()*2 - 1)*span, y = rnd()*24; rp.set([x, y, z, x - 0.05, y + 0.7, z], i*6); }
+      // rain: bright falling streaks over the whole arena, heaviest over the field itself
+      const NR = 3200, rp = new Float32Array(NR*6), span = R + 8;
+      for (let i = 0; i < NR; i++){ const near = i < NR*0.6, x = cx + (rnd()*2 - 1)*(near ? h : span), z = cz + (rnd()*2 - 1)*(near ? h : span), y = rnd()*20; rp.set([x, y, z, x - 0.08, y + 1.1, z], i*6); }
       const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(rp, 3));
-      const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({color: 0x9fd8ff, transparent: true, opacity: 0.35, depthWrite: false}));
-      rain.frustumCulled = false; decor.add(rain); DECOR.rain = rain; DECOR.city = {cx, cz};
+      const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({color: 0xd8f0ff, transparent: true, opacity: 0.7, depthWrite: false, fog: false, blending: THREE.AdditiveBlending}));
+      rain.frustumCulled = false; decor.add(rain); DECOR.rain = rain; DECOR.city = {cx, cz, h};
+      // splashes: little rings that pop on the floor where drops land
+      const ringTex = discTex(g => { g.strokeStyle = 'rgba(200,240,255,1)'; g.lineWidth = 14; g.beginPath(); g.arc(128, 128, 100, 0, Math.PI*2); g.stroke(); });
+      DECOR.splash = [];
+      for (let i = 0; i < 70; i++){
+        const m = new THREE.MeshBasicMaterial({map: ringTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0});
+        const sp = new THREE.Mesh(PLANE_GEO, m); sp.rotation.x = -Math.PI/2; sp.position.y = 0.02; decor.add(sp); DECOR.splash.push({sp, t: rnd()});
+      }
+      // wet street: neon reflections pooling on the floor, shimmering with the beat
+      const pud = ['#ff4fd8', '#5ff0ff', '#ffb347', '#9d7bff', '#2b8cff'];
+      for (let i = 0; i < 18; i++){
+        const m = new THREE.MeshBasicMaterial({map: glowTex, color: col(pud[i % pud.length]), transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending});
+        const pd = new THREE.Mesh(PLANE_GEO, m); pd.rotation.x = -Math.PI/2; pd.rotation.z = rnd()*Math.PI; pd.scale.set(2 + rnd()*4, 0.8 + rnd()*1.6, 1);
+        pd.position.set(cx + (rnd()*2 - 1)*(h - 2), 0.012, cz + (rnd()*2 - 1)*(h - 2)); decor.add(pd); DECOR.items.push({puddle: m, ph: rnd()*6});
+      }
     } else if (T.decor === 'reef'){
       // swaying kelp along the walls, light rays from above, and real bubbles rising in streams from vents
       const kelp = new THREE.MeshPhongMaterial({color: 0x2f9e5a, emissive: 0x0d3a20, flatShading: true, transparent: true, opacity: 0.9, side: THREE.DoubleSide});
@@ -4247,12 +4347,19 @@ function makeR3(){
         else if (it.sign) it.sign.opacity = it.flick && Math.sin(clock*13 + it.ph) > 0.93 ? 0.2 : 0.75 + 0.25*beat;
         else if (it.board){ it.board.opacity = 0.7 + 0.2*beat; it.board.map.offset.x = Math.sin(clock*0.05 + it.ph)*0.02; }
         else if (it.car){ const a = it.a0 + clock*it.sp; it.car.position.set(cx + Math.cos(a)*it.r, it.y + Math.sin(clock*0.7 + it.bob)*0.6, cz + Math.sin(a)*it.r); it.car.rotation.y = -a - Math.sign(it.sp)*Math.PI/2; }
+        else if (it.puddle) it.puddle.opacity = 0.14 + 0.16*beat + 0.05*Math.sin(clock*1.3 + it.ph);
         else if (it.beam){ it.beam.rotation.z = Math.sin(clock*0.35 + it.ph)*0.5; it.beam.rotation.x = Math.cos(clock*0.27 + it.ph)*0.4; it.beam.material.opacity = 0.2 + 0.25*beat; }
       }
       // rain falls and loops back to the top
-      const ps = DECOR.rain.geometry.attributes.position, a = ps.array, fall = dt*26;
-      for (let i = 0; i < a.length; i += 6){ a[i + 1] -= fall; a[i + 4] -= fall; a[i] -= fall*0.07; a[i + 3] -= fall*0.07; if (a[i + 1] < 0){ a[i + 1] += 24; a[i + 4] += 24; a[i] += 1.7; a[i + 3] += 1.7; } }
+      const ps = DECOR.rain.geometry.attributes.position, a = ps.array, fall = dt*30;
+      for (let i = 0; i < a.length; i += 6){ a[i + 1] -= fall; a[i + 4] -= fall; a[i] -= fall*0.07; a[i + 3] -= fall*0.07; if (a[i + 1] < 0){ a[i + 1] += 20; a[i + 4] += 20; a[i] += 1.4; a[i + 3] += 1.4; } }
       ps.needsUpdate = true;
+      const H = DECOR.city.h;
+      for (const sp of DECOR.splash){
+        sp.t += dt*2.2;
+        if (sp.t >= 1){ sp.t -= 1; sp.sp.position.x = cx + (Math.random()*2 - 1)*H; sp.sp.position.z = cz + (Math.random()*2 - 1)*H; }
+        const k = sp.t, sc = 0.1 + k*0.7; sp.sp.scale.set(sc, sc, 1); sp.sp.material.opacity = (1 - k)*0.7;
+      }
     }
     else if (k === 'reef'){
       for (const A of DECOR.anemones || []){
@@ -4290,7 +4397,7 @@ function makeR3(){
   function render(clock, dt){
     if (!G || !GFX.length) return;
     const beat = beatPulse(clock); BEAT = beat;
-    syncGems(clock); syncDyn(); tickDecor(clock, dt, beat);
+    syncGems(clock); syncDyn(); tickDecor(clock, dt, beat); tickTunnels(clock, dt, beat);
     // on each beat: the floor swells brighter and takes a soft wash of its grid color, the arena's edges flash, gems bop
     // the floor only swells on the downbeat (the first beat of each bar), and gently; gems and edges mark every beat
     const dn = Math.floor(beatClock(clock)) % 4 === 0 ? beat : 0;

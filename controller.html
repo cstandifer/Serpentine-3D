@@ -281,7 +281,7 @@ header{border-bottom:0;background:var(--holo) bottom/100% 1.5px no-repeat}
     </div>
   </section>
 </div>
-<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-23b</div>
+<div style="text-align:center;font-size:.6rem;color:#4a4660;padding:0 0 12px">controller 2026-10-24a</div>
 <div class="portrait-only">Turn your phone upright to steer.</div>
 
 <script>
@@ -550,7 +550,9 @@ const currentSteer = () => btnV || (SET.steer && motionReady ? tiltV : 0);
 function sendSteer(force){
   const v = Math.round(currentSteer()*100)/100, now = performance.now();
   // send on change, plus a keep-alive so the game knows the phone is still steering
-  if (force || Math.abs(v - lastSent) >= 0.02 || now - lastSentAt > 150){ send({t: 'steer', v}); lastSent = v; lastSentAt = now; }
+  // at most ~25 updates a second: tilt events arrive 60+ times a second, and a flood of steering messages on a
+  // shaky connection queues up ahead of a jump and makes the tap feel late
+  if (force || (now - lastSentAt > 40 && Math.abs(v - lastSent) >= 0.02) || now - lastSentAt > 150){ send({t: 'steer', v}); lastSent = v; lastSentAt = now; }
 }
 function onOrient(e){
   if (e.gamma == null) return;
