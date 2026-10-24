@@ -1074,7 +1074,7 @@ const THEMES = {
               hurdle: ['#ffd23f', '#b38a00'], pillar: ['#ff2a6d', '#8f0f3a'], wall: ['#2a0a24', '#12000f'], edge: '#ffcc33', gem: '#00e5ff',
               pillarShape: 'discoball', hurdleShape: 'soft', decor: 'disco'},
   // a light-cycle city: glowing towers and light bars, a neon wireframe skyline all around
-  electro:   {sky: ['#000510', '#002152'], fog: '#000a1a', fogNear: 12, fogFar: 52, floor: '#000510', grid: ['#00e5ff', '#0066ff'],
+  electro:   {sky: ['#000510', '#0b2350'], fog: '#06132a', fogNear: 9, fogFar: 46, floor: '#000510', grid: ['#00e5ff', '#0066ff'],
               hurdle: ['#e8fbff', '#7fd9ff'], pillar: ['#00e5ff', '#0066ff'], wall: ['#000a1a', '#000510'], edge: '#00e5ff', gem: '#ff4fd8',
               pillarShape: 'tower', hurdleShape: 'lightbar', decor: 'skyline'},
   // underwater: sandy floor, coral heads to steer around, low reef ridges to jump, drifting jellyfish, kelp, light rays and bubbles
@@ -4078,20 +4078,86 @@ function makeR3(){
         top.rotation.y = rnd()*Math.PI*2; DECOR.jibs.push({top, sp: (sx > 0 ? 1 : -1)*0.06});
       }
     } else if (T.decor === 'skyline'){
-      // a neon wireframe city all around the arena
-      const fill = new THREE.MeshBasicMaterial({color: 0x000814, fog: false}), glow = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.9, fog: false});
-      const win = new THREE.MeshBasicMaterial({color: col('#0066ff'), fog: false});
-      for (let i = 0; i < 46; i++){
-        const a = i/46*Math.PI*2 + rnd()*0.08, dist = R + 10 + rnd()*26, bh = 6 + rnd()*26, bw = 3 + rnd()*5;
-        const b = new THREE.Mesh(BOX, fill); b.scale.set(bw, bh, bw); b.position.set(cx + Math.cos(a)*dist, bh/2, cz + Math.sin(a)*dist); b.rotation.y = -a;
-        b.add(new THREE.LineSegments(EDGES, glow)); decor.add(b);
-        if (rnd() < 0.6){ const stripe = new THREE.Mesh(BOX, win); stripe.scale.set(bw*1.01, 0.25, bw*1.01); stripe.position.set(b.position.x, bh*(0.3 + rnd()*0.6), b.position.z); stripe.rotation.y = -a; decor.add(stripe); }
+      // a rainy neon megacity all around the arena: rings of dark towers full of lit windows, neon signs down their
+      // sides, a few giant glowing billboards, flying cars on their routes, sweeping search beams, and rain
+      const winTex = (() => {
+        const c = document.createElement('canvas'); c.width = 128; c.height = 256; const g = c.getContext('2d');
+        g.fillStyle = '#02050c'; g.fillRect(0, 0, 128, 256);
+        const lit = ['#ffb347', '#ffcf7a', '#5ff0ff', '#7fb6ff', '#ff6bd5'];
+        for (let y = 4; y < 256; y += 8) for (let x = 4; x < 128; x += 8){
+          const r = rnd(); if (r > 0.34) continue;
+          g.globalAlpha = 0.35 + rnd()*0.65; g.fillStyle = lit[r < 0.2 ? 0 : r < 0.26 ? 1 : r < 0.3 ? 2 : r < 0.32 ? 3 : 4]; g.fillRect(x, y, 4, 4);
+        }
+        g.globalAlpha = 1;
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
+      })();
+      const edge = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.55, fog: false});
+      const towerMat = (bw, bh) => { const t = winTex.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(bw/3)), Math.max(1, Math.round(bh/6))); t.offset.set(rnd(), rnd()); return new THREE.MeshBasicMaterial({map: t, fog: false}); };
+      const towers = [];
+      // three rings: near (tall, detailed), middle, and a far hazy wall of silhouettes
+      for (const [n, d0, d1, h0, h1, fogged] of [[34, R + 8, R + 20, 14, 46, false], [44, R + 22, R + 40, 10, 34, false], [56, R + 42, R + 70, 18, 60, true]]){
+        for (let i = 0; i < n; i++){
+          const a = i/n*Math.PI*2 + rnd()*0.07, dist = d0 + rnd()*(d1 - d0), bh = h0 + rnd()*(h1 - h0), bw = 3 + rnd()*6;
+          const mat = fogged ? new THREE.MeshBasicMaterial({color: 0x050a18, fog: false}) : towerMat(bw, bh);
+          const b = new THREE.Mesh(BOX, mat); b.scale.set(bw, bh, bw); b.position.set(cx + Math.cos(a)*dist, bh/2, cz + Math.sin(a)*dist); b.rotation.y = -a;
+          if (!fogged && rnd() < 0.5) b.add(new THREE.LineSegments(EDGES, edge));
+          decor.add(b); towers.push({b, a, dist, bh, bw});
+          // a stepped crown on some near towers
+          if (!fogged && rnd() < 0.35){ const cr = new THREE.Mesh(BOX, mat); cr.scale.set(bw*0.6, bh*0.18, bw*0.6); cr.position.set(b.position.x, bh + bh*0.09, b.position.z); cr.rotation.y = -a; decor.add(cr); }
+          // aircraft warning light on top
+          if (!fogged && rnd() < 0.45){ const l = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: 0xff3344, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending})); l.scale.set(1.6, 1.6, 1); l.position.set(b.position.x, bh + 0.6, b.position.z); decor.add(l); DECOR.items.push({blink: l, ph: rnd()*6}); }
+        }
       }
-      // search beams at the corners, bright enough to read
+      // neon signs: tall glowing strips down the sides of near towers, with blocky made-up lettering
+      const neon = ['#ff4fd8', '#5ff0ff', '#ffb347', '#ff3b6b', '#9d7bff'];
+      const signTex = color => {
+        const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+        g.fillStyle = 'rgba(0,0,0,0)'; g.clearRect(0, 0, 64, 256);
+        g.strokeStyle = color; g.lineWidth = 5; g.strokeRect(4, 4, 56, 248);
+        g.fillStyle = color;
+        for (let y = 18; y < 236; y += 34){ const k = Math.floor(rnd()*4); g.fillRect(16, y, 32, 5); if (k & 1) g.fillRect(16, y, 5, 22); if (k & 2) g.fillRect(43, y + 8, 5, 18); g.fillRect(16 + (k === 3 ? 0 : 12), y + 17, 20, 5); }
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+      };
+      for (const t of towers.slice(0, 34)) if (rnd() < 0.55){
+        const color = neon[Math.floor(rnd()*neon.length)], hgt = Math.min(t.bh*0.55, 6 + rnd()*10);
+        const m = new THREE.MeshBasicMaterial({map: signTex(color), transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide});
+        const sg = new THREE.Mesh(PLANE_GEO, m); sg.scale.set(hgt*0.25, hgt, 1);
+        const face = t.dist - t.bw/2 - 0.1;   // the side facing the arena
+        sg.position.set(cx + Math.cos(t.a)*face, t.bh*(0.35 + rnd()*0.4), cz + Math.sin(t.a)*face);
+        sg.lookAt(cx, sg.position.y, cz); decor.add(sg); DECOR.items.push({sign: m, ph: rnd()*10, flick: rnd() < 0.3});
+      }
+      // a few giant billboards that slowly shift color, high up between towers
+      for (let k = 0; k < 4; k++){
+        const a = (k + 0.5)/4*Math.PI*2 + 0.3, dist = R + 24;
+        const c = document.createElement('canvas'); c.width = 256; c.height = 144; const g = c.getContext('2d');
+        const gr = g.createLinearGradient(0, 0, 256, 144); gr.addColorStop(0, neon[k % 5]); gr.addColorStop(1, neon[(k + 2) % 5]); g.fillStyle = gr; g.fillRect(0, 0, 256, 144);
+        g.fillStyle = 'rgba(0,0,0,.35)'; for (let y = 0; y < 144; y += 4) g.fillRect(0, y, 256, 1);
+        g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(80, 72, 34, 0, Math.PI*2); g.fill(); g.fillRect(140, 46, 90, 10); g.fillRect(140, 66, 70, 10); g.fillRect(140, 86, 80, 10);
+        const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.MeshBasicMaterial({map: tx, transparent: true, opacity: 0.85, fog: false, side: THREE.DoubleSide});
+        const bb = new THREE.Mesh(PLANE_GEO, m); bb.scale.set(16, 9, 1); bb.position.set(cx + Math.cos(a)*dist, 26 + rnd()*8, cz + Math.sin(a)*dist); bb.lookAt(cx, bb.position.y, cz); decor.add(bb);
+        DECOR.items.push({board: m, ph: k*1.7});
+      }
+      // flying cars: little dark bodies with white headlights and a red tail light, looping on routes over the city
+      for (let k = 0; k < 9; k++){
+        const car = new THREE.Group(), body = new THREE.Mesh(BOX, new THREE.MeshBasicMaterial({color: 0x111822, fog: false})); body.scale.set(1.6, 0.4, 0.7); car.add(body);
+        const head = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: 0xfff4d6, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending})); head.scale.set(1.4, 1.4, 1); head.position.x = 0.9; car.add(head);
+        const tail = new THREE.Sprite(new THREE.SpriteMaterial({map: glowTex, color: 0xff2a3c, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending})); tail.scale.set(0.9, 0.9, 1); tail.position.x = -0.9; car.add(tail);
+        decor.add(car);
+        DECOR.items.push({car, r: R + 6 + rnd()*30, y: 9 + rnd()*16, sp: (0.04 + rnd()*0.05)*(rnd() < 0.5 ? 1 : -1), a0: rnd()*Math.PI*2, bob: rnd()*6});
+      }
+      // search beams sweeping from the corners
       for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]){
-        const m = new THREE.MeshBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false});
-        const bm = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.3, 70, 16, 1, true), m); bm.position.set(cx + sx*(R + 3), 35, cz + sz*(R + 3)); decor.add(bm); DECOR.items.push(bm);
+        const m = new THREE.MeshBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false});
+        const geo = new THREE.CylinderGeometry(0.4, 1.6, 80, 16, 1, true); geo.translate(0, 40, 0);
+        const bm = new THREE.Mesh(geo, m); bm.position.set(cx + sx*(R + 12), 0, cz + sz*(R + 12)); decor.add(bm); DECOR.items.push({beam: bm, ph: rnd()*6});
       }
+      // rain: short falling streaks over the whole arena
+      const NR = 1400, rp = new Float32Array(NR*6), span = R + 8;
+      for (let i = 0; i < NR; i++){ const x = cx + (rnd()*2 - 1)*span, z = cz + (rnd()*2 - 1)*span, y = rnd()*24; rp.set([x, y, z, x - 0.05, y + 0.7, z], i*6); }
+      const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+      const rain = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({color: 0x9fd8ff, transparent: true, opacity: 0.35, depthWrite: false}));
+      rain.frustumCulled = false; decor.add(rain); DECOR.rain = rain; DECOR.city = {cx, cz};
     } else if (T.decor === 'reef'){
       // swaying kelp along the walls, light rays from above, and real bubbles rising in streams from vents
       const kelp = new THREE.MeshPhongMaterial({color: 0x2f9e5a, emissive: 0x0d3a20, flatShading: true, transparent: true, opacity: 0.9, side: THREE.DoubleSide});
@@ -4174,7 +4240,20 @@ function makeR3(){
       for (const j of DECOR.jibs) j.top.rotation.y += j.sp*dt;
       const on = Math.floor(clock*1.5) % 2 === 0; for (const l of DECOR.lights) l.visible = on;
     }
-    else if (k === 'skyline') DECOR.items.forEach((b, i) => { b.material.opacity = 0.3 + 0.45*beat*((i % 2) ? 1 : 0.7); b.rotation.z = Math.sin(clock*0.4 + i)*0.12; });
+    else if (k === 'skyline'){
+      const {cx, cz} = DECOR.city;
+      for (const it of DECOR.items){
+        if (it.blink) it.blink.material.opacity = Math.sin(clock*2.4 + it.ph) > 0.6 ? 1 : 0.15;
+        else if (it.sign) it.sign.opacity = it.flick && Math.sin(clock*13 + it.ph) > 0.93 ? 0.2 : 0.75 + 0.25*beat;
+        else if (it.board){ it.board.opacity = 0.7 + 0.2*beat; it.board.map.offset.x = Math.sin(clock*0.05 + it.ph)*0.02; }
+        else if (it.car){ const a = it.a0 + clock*it.sp; it.car.position.set(cx + Math.cos(a)*it.r, it.y + Math.sin(clock*0.7 + it.bob)*0.6, cz + Math.sin(a)*it.r); it.car.rotation.y = -a - Math.sign(it.sp)*Math.PI/2; }
+        else if (it.beam){ it.beam.rotation.z = Math.sin(clock*0.35 + it.ph)*0.5; it.beam.rotation.x = Math.cos(clock*0.27 + it.ph)*0.4; it.beam.material.opacity = 0.2 + 0.25*beat; }
+      }
+      // rain falls and loops back to the top
+      const ps = DECOR.rain.geometry.attributes.position, a = ps.array, fall = dt*26;
+      for (let i = 0; i < a.length; i += 6){ a[i + 1] -= fall; a[i + 4] -= fall; a[i] -= fall*0.07; a[i + 3] -= fall*0.07; if (a[i + 1] < 0){ a[i + 1] += 24; a[i + 4] += 24; a[i] += 1.7; a[i + 3] += 1.7; } }
+      ps.needsUpdate = true;
+    }
     else if (k === 'reef'){
       for (const A of DECOR.anemones || []){
         for (const s2 of A.sways){ s2.g.rotation.x = Math.sin(clock*s2.sp + s2.ph)*0.16; s2.g.rotation.z = Math.cos(clock*s2.sp*0.8 + s2.ph)*0.16; }
