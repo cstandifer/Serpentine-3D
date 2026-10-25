@@ -1358,7 +1358,7 @@ function loadWorld(cfg){
     goal: cfg.mode === 3 ? teamGoal(S.goal, n) : (S.goal || 0), teamGems: 0, teamLives: LIVES + n - 1,
     minGems: party && (cfg.rule === 'tag' || cfg.rule === 'shrink') ? 0 : Math.round(MIN_GEMS*Math.max(1, n/2)),
     particles: [], shake: 0, deadT: 0, cause: '',
-    rule: party ? cfg.rule || 'gems' : '', it: party && cfg.rule === 'tag' ? cfg.seed % n : -1, itAt: -9, warm: !!cfg.warm, coach: {}
+    rule: party ? cfg.rule || 'gems' : '', it: party && cfg.rule === 'tag' ? cfg.seed % n : -1, itAt: -9, noBack: -1, warm: !!cfg.warm, coach: {}
   };
   G.walls = (typeof S.walls === 'function' ? S.walls(half) : S.walls).map(clipWall).filter(Boolean);
   // shrink closes in on the middle of the room, so the middle (where the last snakes end up) is kept clear
@@ -1726,13 +1726,27 @@ function collide(){
   if (state === 'play' && CUR.alive && !G.air && hitsTail()) die('tail');
 }
 // tag: snakes pass through each other, and touching It (or being It and touching someone) passes It along
-const TAG_COOL = 2;   // seconds after a tag before It can be passed again (no instant tag-backs)
+const TAG_COOL = 2;   // seconds after a tag before It can be passed again
+// no tagbacks: whoever just made you It is off limits until you tag someone else. With only two snakes there's
+// nobody else to tag, so there it wears off after a few seconds.
+const NOBACK_2P = 5;
+const noBackOn = i => G.rule === 'tag' && i === G.noBack && i >= 0 && (PL.length > 2 || G.t - G.itAt < NOBACK_2P);
 function tagContact(){
   if (G.t - G.itAt < TAG_COOL) return;
   for (const q of PL){
     if (q === CUR || !q.alive || q.air) continue;
     if (CUR.i !== G.it && q.i !== G.it) continue;
-    if (Math.hypot(q.x - G.x, q.y - G.y) < 0.6 || hitsBody(q)){ requestTag(CUR.i === G.it ? q.i : CUR.i); return; }
+    if (Math.hypot(q.x - G.x, q.y - G.y) < 0.6 || hitsBody(q)){
+      const to = CUR.i === G.it ? q.i : CUR.i;
+      if (noBackOn(to)){
+        // say so on the screen of whoever is here: It is told it can't, the one It touched is told they're safe
+        const now = performance.now(), who = CUR;
+        if (!(who.banner && who.banner.nb && now < who.banner.until)) who.banner = {txt: CUR.i === G.it ? 'No tagbacks!' : 'Safe. No tagbacks', it: false, nb: true, until: now + 1400};
+        lastHud = '';
+        return;
+      }
+      requestTag(to); return;
+    }
   }
 }
 function requestTag(to){
@@ -1752,12 +1766,12 @@ function crashTag(p){
   p.banner = {txt: 'Crashed. You’re it!', it: true, until: performance.now() + 2200};
 }
 function doTag(to, crashed){
-  if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && G.t - G.itAt < TAG_COOL)) return;
-  const from = G.it; G.it = to; G.itAt = G.t;
+  if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && (G.t - G.itAt < TAG_COOL || noBackOn(to)))) return;
+  const from = G.it; G.it = to; G.itAt = G.t; G.noBack = from;
   const p = PL[to]; itMoment(from, to); sfxTag();
   phoneSend({t: 'buzz', p: [60, 40, 60]}, to); phoneSend({t: 'buzz', p: 20}, from);
   if (ownSnake(p)) haptic([60, 40, 60]);
-  toScreens({t: 'it', it: to, at: G.itAt});
+  toScreens({t: 'it', it: to, at: G.itAt, nb: from});
 }
 // a tag: a pink shockwave where it happened, and big words on both players' views
 function itMoment(from, to){
@@ -2046,7 +2060,7 @@ function aiRuleTarget(p, sk){
       // It: chase the nearest snake it's allowed to tag, aiming a little ahead of where it's going
       let best = null, bd = Infinity;
       for (const q of PL){
-        if (q === p || !q.alive || q.hold > 0) continue;
+        if (q === p || !q.alive || q.hold > 0 || noBackOn(q.i)) continue;   // never the one it can't tag back
         const d = Math.hypot(q.x - G.x, q.y - G.y);
         if (d < bd){ bd = d; best = q; }
       }
@@ -5302,7 +5316,7 @@ function onHost(m){
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Team and you'll join.");
   else if (m.t === 'start') clientStart(m);
   else if (m.t === 'w'){ if (G && state !== 'menu') applyWorld(m); }
-  else if (m.t === 'it'){ if (G && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
+  else if (m.t === 'it'){ if (G && typeof m.nb === 'number') G.noBack = m.nb; if (G && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
   else if (m.t === 'gem'){ if (G && state !== 'menu') applyGem(m); }
   else if (m.t === 'phase') applyPhase(m);
 }
@@ -5326,6 +5340,7 @@ function clientStart(m){
   begin();
 }
 function applyWorld(m){
+  if (typeof m.nb === 'number' && G) G.noBack = m.nb;
   if (typeof m.it === 'number' && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } }
   if (m.pt) m.pt.forEach((v, i) => { if (PL[i]) PL[i].pts = v; });
   if (typeof m.cd === 'number' && state === 'play'){
@@ -5382,7 +5397,7 @@ function netTick(now){
   }
   if (MODE === 1 || state === 'menu' || !G || !screens().length) return;
   toScreens({t: 'w', tt: r2(G.t), left: r2(G.left), tl: G.teamLives, tg: G.teamGems, mp: songPos(), cd: r2(countdownLeft()),
-    it: G.it, pt: endless() ? PL.map(p => Math.round((p.pts || 0)*10)/10) : undefined,
+    it: G.it, nb: G.noBack, pt: endless() ? PL.map(p => Math.round((p.pts || 0)*10)/10) : undefined,
     ps: PL.map(p => p.local ? posOf(p) : p.netRaw || null), gm: PL.map(p => p.gems)});
 }
 
@@ -5431,13 +5446,14 @@ function updateHUD(){
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     const out = localHumansOut(); $('mpOut').hidden = !out; document.body.classList.toggle('out', out);   // out: no jump hint behind the note
-    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, noBackOn(G.noBack) ? G.noBack : -1, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
     if (key === lastHud) return;
     lastHud = key;
     if (MODE === 2){
       const clock = `<span class="clock${left <= 10 && state === 'play' ? ' hurry' : ''}">${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}</span>`;
       let extra = '';
-      if (G.rule === 'tag' && PL[G.it]){ const me = ROLE === 'client' ? G.it === ME : vs.length === 1 && vs[0] === G.it; extra = `<span class="rulenote it"><span class="sw" style="background:${PL[G.it].look.color}"></span>${me ? 'You’re it! Tag someone' : esc(playerName(G.it)) + ' is it'}</span>`; }
+      if (G.rule === 'tag' && PL[G.it]){ const me = ROLE === 'client' ? G.it === ME : vs.length === 1 && vs[0] === G.it; const nb = noBackOn(G.noBack) ? ` · no tagbacks on ${esc(playerName(G.noBack))}` : '';
+        extra = `<span class="rulenote it"><span class="sw" style="background:${PL[G.it].look.color}"></span>${me ? 'You’re it! Tag someone' : esc(playerName(G.it)) + ' is it'}${nb}</span>`; }
       if (G.rule === 'shrink'){ const left2 = PL.filter(p => p.alive || p.lives > 0).length, closing = zoneR(G.t + 0.2) < zoneR(G.t) - 0.001; extra = `<span class="rulenote it">${closing ? 'Closing in · ' : ''}${left2} left</span>`; }
       $('mpTop').innerHTML = clock + extra;
     } else {
@@ -5512,7 +5528,7 @@ $('modePick').style.setProperty('--n', 2);
 buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>${RULES[k].name}</b><small>${RULES[k].sub}</small>`})), v => { RULE = v; store.set('rule', v); refreshMenu(); });
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
-  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Crash with It close behind you and you become It, so no crashing your way out.',
+  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. No tagbacks: you can’t tag the snake that just got you. Every second you’re not It scores. Crash with It close behind you and you become It, so no crashing your way out.',
   shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
