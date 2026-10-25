@@ -1036,7 +1036,7 @@ const COURSES = [
    walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
   {name: 'Crossroads', base: 19, music: 'techno', ...lv('#ffffff', 120, ['#ffe94d', '#ff6b3d', '#ff4fd8']),
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
-  {name: 'Pinball', base: 19, music: 'swing', movers: 1.4, split: true, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
+  {name: 'Pinball', base: 19, music: 'electro', movers: 1.4, split: true, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
    walls: h => { const st = Math.round(h/3), sz = Math.max(2, Math.round(st/3)), w = []; for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if (i || j) w.push(block(i*st - 1, j*st - 1, sz, sz)); return w; }},
   // the library, like level 9: a wide hall across the middle with bookcase rooms above and below it, scaled to the
   // arena (which grows with the number of players)
