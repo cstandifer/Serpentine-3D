@@ -382,6 +382,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 @keyframes itpulse{50%{box-shadow:inset 0 0 0 4px #ff4fd8,inset 0 0 100px rgba(255,79,216,.25)}}
 .vbig{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(2rem,6.5vw,5rem);text-transform:uppercase;color:var(--cream);text-shadow:0 4px 24px rgba(0,0,0,.7);animation:vbig .5s cubic-bezier(.2,1.6,.4,1)}
 .vbig.it{color:#ff4fd8}
+.vbig small{display:block;margin-top:.3em;font-size:.32em;letter-spacing:.04em;color:var(--cream)}
 @keyframes vbig{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){.vbig,.itframe{animation:none}}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
@@ -1767,7 +1768,7 @@ function tagContact(){
       if (noBackOn(to)){
         // say so on the screen of whoever is here: It is told it can't, the one It touched is told they're safe
         const now = performance.now(), who = CUR;
-        if (!(who.banner && who.banner.nb && now < who.banner.until)) who.banner = {txt: CUR.i === G.it ? 'No tagbacks!' : 'Safe. No tagbacks', it: false, nb: true, until: now + 1400};
+        if (!(who.banner && who.banner.nb && now < who.banner.until)) who.banner = CUR.i === G.it ? {txt: 'No tagbacks!', sub: `${playerName(to)} just tagged you`, it: false, nb: true, until: now + 1600} : {txt: 'Safe', sub: 'No tagbacks', it: false, nb: true, until: now + 1400};
         lastHud = '';
         return;
       }
@@ -1789,7 +1790,7 @@ function crashTag(p){
   const it = PL[G.it], itX = it === CUR ? G.x : it.x, itY = it === CUR ? G.y : it.y, px = p === CUR ? G.x : p.x, py = p === CUR ? G.y : p.y;
   if (!it.alive || Math.hypot(itX - px, itY - py) > CRASH_TAG_R) return;
   doTag(p.i, true);
-  p.banner = {txt: 'Crashed. You’re it!', it: true, until: performance.now() + 2200};
+  p.banner = {txt: 'Crashed. You’re it!', sub: PL.length > 2 && G.noBack >= 0 ? `No tagbacks on ${playerName(G.noBack)}` : '', it: true, until: performance.now() + 2600};
 }
 function doTag(to, crashed){
   if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && (G.t - G.itAt < TAG_COOL || noBackOn(to)))) return;
@@ -1802,7 +1803,7 @@ function doTag(to, crashed){
 // a tag: a pink shockwave where it happened, and big words on both players' views
 function itMoment(from, to){
   const p = PL[to], q = PL[from], now = performance.now();
-  if (p){ p.banner = {txt: 'You’re it!', it: true, until: now + 1800}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
+  if (p){ p.banner = {txt: 'You’re it!', sub: q && q !== p && PL.length > 2 ? `No tagbacks on ${playerName(from)}` : '', it: true, until: now + 2600}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
   if (q && q !== p) q.banner = {txt: 'Not it!', it: false, until: now + 1400};
   lastHud = '';
 }
@@ -5472,14 +5473,13 @@ function updateHUD(){
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
     const out = localHumansOut(); $('mpOut').hidden = !out; document.body.classList.toggle('out', out);   // out: no jump hint behind the note
-    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, noBackOn(G.noBack) ? G.noBack : -1, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
+    const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt + (p.banner.sub || '') : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
     if (key === lastHud) return;
     lastHud = key;
     if (MODE === 2){
       const clock = `<span class="clock${left <= 10 && state === 'play' ? ' hurry' : ''}">${Math.floor(left/60)}:${String(left % 60).padStart(2, '0')}</span>`;
       let extra = '';
-      if (G.rule === 'tag' && PL[G.it]){ const me = ROLE === 'client' ? G.it === ME : vs.length === 1 && vs[0] === G.it; const nb = noBackOn(G.noBack) ? ` · no tagbacks on ${esc(playerName(G.noBack))}` : '';
-        extra = `<span class="rulenote it"><span class="sw" style="background:${PL[G.it].look.color}"></span>${me ? 'You’re it! Tag someone' : esc(playerName(G.it)) + ' is it'}${nb}</span>`; }
+      if (G.rule === 'tag' && PL[G.it]){ const me = ROLE === 'client' ? G.it === ME : vs.length === 1 && vs[0] === G.it; extra = `<span class="rulenote it"><span class="sw" style="background:${PL[G.it].look.color}"></span>${me ? 'You’re it! Tag someone' : esc(playerName(G.it)) + ' is it'}</span>`; }
       if (G.rule === 'shrink'){ const left2 = PL.filter(p => p.alive || p.lives > 0).length, closing = zoneR(G.t + 0.2) < zoneR(G.t) - 0.001; extra = `<span class="rulenote it">${closing ? 'Closing in · ' : ''}${left2} left</span>`; }
       $('mpTop').innerHTML = clock + extra;
     } else {
@@ -5506,7 +5506,7 @@ function updateHUD(){
       const side = r.x + r.w/2 > innerWidth/2 + 1 ? `right:${innerWidth - r.x - r.w + 12}px` : `left:${r.x + 12}px`;
       const bn = p.banner && performance.now() < p.banner.until ? p.banner : null;
       const frame = G.rule === 'tag' && i === G.it && state === 'play' ? `<div class="itframe" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"></div>` : '';
-      const big = bn ? `<div class="vbig${bn.it ? ' it' : ''}" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.3}px">${bn.txt}</div>` : '';
+      const big = bn ? `<div class="vbig${bn.it ? ' it' : ''}" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.3}px">${bn.txt}${bn.sub ? `<small>${esc(bn.sub)}</small>` : ''}</div>` : '';
       return frame + big + (vs.length > 1 ? `<div class="vtag" style="${side};top:${r.y + r.h - 40}px"><span class="sw" style="background:${p.look.color}"></span>${esc(playerName(i))}</div>` : '') +
         (msg ? `<div class="vmsg" style="left:${r.x + r.w/2}px;top:${r.y + r.h*0.42}px">${msg}</div>` : '');
     }).join('');
