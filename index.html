@@ -298,7 +298,12 @@ body.here #pauseBtn svg{width:26px;height:26px}
 .slot i{width:18px;height:6px;background:var(--sw)}
 @keyframes slotIn{0%{transform:scale(.85);opacity:0}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.slot.full{animation:none}}
-.sways{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px}
+.sways{display:grid;grid-template-columns:1.7fr 1fr;gap:12px}
+/* the first way: the QR and the typed code side by side in one card */
+.sway.join .pair{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;justify-items:start;text-align:left;width:100%}
+.sway.join .or{display:grid;gap:6px;justify-items:start}
+.sway.join .orline{font-family:var(--wide);font-weight:900;text-transform:uppercase;font-size:.7rem;color:var(--cream)}
+.sway.join .code{padding:0}
 .sway{border:1.5px solid var(--rule-soft);padding:16px;display:grid;gap:10px;align-content:start;justify-items:center;text-align:center}
 .sway b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem}
 .sway span{font-size:.72rem;line-height:1.5;color:var(--muted)}
@@ -317,8 +322,10 @@ body.here #pauseBtn svg{width:26px;height:26px}
   .slots{grid-template-columns:repeat(min(var(--n),4),1fr)}
   .sways{grid-template-columns:1fr}
   .sway{padding:12px}
-  .sway .qr{width:130px;height:130px}
-  .sway .code{font-size:2rem;padding:6px 0 2px}
+  .sway .qr{width:104px;height:104px;padding:5px}
+  .sway .code{font-size:1.8rem;padding:0}
+  .sway.join .pair{gap:12px}
+  .sway .n{display:none}
   #sheetGo{justify-self:stretch;min-width:0}
 }
 /* a touch screen has no keyboard to share, so skip that tip there */
@@ -598,9 +605,13 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   </div>
   <div class="slots" id="sheetSlots"></div>
   <div class="sways">
-    <div class="sway"><span class="n">1</span><b>Scan with a phone</b><div class="qr off" id="qr4" aria-hidden="true"></div><span>Play on your own phone, or use it as a controller on this screen.</span></div>
-    <div class="sway"><span class="n">2</span><b>Laptop or tablet</b><div class="code" id="sheetCode">····</div><span id="sheetCodeHow"></span></div>
-    <div class="sway"><span class="n">3</span><b>On this screen</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span class="kbtip">Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
+    <div class="sway join"><span class="n">1</span><b>From another device</b>
+      <div class="pair">
+        <div class="qr off" id="qr4" aria-hidden="true"></div>
+        <div class="or"><span>Phone: scan the code to play on it, or use it as a controller here.</span><span class="orline">or</span><div class="code" id="sheetCode">····</div><span id="sheetCodeHow"></span></div>
+      </div>
+    </div>
+    <div class="sway"><span class="n">2</span><b>On this screen</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span class="kbtip">Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
   </div>
   <button class="btn" id="sheetGo">Start</button>
 </section>
@@ -2157,7 +2168,7 @@ function renderSheet(){
   const ok = n >= lo && n <= hi, mode = MODE === 3 ? 'Team' : 'Party';
   $('sheetStatus').classList.toggle('ok', ok);
   $('sheetStatus').textContent = ok ? `${n} in. ${n < hi ? `Up to ${hi - n} more can join, or start now.` : 'The game is full.'}`
-    : n > hi ? `${mode} takes ${lo} to ${hi}. Remove ${n - hi} on the menu.` : `${mode} needs ${lo - n} more player${lo - n === 1 ? '' : 's'}. Use any of the three ways below.`;
+    : n > hi ? `${mode} takes ${lo} to ${hi}. Remove ${n - hi} on the menu.` : `${mode} needs ${lo - n} more player${lo - n === 1 ? '' : 's'}. Add them below.`;
   $('sheetGo').textContent = ok ? `Start with ${n} players` : `Waiting for ${lo - n > 0 ? lo - n + ' more' : 'fewer players'}`;
   $('sheetGo').classList.toggle('waiting', !ok);
   $('sheetMe').textContent = $('addLocal').textContent; $('sheetMe').disabled = $('addLocal').disabled;
