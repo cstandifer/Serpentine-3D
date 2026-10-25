@@ -1032,8 +1032,10 @@ const STAGES = [
 // an open floor with nothing on it: each step of the warm-up puts out only the one thing it's teaching
 const WARMUP = {name: 'Warm-up', goal: 4, half: 14, music: 'lofi', ...lv('#ffffff', 20), clutter: 0, walls: []};
 const COURSES = [
-  {name: 'Block Party', base: 18, music: 'chiptune', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),   // level 3's bright platformer world
-   walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
+  // level 3's bright platformer world and its corridor walls, scaled to the room
+  {name: 'Block Party', base: 19, music: 'chiptune', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),
+   walls: h => { const k = h/21, r = v => Math.round(v*k), L = r(14), y = r(8), st = r(17);
+     return [block(-st, -y, L, 1), block(st - L, -y, L, 1), block(-st, y, L, 1), block(st - L, y, L, 1), block(-1, -st, 2, r(5)), block(-1, st - r(5) + 1, 2, r(5))]; }},
   {name: 'Crossroads', base: 19, music: 'techno', ...lv('#ffffff', 120, ['#ffe94d', '#ff6b3d', '#ff4fd8']),
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
   {name: 'Pinball', base: 19, music: 'electro', movers: 1.4, split: true, ...lv('#ffffff', 210, ['#7dff5a', '#5ff0ff', '#8a7bff']),
