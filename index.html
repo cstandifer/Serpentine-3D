@@ -1738,9 +1738,14 @@ function requestTag(to){
   if (G.tagAsked && G.t - G.tagAsked < 0.5) return;
   G.tagAsked = G.t; netSend({t: 'tag', from: G.it, to});
 }
-// tag: crashing isn't a way out. A snake that crashes while it isn't It becomes It.
+// tag: crashing isn't a way out. A snake that crashes with It close behind becomes It (otherwise the respawn would
+// whisk it away for free). A crash anywhere else just costs the time spent out, so in a big, crashy game It doesn't
+// bounce around the room every time someone clips a wall.
+const CRASH_TAG_R = 7;
 function crashTag(p){
   if (ROLE !== 'host' || !G || G.rule !== 'tag' || p.i === G.it || !PL[G.it]) return;
+  const it = PL[G.it], itX = it === CUR ? G.x : it.x, itY = it === CUR ? G.y : it.y, px = p === CUR ? G.x : p.x, py = p === CUR ? G.y : p.y;
+  if (!it.alive || Math.hypot(itX - px, itY - py) > CRASH_TAG_R) return;
   doTag(p.i, true);
   p.banner = {txt: 'Crashed. You’re it!', it: true, until: performance.now() + 2200};
 }
@@ -5487,7 +5492,7 @@ $('modePick').style.setProperty('--n', 2);
 buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>${RULES[k].name}</b><small>${RULES[k].sub}</small>`})), v => { RULE = v; store.set('rule', v); refreshMenu(); });
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
-  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Crash into a wall or obstacle and you become It, so no crashing your way out.',
+  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Crash with It close behind you and you become It, so no crashing your way out.',
   shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
