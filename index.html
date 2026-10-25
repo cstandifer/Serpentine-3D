@@ -1032,7 +1032,7 @@ const STAGES = [
 // an open floor with nothing on it: each step of the warm-up puts out only the one thing it's teaching
 const WARMUP = {name: 'Warm-up', goal: 4, half: 14, music: 'lofi', ...lv('#ffffff', 20), clutter: 0, walls: []};
 const COURSES = [
-  {name: 'Neon Bowl', base: 18, music: 'synthwave', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),
+  {name: 'Block Party', base: 18, music: 'chiptune', ...lv('#ffffff', 30, ['#5ff0ff', '#8a7bff', '#ff4fd8']),   // level 3's bright platformer world
    walls: h => { const c = Math.round(h*0.14); return [block(-c, -c, 2*c, 2*c)]; }},
   {name: 'Crossroads', base: 19, music: 'techno', ...lv('#ffffff', 120, ['#ffe94d', '#ff6b3d', '#ff4fd8']),
    walls: h => { const a = Math.round(h*0.25), b = Math.round(h*0.68), w = b - a; return [block(a, a, w, w), block(-b, a, w, w), block(a, -b, w, w), block(-b, -b, w, w)]; }},
@@ -1738,8 +1738,14 @@ function requestTag(to){
   if (G.tagAsked && G.t - G.tagAsked < 0.5) return;
   G.tagAsked = G.t; netSend({t: 'tag', from: G.it, to});
 }
-function doTag(to){
-  if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || G.t - G.itAt < TAG_COOL) return;
+// tag: crashing isn't a way out. A snake that crashes while it isn't It becomes It.
+function crashTag(p){
+  if (ROLE !== 'host' || !G || G.rule !== 'tag' || p.i === G.it || !PL[G.it]) return;
+  doTag(p.i, true);
+  p.banner = {txt: 'Crashed. You’re it!', it: true, until: performance.now() + 2200};
+}
+function doTag(to, crashed){
+  if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && G.t - G.itAt < TAG_COOL)) return;
   const from = G.it; G.it = to; G.itAt = G.t;
   const p = PL[to]; itMoment(from, to); sfxTag();
   phoneSend({t: 'buzz', p: [60, 40, 60]}, to); phoneSend({t: 'buzz', p: 20}, from);
@@ -1924,7 +1930,7 @@ function applyPos(i, m){
     Object.assign(p, {x: m.x, y: m.y, th: m.th, sinceP: 0, air: false, trail: [{x: m.x, y: m.y, air: false}]});
     if (R3) R3.snap(i);
   }
-  if (p.alive && !m.al){ p.alive = false; burst(p.x, p.y, p.look.color, 20, 5); }
+  if (p.alive && !m.al){ p.alive = false; burst(p.x, p.y, p.look.color, 20, 5); crashTag(p); }
   else if (!p.alive && m.al) p.alive = true;
 }
 const r2 = v => Math.round(v*100)/100;
@@ -2180,6 +2186,7 @@ function dieP(p, cause){
   if (!p.alive) return;
   const cur = p === CUR, x = cur ? G.x : p.x, y = cur ? G.y : p.y;
   p.alive = false; p.cause = cause;
+  crashTag(p);
   if (endless()) p.lives++;   // tag: a crash costs time, never a life
   p.respawnT = 0.9;   // a moment to see the crash, then the snake reappears at its new spot and counts down there
   p.lives--;
@@ -5480,7 +5487,7 @@ $('modePick').style.setProperty('--n', 2);
 buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>${RULES[k].name}</b><small>${RULES[k].sub}</small>`})), v => { RULE = v; store.set('rule', v); refreshMenu(); });
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
-  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Walls and obstacles still knock you back for a moment.',
+  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. Every second you’re not It scores. Crash into a wall or obstacle and you become It, so no crashing your way out.',
   shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){

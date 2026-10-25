@@ -66,9 +66,9 @@ Computer snakes can fill any open seat in party and tag team. They play at the d
 
 | Room | World | Song |
 |---|---|---|
-| Neon Bowl | Outrun sunset | Static Heart |
+| Block Party | Bright platformer (level 3) | The Return Of The 8-bit Era |
 | Crossroads | Warehouse rave | Vampire Night |
-| Pinball | Neon light-cycle city | 20s swing rave, dferun |
+| Pinball | Rainy neon city split by a highway, two tunnels across | Hard Cyberpunk |
 | Night Market | Deep space | Interstellar |
 
 All recorded songs are from [Pixabay](https://pixabay.com/music/) under the Pixabay Content License.
