@@ -382,7 +382,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
 @keyframes itpulse{50%{box-shadow:inset 0 0 0 4px #ff4fd8,inset 0 0 100px rgba(255,79,216,.25)}}
 .vbig{position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:clamp(2rem,6.5vw,5rem);text-transform:uppercase;color:var(--cream);text-shadow:0 4px 24px rgba(0,0,0,.7);animation:vbig .5s cubic-bezier(.2,1.6,.4,1)}
 .vbig.it{color:#ff4fd8}
-.vbig small{display:block;margin-top:.3em;font-size:.32em;letter-spacing:.04em;color:var(--cream)}
+.vbig small{display:block;margin:.3em auto 0;font-size:.32em;letter-spacing:.04em;color:var(--cream);white-space:normal;max-width:min(80vw,26em);text-align:center}
 @keyframes vbig{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){.vbig,.itframe{animation:none}}
 .vtag{position:absolute;display:flex;align-items:center;gap:7px;padding:4px 8px;background:rgba(0,0,0,.75);font-family:var(--wide);font-stretch:125%;font-weight:900;font-size:.75rem;text-transform:uppercase}
@@ -1757,6 +1757,7 @@ const TAG_COOL = 2;   // seconds after a tag before It can be passed again
 // no tagbacks: whoever just made you It is off limits until you tag someone else. With only two snakes there's
 // nobody else to tag, so there it wears off after a few seconds.
 const NOBACK_2P = 5;
+const BOUNTY = 5;   // seconds It takes from the leader by tagging them
 const noBackOn = i => G.rule === 'tag' && i === G.noBack && i >= 0 && (PL.length > 2 || G.t - G.itAt < NOBACK_2P);
 function tagContact(){
   if (G.t - G.itAt < TAG_COOL) return;
@@ -1794,17 +1795,22 @@ function crashTag(p){
 }
 function doTag(to, crashed){
   if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && (G.t - G.itAt < TAG_COOL || noBackOn(to)))) return;
-  const from = G.it; G.it = to; G.itAt = G.t; G.noBack = from;
-  const p = PL[to]; itMoment(from, to); sfxTag();
+  const from = G.it;
+  // bounty: tagging whoever is in the lead takes a few of their seconds and hands them to It
+  const lead = PL.reduce((a, q) => q.i !== from && (q.pts || 0) > (a ? a.pts || 0 : -1) ? q : a, null);
+  const bounty = !crashed && lead && lead.i === to && PL[from] && (lead.pts || 0) >= 1 ? Math.min(BOUNTY, Math.floor(lead.pts)) : 0;
+  if (bounty){ lead.pts -= bounty; PL[from].pts = (PL[from].pts || 0) + bounty; }
+  G.it = to; G.itAt = G.t; G.noBack = from;
+  const p = PL[to]; itMoment(from, to, bounty); sfxTag();
   phoneSend({t: 'buzz', p: [60, 40, 60]}, to); phoneSend({t: 'buzz', p: 20}, from);
   if (ownSnake(p)) haptic([60, 40, 60]);
-  toScreens({t: 'it', it: to, at: G.itAt, nb: from});
+  toScreens({t: 'it', it: to, at: G.itAt, nb: from, bty: bounty});
 }
 // a tag: a pink shockwave where it happened, and big words on both players' views
-function itMoment(from, to){
+function itMoment(from, to, bounty){
   const p = PL[to], q = PL[from], now = performance.now();
-  if (p){ p.banner = {txt: 'You’re it!', sub: q && q !== p && PL.length > 2 ? `No tagbacks on ${playerName(from)}` : '', it: true, until: now + 2600}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
-  if (q && q !== p) q.banner = {txt: 'Not it!', it: false, until: now + 1400};
+  if (p){ p.banner = {txt: 'You’re it!', sub: [bounty ? `You were in the lead: −${bounty}s` : '', q && q !== p && PL.length > 2 ? `No tagbacks on ${playerName(from)}` : ''].filter(Boolean).join(' · '), it: true, until: now + 2600}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
+  if (q && q !== p) q.banner = bounty ? {txt: 'Bounty!', sub: `+${bounty}s from the leader`, it: false, until: now + 1800} : {txt: 'Not it!', it: false, until: now + 1400};
   lastHud = '';
 }
 function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus, 1040); tone('sine', 1040, t + 0.08, 0.12, 0.18, sfxBus); }); }
@@ -5343,7 +5349,7 @@ function onHost(m){
   else if (m.t === 'solo') showClient("That screen is playing solo. Ask the host to pick Party or Team and you'll join.");
   else if (m.t === 'start') clientStart(m);
   else if (m.t === 'w'){ if (G && state !== 'menu') applyWorld(m); }
-  else if (m.t === 'it'){ if (G && typeof m.nb === 'number') G.noBack = m.nb; if (G && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
+  else if (m.t === 'it'){ if (G && typeof m.nb === 'number') G.noBack = m.nb; if (G && G.rule === 'tag' && m.it !== G.it){ const was = G.it; G.it = m.it; G.itAt = G.t; itMoment(was, m.it, +m.bty || 0); if (m.it === ME && was !== ME){ haptic([60, 40, 60]); sfxTag(); } } }
   else if (m.t === 'gem'){ if (G && state !== 'menu') applyGem(m); }
   else if (m.t === 'phase') applyPhase(m);
 }
@@ -5554,7 +5560,7 @@ $('modePick').style.setProperty('--n', 2);
 buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>${RULES[k].name}</b><small>${RULES[k].sub}</small>`})), v => { RULE = v; store.set('rule', v); refreshMenu(); });
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
-  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. No tagbacks: you can’t tag the snake that just got you. Every second you’re not It scores. Crash with It close behind you and you become It, so no crashing your way out.',
+  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. No tagbacks: you can’t tag the snake that just got you. Every second you’re not It scores, and tagging whoever is in the lead steals 5 of their seconds. Crash with It close behind you and you become It, so no crashing your way out.',
   shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
