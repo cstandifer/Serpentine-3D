@@ -325,6 +325,14 @@ body.here #pauseBtn svg{width:26px;height:26px}
 .mp-note b{font-family:var(--wide);font-stretch:125%;font-weight:900;text-transform:uppercase;font-size:.85rem;white-space:nowrap}
 .mp-note span{font-size:.72rem;line-height:1.4;color:var(--muted)}
 .mp-note .btn{font-size:.85rem;padding:12px 14px;white-space:nowrap}
+body.out .jumpband{display:none}
+/* on a phone the note stacks: heading and line on top, the button full width under them */
+@media (max-width:560px){
+  .mp-note{flex-wrap:wrap;gap:6px 12px;width:calc(100vw - 32px)}
+  .mp-note b{flex:0 0 auto}
+  .mp-note span{flex:1 1 150px}
+  .mp-note .btn{flex:1 1 100%;text-align:center}
+}
 body.watching #stage,body.nomap #stage{display:none}
 .mp-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%)}
 @media (max-width:700px){.mp-top{top:calc(env(safe-area-inset-top,0px) + 70px);left:auto;right:16px;transform:none}.mp-top .team{max-width:60vw;white-space:normal;justify-content:flex-end}}
@@ -5390,7 +5398,7 @@ function updateHUD(){
     const watching = !vs.length && (state === 'play' || state === 'paused');
     if (watching) $('mpWatchTxt').textContent = ROLE === 'client' ? "This round started before you joined. You're in from the next one." : "You're not in this game. To play, add yourself on the menu before the next round.";
     $('mpWatch').hidden = !watching; document.body.classList.toggle('watching', watching);
-    $('mpOut').hidden = !localHumansOut();
+    const out = localHumansOut(); $('mpOut').hidden = !out; document.body.classList.toggle('out', out);   // out: no jump hint behind the note
     const key = JSON.stringify([PL.map(p => [pScore(p), p.lives, p.alive, p.gems, p.name, p.hold > 0 ? Math.ceil(p.hold/beatPeriod()) : 0, p.banner && performance.now() < p.banner.until ? p.banner.txt : '']), left, G.teamGems, G.teamLives, state, vs, innerWidth, innerHeight, ME, G.it, G.rule === 'shrink' ? (zoneR(G.t + 0.2) < zoneR(G.t) - 0.001 ? 1 : 0) : 0]);
     if (key === lastHud) return;
     lastHud = key;
