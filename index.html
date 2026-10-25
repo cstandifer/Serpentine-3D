@@ -310,6 +310,19 @@ body.here #pauseBtn svg{width:26px;height:26px}
 .sway .n{font-family:var(--wide);font-weight:900;font-size:1.4rem;line-height:1;color:var(--muted)}
 #sheetGo{justify-self:end;min-width:280px}
 #sheetGo.waiting{opacity:.5}
+/* phones and narrow windows: slots wrap four to a row, the three ways stack, the QR shrinks, Start goes full width */
+@media (max-width:759px){
+  .sheet{padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));gap:12px}
+  .sheet h2{font-size:1.15rem}
+  .slots{grid-template-columns:repeat(min(var(--n),4),1fr)}
+  .sways{grid-template-columns:1fr}
+  .sway{padding:12px}
+  .sway .qr{width:130px;height:130px}
+  .sway .code{font-size:2rem;padding:6px 0 2px}
+  #sheetGo{justify-self:stretch;min-width:0}
+}
+/* a touch screen has no keyboard to share, so skip that tip there */
+@media (hover:none){ .sway .kbtip{display:none} }
 /* when the big QR panel is showing beside the menu, the menu doesn't repeat the QR or the code */
 @media (min-width:1000px) and (hover:hover){
   #menu:has(.bigqr:not([hidden])) #phoneBox, #menu:has(.bigqr:not([hidden])) .way:not(.way-add){display:none}
@@ -587,7 +600,7 @@ body.here #stage.mini.duo{left:auto;right:16px;transform:none}
   <div class="sways">
     <div class="sway"><span class="n">1</span><b>Scan with a phone</b><div class="qr off" id="qr4" aria-hidden="true"></div><span>Play on your own phone, or use it as a controller on this screen.</span></div>
     <div class="sway"><span class="n">2</span><b>Laptop or tablet</b><div class="code" id="sheetCode">····</div><span id="sheetCodeHow"></span></div>
-    <div class="sway"><span class="n">3</span><b>On this screen</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span>Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
+    <div class="sway"><span class="n">3</span><b>On this screen</b><button class="btn btn-ghost" id="sheetMe">+ Me, on this keyboard</button><button class="btn btn-ghost" id="sheetCpu">+ Computer snake</button><span class="kbtip">Two people can share the keyboard: one on A D W, one on the arrows.</span></div>
   </div>
   <button class="btn" id="sheetGo">Start</button>
 </section>
@@ -2122,7 +2135,7 @@ function waitingText(){
   return missingPhones().length ? 'Waiting for a phone' + (LINK.code ? ` (code ${LINK.code})` : '') : '';
 }
 // ---- the Add players sheet (computers): who's in, the open spots, and the three ways to join ----
-const sheetFits = () => matchMedia('(min-width:760px) and (hover:hover)').matches && ROLE === 'host';
+const sheetFits = () => ROLE === 'host';   // every size: a Start press that can't start yet opens Add players right there
 let sheetSeen = 0;
 function renderSheet(){
   if ($('sheet').hidden) return;
@@ -2163,7 +2176,7 @@ function closeSheet(){
   $('startBtn').focus({preventScroll: true});
 }
 function nudgeWaiting(){
-  // on a computer, a Start press that can't start yet slides up the Add players sheet
+  // a Start press that can't start yet slides up the Add players sheet
   if (!$('menu').hidden && MODE !== 1 && sheetFits()){
     if (!$('sheet').hidden){ const s = $('sheetStatus'); s.classList.remove('flash'); void s.offsetWidth; s.animate([{opacity: 1}, {opacity: 0.3}, {opacity: 1}], {duration: 400, iterations: 2}); return; }
     return openSheet();
