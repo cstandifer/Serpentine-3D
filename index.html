@@ -4224,15 +4224,16 @@ function makeR3(){
         const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return t;
       })();
       const edge = new THREE.LineBasicMaterial({color: col(T.edge), transparent: true, opacity: 0.95, fog: false});
-      const edgeAlt = ['#ff4fd8', '#9d7bff', '#2b8cff'].map(c => new THREE.LineBasicMaterial({color: col(c), transparent: true, opacity: 0.9, fog: false}));
+      const towerFill = new THREE.MeshBasicMaterial({color: 0x000814, fog: false});
+      const edgeAlt = ['#2b8cff', '#0066ff'].map(c => new THREE.LineBasicMaterial({color: col(c), transparent: true, opacity: 0.9, fog: false}));
       const band = new THREE.MeshBasicMaterial({color: col('#0066ff'), fog: false});
       const towerMat = (bw, bh) => { const t = winTex.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, Math.round(bw/3)), Math.max(1, Math.round(bh/6))); t.offset.set(rnd(), rnd()); return new THREE.MeshBasicMaterial({map: t, fog: false}); };
       const towers = [];
       // three rings: near (tall, detailed), middle, and a far hazy wall of silhouettes
-      for (const [n, d0, d1, h0, h1, fogged] of [[34, R + 8, R + 20, 14, 46, false], [44, R + 22, R + 40, 10, 34, false], [56, R + 42, R + 70, 18, 60, true]]){
+      for (const [n, d0, d1, h0, h1, fogged] of [[34, R + 9, R + 22, 6, 28, false], [44, R + 24, R + 42, 12, 38, false], [56, R + 44, R + 70, 18, 60, true]]){
         for (let i = 0; i < n; i++){
           const a = i/n*Math.PI*2 + rnd()*0.07, dist = d0 + rnd()*(d1 - d0), bh = h0 + rnd()*(h1 - h0), bw = 3 + rnd()*6;
-          const mat = fogged ? new THREE.MeshBasicMaterial({color: 0x050a18, fog: false}) : towerMat(bw, bh);
+          const mat = fogged ? new THREE.MeshBasicMaterial({color: 0x050a18, fog: false}) : towerFill;   // black with neon outlines, like the original skyline
           const b = new THREE.Mesh(BOX, mat); b.scale.set(bw, bh, bw); b.position.set(cx + Math.cos(a)*dist, bh/2, cz + Math.sin(a)*dist); b.rotation.y = -a;
           if (!fogged){
             b.add(new THREE.LineSegments(EDGES, rnd() < 0.7 ? edge : edgeAlt[Math.floor(rnd()*edgeAlt.length)]));
