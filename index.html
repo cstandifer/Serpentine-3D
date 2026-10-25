@@ -1797,8 +1797,10 @@ function doTag(to, crashed){
   if (ROLE !== 'host' || G.rule !== 'tag' || to === G.it || !PL[to] || (!crashed && (G.t - G.itAt < TAG_COOL || noBackOn(to)))) return;
   const from = G.it;
   // bounty: tagging whoever is in the lead takes a few of their seconds and hands them to It
-  const lead = PL.reduce((a, q) => q.i !== from && (q.pts || 0) > (a ? a.pts || 0 : -1) ? q : a, null);
-  const bounty = !crashed && lead && lead.i === to && PL[from] && (lead.pts || 0) >= 1 ? Math.min(BOUNTY, Math.floor(lead.pts)) : 0;
+  // anyone within a second of the top counts as in the lead, so snakes tied up there (often the ones that have never
+  // been tagged, earning at the same rate) all carry the bounty
+  const top = Math.max(...PL.filter(q => q.i !== from).map(q => q.pts || 0)), lead = PL[to];
+  const bounty = !crashed && PL[from] && (lead.pts || 0) >= 1 && (lead.pts || 0) >= top - 1 ? Math.min(BOUNTY, Math.floor(lead.pts)) : 0;
   if (bounty){ lead.pts -= bounty; PL[from].pts = (PL[from].pts || 0) + bounty; }
   G.it = to; G.itAt = G.t; G.noBack = from;
   const p = PL[to]; itMoment(from, to, bounty); sfxTag();
@@ -1809,8 +1811,8 @@ function doTag(to, crashed){
 // a tag: a pink shockwave where it happened, and big words on both players' views
 function itMoment(from, to, bounty){
   const p = PL[to], q = PL[from], now = performance.now();
-  if (p){ p.banner = {txt: 'You’re it!', sub: [bounty ? `You were in the lead: −${bounty}s` : '', q && q !== p && PL.length > 2 ? `No tagbacks on ${playerName(from)}` : ''].filter(Boolean).join(' · '), it: true, until: now + 2600}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
-  if (q && q !== p) q.banner = bounty ? {txt: 'Bounty!', sub: `+${bounty}s from the leader`, it: false, until: now + 1800} : {txt: 'Not it!', it: false, until: now + 1400};
+  if (p){ p.banner = {txt: 'You’re it!', sub: [bounty ? `Leader bounty: −${bounty}s` : '', q && q !== p && PL.length > 2 ? `No tagbacks on ${playerName(from)}` : ''].filter(Boolean).join(' · '), it: true, until: now + 2600}; if (R3) R3.shock(p.x, p.y); burst(p.x, p.y, '#ff4fd8', 30, 6); }
+  if (q && q !== p) q.banner = bounty ? {txt: 'Bounty!', sub: `+${bounty}s from a leader`, it: false, until: now + 1800} : {txt: 'Not it!', it: false, until: now + 1400};
   lastHud = '';
 }
 function sfxTag(){ if (AC) sfx(t => { tone('square', 520, t, 0.12, 0.12, sfxBus, 1040); tone('sine', 1040, t + 0.08, 0.12, 0.18, sfxBus); }); }
@@ -5560,7 +5562,7 @@ $('modePick').style.setProperty('--n', 2);
 buildSeg('rulePick', 'rule', Object.keys(RULES).map(k => ({value: k, html: `<b>${RULES[k].name}</b><small>${RULES[k].sub}</small>`})), v => { RULE = v; store.set('rule', v); refreshMenu(); });
 const RULE_DESC = {
   gems: '<b>Gems.</b> Race for gems; crash into anything, including each other, and you lose a life and respawn. Highest score when the clock runs out wins.',
-  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. No tagbacks: you can’t tag the snake that just got you. Every second you’re not It scores, and tagging whoever is in the lead steals 5 of their seconds. Crash with It close behind you and you become It, so no crashing your way out.',
+  tag: '<b>Tag.</b> One snake is It (it glows, with a pink marker overhead). Snakes pass through each other here: whoever It touches becomes It. No tagbacks: you can’t tag the snake that just got you. Every second you’re not It scores, and tagging anyone in the lead steals 5 of their seconds. Crash with It close behind you and you become It, so no crashing your way out.',
   shrink: '<b>Shrink.</b> The walls close in, a step every few bars of the song. Get caught outside and you lose a life; three and you’re out. Last snake standing wins.',
 };
 function setMode(m){
